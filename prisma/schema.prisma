@@ -1,0 +1,97 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  accounts Account[]
+  
+  @@map("users")
+}
+
+model Account {
+  id          String   @id @default(cuid())
+  name        String?
+  login       String   @unique
+  broker      String
+  server      String
+  currency    String
+  timezone    String
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trades  Trade[]
+  metrics Metric[]
+  
+  @@map("accounts")
+}
+
+model Trade {
+  id            String   @id @default(cuid())
+  ticketId      String   @unique // MT5 ticket ID
+  positionId    String
+  orderId       String
+  symbol        String
+  side          String   // "buy" or "sell"
+  volume        Float
+  openTime      DateTime
+  closeTime     DateTime?
+  openPrice     Float
+  closePrice    Float?
+  sl            Float?
+  tp            Float?
+  commission    Float    @default(0)
+  swap          Float    @default(0)
+  taxes         Float    @default(0)
+  pnlGross      Float    @default(0)
+  comment       String?
+  magic         Int?
+  dealReason    String?
+  closeReason   String?
+  accountId     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
+  @@map("trades")
+}
+
+model Metric {
+  id                   String   @id @default(cuid())
+  accountId            String
+  date                 DateTime
+  dailyPnL             Float
+  cumulativePnL        Float
+  maxDailyLoss         Float
+  totalMaxLoss         Float
+  currentDrawdown      Float
+  maxDrawdown          Float
+  profitTarget         Float?
+  trailingDrawdown     Float?
+  accountBalance       Float?
+  equity               Float?
+  freeMargin           Float?
+  marginLevel          Float?
+  updatedAt            DateTime @updatedAt
+  
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
+  @@unique([accountId, date])
+  @@map("metrics")
+}
