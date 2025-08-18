@@ -49,7 +49,7 @@
 
 ### **📡 API CONFIGURATION**
 ```mq5
-API_URL = "https://tuo-domain.vercel.app/api/ingest/mt5"  // URL della tua dashboard
+API_URL = "https://new2dash-arujtlgab-matteo-negrinis-projects.vercel.app/api/ingest/mt5"  // URL della dashboard
 API_KEY = ""                                             // API Key (opzionale)
 TIMEOUT_MS = 10000                                       // Timeout richieste
 ENABLE_SSL = true                                        // Abilita HTTPS
