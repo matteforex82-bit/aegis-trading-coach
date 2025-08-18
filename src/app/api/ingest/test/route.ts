@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,17 +7,38 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log('📥 Body received:', JSON.stringify(body, null, 2))
     
-    // Test database connection
-    console.log('🔌 Testing database connection...')
-    const userCount = await db.user.count()
-    console.log('👥 User count:', userCount)
+    // Analizza la struttura del payload
+    console.log('📊 Body keys:', Object.keys(body))
+    console.log('📏 Payload size:', JSON.stringify(body).length, 'characters')
+    
+    if (body.account) {
+      console.log('🏦 Account data present')
+      console.log('   Login:', body.account.login)
+      console.log('   Keys:', Object.keys(body.account))
+    }
+    
+    if (body.trades) {
+      console.log('📈 Trades data present:', Array.isArray(body.trades) ? body.trades.length : 'not array')
+      if (Array.isArray(body.trades) && body.trades.length > 0) {
+        console.log('   First trade keys:', Object.keys(body.trades[0]))
+      }
+    }
+    
+    if (body.metrics) {
+      console.log('📊 Metrics data present')
+      console.log('   Keys:', Object.keys(body.metrics))
+    }
     
     return NextResponse.json({
       success: true,
-      message: 'Test successful',
-      receivedData: body,
-      dbConnection: 'OK',
-      userCount: userCount
+      message: 'Test successful - data analyzed',
+      receivedData: {
+        hasAccount: !!body.account,
+        hasTrades: !!body.trades,
+        hasMetrics: !!body.metrics,
+        tradesCount: Array.isArray(body.trades) ? body.trades.length : 0,
+        payloadSize: JSON.stringify(body).length
+      }
     })
     
   } catch (error: any) {
