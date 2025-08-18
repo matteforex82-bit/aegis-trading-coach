@@ -127,7 +127,7 @@ async function handleMetricsSync(account: any, metrics: any) {
         maxDrawdown: metrics.maxDrawdown || 0,
         accountBalance: metrics.balance || null,
         equity: metrics.equity || null,
-        phase: metrics.phase || null,
+        phase: (metrics.phase as any) || null,
         ruleViolations: metrics.ruleViolations || null,
         tradingDays: metrics.tradingDays || null,
       },
@@ -142,7 +142,7 @@ async function handleMetricsSync(account: any, metrics: any) {
         maxDrawdown: metrics.maxDrawdown || 0,
         accountBalance: metrics.balance || null,
         equity: metrics.equity || null,
-        phase: metrics.phase || null,
+        phase: (metrics.phase as any) || null,
         ruleViolations: metrics.ruleViolations || null,
         tradingDays: metrics.tradingDays || null,
       }
@@ -204,8 +204,8 @@ async function createOrUpdateAccount(account: any) {
         timezone: account.timezone || existingAccount.timezone || 'Europe/Rome',
         // PropFirm extensions
         propFirmId: propFirmId || existingAccount.propFirmId,
-        accountType: account.accountType || existingAccount.accountType,
-        currentPhase: account.phase || existingAccount.currentPhase,
+        accountType: (account.accountType as any) || existingAccount.accountType,
+        currentPhase: (account.phase as any) || existingAccount.currentPhase,
         startBalance: account.startBalance || existingAccount.startBalance,
         currentBalance: account.currentBalance || existingAccount.currentBalance,
         isChallenge: account.isChallenge ?? existingAccount.isChallenge,
@@ -232,8 +232,8 @@ async function createOrUpdateAccount(account: any) {
         userId: tempUser.id,
         // PropFirm extensions
         propFirmId: propFirmId,
-        accountType: account.accountType || 'DEMO',
-        currentPhase: account.phase || 'DEMO',
+        accountType: (account.accountType as any) || 'DEMO',
+        currentPhase: (account.phase as any) || 'DEMO',
         startBalance: account.startBalance || null,
         currentBalance: account.currentBalance || null,
         isChallenge: account.isChallenge || false,
@@ -285,7 +285,7 @@ async function createTradeWithPropFirmData(trade: any, accountId: string) {
       accountId: accountId,
       
       // PropFirm extensions
-      tradePhase: trade.phase || null,
+      tradePhase: (trade.phase as any) || null,
       violatesRules: Boolean(trade.violatesRules),
       ruleViolations: ruleViolations,
       equityAtOpen: trade.equityAtOpen || null,
@@ -398,7 +398,7 @@ async function calculateMetrics(accountId: string) {
           maxDrawdown,
           currentDrawdown,
           // PropFirm extensions
-          phase: currentPhase,
+          phase: (currentPhase as any),
           ruleViolations: dayViolations.length > 0 ? dayViolations : null,
           tradingDays: tradingDaysCount,
         },
@@ -412,7 +412,7 @@ async function calculateMetrics(accountId: string) {
           maxDrawdown,
           currentDrawdown,
           // PropFirm extensions
-          phase: currentPhase,
+          phase: (currentPhase as any),
           ruleViolations: dayViolations.length > 0 ? dayViolations : null,
           tradingDays: tradingDaysCount,
         }
