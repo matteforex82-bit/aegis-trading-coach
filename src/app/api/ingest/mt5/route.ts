@@ -2,31 +2,64 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
+  console.log('📥 MT5 endpoint hit')
+  
   try {
-    const body = await request.json()
+    // Parse JSON with detailed error handling
+    let body: any
+    try {
+      body = await request.json()
+      console.log('✅ JSON parsed successfully')
+      console.log('📊 Body keys:', Object.keys(body))
+    } catch (parseError: any) {
+      console.error('❌ JSON parsing error:', parseError)
+      return NextResponse.json(
+        { error: 'Invalid JSON format', details: parseError.message },
+        { status: 400 }
+      )
+    }
     
-    // Log incoming data for debugging
-    console.log('📥 Received MT5 data:', JSON.stringify(body, null, 2))
+    // Log payload size and structure
+    const payloadSize = JSON.stringify(body).length
+    console.log('📏 Payload size:', payloadSize, 'characters')
     
     // Support different payload formats
     const { account, trades, metrics } = body
+    console.log('🔍 Request type - account:', !!account, 'trades:', !!trades, 'metrics:', !!metrics)
     
     // Validate required fields
     if (!account) {
+      console.log('❌ Missing account data')
       return NextResponse.json(
         { error: 'Account data is required' },
         { status: 400 }
       )
     }
 
+    console.log('🏦 Account login:', account.login)
+
+    // Test database connection first
+    try {
+      console.log('🔌 Testing database connection...')
+      const testQuery = await db.user.count()
+      console.log('✅ Database connected, user count:', testQuery)
+    } catch (dbError: any) {
+      console.error('❌ Database connection error:', dbError)
+      return NextResponse.json(
+        { error: 'Database connection failed', details: dbError.message },
+        { status: 503 }
+      )
+    }
+
     // Handle different types of requests
     if (trades && Array.isArray(trades)) {
-      // Historical sync or trade updates
+      console.log('📈 Processing trade sync with', trades.length, 'trades')
       return await handleTradeSync(account, trades)
     } else if (metrics) {
-      // Live metrics update
+      console.log('📊 Processing metrics sync')
       return await handleMetricsSync(account, metrics)
     } else {
+      console.log('❌ No valid data type found')
       return NextResponse.json(
         { error: 'Either trades or metrics data is required' },
         { status: 400 }
@@ -34,11 +67,15 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error: any) {
-    console.error('❌ Error processing MT5 ingest:', error)
+    console.error('❌ Fatal error in MT5 ingest:', error)
+    console.error('❌ Error name:', error.name)
+    console.error('❌ Error message:', error.message)
     console.error('❌ Error stack:', error.stack)
+    
     return NextResponse.json(
       { 
         error: 'Internal server error', 
+        type: error.name,
         details: error.message,
         stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
       },
@@ -127,7 +164,7 @@ async function handleMetricsSync(account: any, metrics: any) {
         maxDrawdown: metrics.maxDrawdown || 0,
         accountBalance: metrics.balance || null,
         equity: metrics.equity || null,
-        phase: (metrics.phase as any) || null,
+        phase: mapPhase(metrics.phase),
         ruleViolations: metrics.ruleViolations || null,
         tradingDays: metrics.tradingDays || null,
       },
@@ -142,7 +179,7 @@ async function handleMetricsSync(account: any, metrics: any) {
         maxDrawdown: metrics.maxDrawdown || 0,
         accountBalance: metrics.balance || null,
         equity: metrics.equity || null,
-        phase: (metrics.phase as any) || null,
+        phase: mapPhase(metrics.phase),
         ruleViolations: metrics.ruleViolations || null,
         tradingDays: metrics.tradingDays || null,
       }
@@ -166,80 +203,111 @@ async function handleMetricsSync(account: any, metrics: any) {
 //| Create or Update Account with PropFirm Data                     |
 //+------------------------------------------------------------------+
 async function createOrUpdateAccount(account: any) {
-  // Find or create PropFirm if specified
-  let propFirmId = null
-  if (account.propFirm) {
-    const propFirm = await db.propFirm.upsert({
-      where: { name: account.propFirm },
-      update: {
-        isActive: true
-      },
-      create: {
-        name: account.propFirm,
-        description: `${account.propFirm} Prop Trading Firm`,
-        defaultRules: {
-          profitTarget: account.profitTarget || null,
-          maxDailyLoss: account.maxDailyLoss || null,
-          maxTotalLoss: account.maxTotalLoss || null,
-          maxDrawdown: account.maxDrawdown || null
+  console.log('🏦 Creating/updating account for login:', account.login)
+  
+  try {
+    // Find or create PropFirm if specified
+    let propFirmId = null
+    if (account.propFirm) {
+      console.log('🏢 Processing PropFirm:', account.propFirm)
+      try {
+        const propFirm = await db.propFirm.upsert({
+          where: { name: account.propFirm },
+          update: {
+            isActive: true
+          },
+          create: {
+            name: account.propFirm,
+            description: `${account.propFirm} Prop Trading Firm`,
+            defaultRules: {
+              profitTarget: account.profitTarget || null,
+              maxDailyLoss: account.maxDailyLoss || null,
+              maxTotalLoss: account.maxTotalLoss || null,
+              maxDrawdown: account.maxDrawdown || null
+            }
+          }
+        })
+        propFirmId = propFirm.id
+        console.log('✅ PropFirm created/updated:', propFirmId)
+      } catch (propFirmError: any) {
+        console.error('❌ PropFirm creation error:', propFirmError)
+        throw propFirmError
+      }
+    }
+
+    console.log('🔍 Looking for existing account...')
+    const existingAccount = await db.account.findUnique({
+      where: { login: account.login.toString() }
+    })
+
+    if (existingAccount) {
+      console.log('📝 Updating existing account:', existingAccount.id)
+      
+      // Safely map enum values
+      const accountType = mapAccountType(account.accountType) || existingAccount.accountType
+      const currentPhase = mapPhase(account.phase) || existingAccount.currentPhase
+      
+      return await db.account.update({
+        where: { login: account.login.toString() },
+        data: {
+          name: account.name || existingAccount.name,
+          broker: account.broker || existingAccount.broker,
+          server: account.server || existingAccount.server,
+          currency: account.currency || existingAccount.currency,
+          timezone: account.timezone || existingAccount.timezone || 'Europe/Rome',
+          // PropFirm extensions
+          propFirmId: propFirmId || existingAccount.propFirmId,
+          accountType: accountType,
+          currentPhase: currentPhase,
+          startBalance: account.startBalance || existingAccount.startBalance,
+          currentBalance: account.currentBalance || existingAccount.currentBalance,
+          isChallenge: account.isChallenge ?? existingAccount.isChallenge,
+          isFunded: account.isFunded ?? existingAccount.isFunded,
         }
-      }
-    })
-    propFirmId = propFirm.id
-  }
+      })
+    } else {
+      console.log('🆕 Creating new account...')
+      
+      // Create new account with temporary user
+      console.log('👤 Creating temp user...')
+      const tempUser = await db.user.create({
+        data: {
+          email: `temp_${account.login}@propcontrol.com`,
+          name: `${account.propFirm || account.broker || 'Prop Firm'} Account`
+        }
+      })
+      console.log('✅ Temp user created:', tempUser.id)
 
-  const existingAccount = await db.account.findUnique({
-    where: { login: account.login.toString() }
-  })
+      // Safely map enum values
+      const accountType = mapAccountType(account.accountType) || 'DEMO'
+      const currentPhase = mapPhase(account.phase) || 'DEMO'
 
-  if (existingAccount) {
-    // Update existing account with PropFirm extensions
-    return await db.account.update({
-      where: { login: account.login.toString() },
-      data: {
-        name: account.name || existingAccount.name,
-        broker: account.broker || existingAccount.broker,
-        server: account.server || existingAccount.server,
-        currency: account.currency || existingAccount.currency,
-        timezone: account.timezone || existingAccount.timezone || 'Europe/Rome',
-        // PropFirm extensions
-        propFirmId: propFirmId || existingAccount.propFirmId,
-        accountType: (account.accountType as any) || existingAccount.accountType,
-        currentPhase: (account.phase as any) || existingAccount.currentPhase,
-        startBalance: account.startBalance || existingAccount.startBalance,
-        currentBalance: account.currentBalance || existingAccount.currentBalance,
-        isChallenge: account.isChallenge ?? existingAccount.isChallenge,
-        isFunded: account.isFunded ?? existingAccount.isFunded,
-      }
-    })
-  } else {
-    // Create new account with temporary user
-    const tempUser = await db.user.create({
-      data: {
-        email: `temp_${account.login}@propcontrol.com`,
-        name: `${account.propFirm || account.broker || 'Prop Firm'} Account`
-      }
-    })
-
-    return await db.account.create({
-      data: {
-        login: account.login.toString(),
-        name: account.name || `${account.broker} Account`,
-        broker: account.broker,
-        server: account.server,
-        currency: account.currency,
-        timezone: account.timezone || 'Europe/Rome',
-        userId: tempUser.id,
-        // PropFirm extensions
-        propFirmId: propFirmId,
-        accountType: (account.accountType as any) || 'DEMO',
-        currentPhase: (account.phase as any) || 'DEMO',
-        startBalance: account.startBalance || null,
-        currentBalance: account.currentBalance || null,
-        isChallenge: account.isChallenge || false,
-        isFunded: account.isFunded || false,
-      }
-    })
+      console.log('🏗️ Creating account with accountType:', accountType, 'phase:', currentPhase)
+      
+      return await db.account.create({
+        data: {
+          login: account.login.toString(),
+          name: account.name || `${account.broker} Account`,
+          broker: account.broker,
+          server: account.server,
+          currency: account.currency,
+          timezone: account.timezone || 'Europe/Rome',
+          userId: tempUser.id,
+          // PropFirm extensions
+          propFirmId: propFirmId,
+          accountType: accountType,
+          currentPhase: currentPhase,
+          startBalance: account.startBalance || null,
+          currentBalance: account.currentBalance || null,
+          isChallenge: account.isChallenge || false,
+          isFunded: account.isFunded || false,
+        }
+      })
+    }
+  } catch (error: any) {
+    console.error('❌ Error in createOrUpdateAccount:', error)
+    console.error('❌ Account data that failed:', JSON.stringify(account, null, 2))
+    throw error
   }
 }
 
@@ -285,7 +353,7 @@ async function createTradeWithPropFirmData(trade: any, accountId: string) {
       accountId: accountId,
       
       // PropFirm extensions
-      tradePhase: (trade.phase as any) || null,
+      tradePhase: mapPhase(trade.phase),
       violatesRules: Boolean(trade.violatesRules),
       ruleViolations: ruleViolations,
       equityAtOpen: trade.equityAtOpen || null,
@@ -398,7 +466,7 @@ async function calculateMetrics(accountId: string) {
           maxDrawdown,
           currentDrawdown,
           // PropFirm extensions
-          phase: (currentPhase as any),
+          phase: mapPhase(currentPhase),
           ruleViolations: dayViolations.length > 0 ? dayViolations : null,
           tradingDays: tradingDaysCount,
         },
@@ -412,7 +480,7 @@ async function calculateMetrics(accountId: string) {
           maxDrawdown,
           currentDrawdown,
           // PropFirm extensions
-          phase: (currentPhase as any),
+          phase: mapPhase(currentPhase),
           ruleViolations: dayViolations.length > 0 ? dayViolations : null,
           tradingDays: tradingDaysCount,
         }
@@ -424,4 +492,25 @@ async function calculateMetrics(accountId: string) {
   } catch (error) {
     console.error('Error calculating metrics:', error)
   }
+}
+
+//+------------------------------------------------------------------+
+//| Helper Functions for Enum Mapping                              |
+//+------------------------------------------------------------------+
+function mapAccountType(value: any): string | null {
+  if (!value) return null
+  
+  const validTypes = ['DEMO', 'LIVE', 'CHALLENGE', 'FUNDED']
+  const upperValue = value.toString().toUpperCase()
+  
+  return validTypes.includes(upperValue) ? upperValue : null
+}
+
+function mapPhase(value: any): string | null {
+  if (!value) return null
+  
+  const validPhases = ['DEMO', 'PHASE_1', 'PHASE_2', 'FUNDED']
+  const upperValue = value.toString().toUpperCase()
+  
+  return validPhases.includes(upperValue) ? upperValue : null
 }
