@@ -33,10 +33,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error processing MT5 ingest:', error)
+    console.error('❌ Error stack:', error.stack)
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { 
+        error: 'Internal server error', 
+        details: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      },
       { status: 500 }
     )
   }
@@ -89,8 +94,9 @@ async function handleTradeSync(account: any, trades: any[]) {
       accountLogin: account.login,
       dashboardUrl: process.env.NEXTAUTH_URL || 'https://newdash-pied.vercel.app'
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error in trade sync:', error)
+    console.error('❌ Trade sync stack:', error.stack)
     throw error
   }
 }
@@ -149,8 +155,9 @@ async function handleMetricsSync(account: any, metrics: any) {
       message: 'Metrics updated successfully',
       timestamp: currentDate.toISOString()
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error in metrics sync:', error)
+    console.error('❌ Metrics sync stack:', error.stack)
     throw error
   }
 }
