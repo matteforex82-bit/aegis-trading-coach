@@ -10,6 +10,31 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Enums for Prop Firm features
+enum Phase {
+  DEMO
+  PHASE_1      // Challenge Phase 1
+  PHASE_2      // Challenge Phase 2
+  FUNDED       // Funded Account
+  VERIFICATION // Verification phase
+}
+
+enum ChallengeStatus {
+  ACTIVE       // In corso
+  PASSED       // Superata
+  FAILED       // Fallita
+  COMPLETED    // Completata (funded)
+  PAUSED       // In pausa
+  EXPIRED      // Scaduta
+}
+
+enum AccountType {
+  DEMO         // Account demo
+  CHALLENGE    // Account challenge
+  FUNDED       // Account funded
+  EVALUATION   // Account in valutazione
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -22,6 +47,25 @@ model User {
   @@map("users")
 }
 
+model PropFirm {
+  id            String   @id @default(cuid())
+  name          String   // "FTMO", "MyForexFunds", etc.
+  website       String?
+  logo          String?
+  description   String?
+  isActive      Boolean  @default(true)
+  
+  // Regole default della prop firm (JSON format)
+  defaultRules  Json?    // Rules template
+  
+  accounts      Account[]
+  challenges    Challenge[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@map("prop_firms")
+}
+
 model Account {
   id          String   @id @default(cuid())
   name        String?
@@ -31,14 +75,76 @@ model Account {
   currency    String
   timezone    String
   userId      String
+  
+  // Prop Firm extensions (nullable for backward compatibility)
+  propFirmId    String?
+  accountType   AccountType? @default(DEMO)
+  currentPhase  Phase?       @default(DEMO)
+  
+  // Balance info
+  startBalance  Float?
+  currentBalance Float?
+  
+  // Challenge specific
+  isChallenge   Boolean @default(false)
+  isFunded      Boolean @default(false)
+  
+  // Timestamps
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
-  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  trades  Trade[]
-  metrics Metric[]
+  // Relations
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propFirm    PropFirm?  @relation(fields: [propFirmId], references: [id])
+  trades      Trade[]
+  metrics     Metric[]
+  challenges  Challenge[]
   
   @@map("accounts")
+}
+
+model Challenge {
+  id              String   @id @default(cuid())
+  accountId       String
+  propFirmId      String
+  
+  // Challenge info
+  phase           Phase
+  startDate       DateTime
+  endDate         DateTime?
+  status          ChallengeStatus @default(ACTIVE)
+  
+  // Challenge rules (specific per questa challenge) - JSON format
+  rules           Json?    // Regole specifiche
+  
+  // Target e limiti
+  startingBalance Float
+  profitTarget    Float?
+  maxDailyLoss    Float?
+  maxTotalLoss    Float?
+  maxDrawdown     Float?
+  minTradingDays  Int?     @default(0)
+  
+  // Progress tracking
+  currentBalance  Float?
+  currentPnL      Float    @default(0)
+  currentDrawdown Float    @default(0)
+  daysTraded      Int      @default(0)
+  totalTrades     Int      @default(0)
+  
+  // Violations
+  ruleViolations  Json?    // Array delle violazioni
+  violationCount  Int      @default(0)
+  
+  // Relations
+  account         Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  propFirm        PropFirm @relation(fields: [propFirmId], references: [id])
+  trades          Trade[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("challenges")
 }
 
 model Trade {
@@ -64,10 +170,33 @@ model Trade {
   dealReason    String?
   closeReason   String?
   accountId     String
+  
+  // Prop Firm extensions (nullable for backward compatibility)
+  tradePhase        Phase?           // Fase quando è stato fatto il trade
+  violatesRules     Boolean @default(false) // Viola regole prop firm
+  ruleViolations    Json?            // Array delle regole violate
+  equityAtOpen      Float?           // Equity al momento dell'apertura
+  equityAtClose     Float?           // Equity al momento della chiusura
+  drawdownAtOpen    Float?           // Drawdown % al momento dell'apertura
+  drawdownAtClose   Float?           // Drawdown % al momento della chiusura
+  dailyPnLAtOpen    Float?           // P&L giornaliero al momento dell'apertura
+  dailyPnLAtClose   Float?           // P&L giornaliero al momento della chiusura
+  isWeekendTrade    Boolean @default(false) // Trade nel weekend
+  newsTime          Boolean @default(false) // Trade durante news ad alto impatto
+  holdingTime       Int?             // Tempo di holding in minuti
+  riskReward        Float?           // Risk/Reward ratio
+  riskPercent       Float?           // % di rischio sul conto
+  
+  // Metadati challenge
+  challengeId       String?          // FK a Challenge se applicabile
+  
+  // Timestamps
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
-  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  // Relations
+  account       Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  challenge     Challenge? @relation(fields: [challengeId], references: [id])
   
   @@map("trades")
 }
@@ -88,8 +217,16 @@ model Metric {
   equity               Float?
   freeMargin           Float?
   marginLevel          Float?
+  
+  // Prop Firm extensions (nullable for backward compatibility)
+  challengeId          String?          // FK to Challenge if applicable
+  phase                Phase?           // Phase during this metric calculation
+  ruleViolations       Json?            // Rule violations for this day
+  tradingDays          Int?             // Cumulative trading days
+  
   updatedAt            DateTime @updatedAt
   
+  // Relations
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
   
   @@unique([accountId, date])
