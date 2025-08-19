@@ -71,11 +71,12 @@ export default function TradesPage() {
       const data = await response.json()
       
       // Filter only CLOSED trades for trades page
-      // TEMPORARY: Show all trades to debug the issue
-      const closedTrades = data.trades || []
+      const closedTrades = data.trades?.filter((trade: any) => trade.closeTime) || []
       
-      console.log('🔍 ALL TRADES DEBUG:', closedTrades.slice(0, 3))
-      console.log('🔍 Sample trade closeTime:', closedTrades[0]?.closeTime)
+      console.log('🔍 CLOSED TRADES DEBUG:', closedTrades.slice(0, 3))
+      console.log('🔍 Sample closeTime:', closedTrades[0]?.closeTime)
+      console.log('🔍 Total trades fetched:', data.trades?.length)
+      console.log('🔍 Closed trades filtered:', closedTrades.length)
       
       // Transform API data to match our Trade interface
       const transformedTrades = closedTrades.map((trade: any) => ({
