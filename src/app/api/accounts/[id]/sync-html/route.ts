@@ -175,10 +175,20 @@ function parseHtmlReport($: cheerio.CheerioAPI) {
     accountLogin = accountCell1.match(/(\d+)/)?.[1] || ''
   }
   
-  // Fallback: use any account number found
+  // Fallback 1: Extract from HTML title (format: "2958: Name - Trade History Report")
+  if (!accountLogin) {
+    const title = $('title').text()
+    const titleMatch = title.match(/(\d+):/)?.[1]
+    if (titleMatch) {
+      accountLogin = titleMatch
+      console.log('   Using title account:', accountLogin)
+    }
+  }
+  
+  // Fallback 2: use any account number found in cells
   if (!accountLogin && accountMatches.length > 0) {
     accountLogin = accountMatches[0]?.[1] || ''
-    console.log('   Using fallback account:', accountLogin)
+    console.log('   Using pattern fallback account:', accountLogin)
   }
   
   const accountName = $('th:contains("Name:")').next().find('b').text().trim()
