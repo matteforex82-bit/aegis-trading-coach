@@ -87,11 +87,14 @@ export async function POST(request: NextRequest) {
     console.error('❌ Error message:', error.message)
     console.error('❌ Error stack:', error.stack)
     
+    // Always include detailed error info to help EA debugging
     return NextResponse.json(
       { 
         error: 'Internal server error', 
         type: error.name,
         details: error.message,
+        account_login: request.body?.account?.login || 'unknown',
+        help: 'Check if account exists or can be recreated',
         stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
       },
       { status: 500 }
@@ -315,37 +318,56 @@ async function createOrUpdateAccountSafe(account: any) {
       })
     } else {
       console.log('🆕 Creating new account with PropFirm...')
+      console.log('📋 Account data received:', JSON.stringify(account, null, 2))
       
       // Create temp user first
       console.log('👤 Creating temp user...')
-      const tempUser = await db.user.create({
-        data: {
-          email: `temp_${account.login}@propcontrol.com`,
-          name: `${account.propFirm || account.broker || 'Trading'} Account`
-        }
-      })
-      console.log('✅ Temp user created:', tempUser.id)
+      try {
+        const tempUser = await db.user.create({
+          data: {
+            email: `temp_${account.login}@propcontrol.com`,
+            name: `${account.propFirm || account.broker || 'Trading'} Account`
+          }
+        })
+        console.log('✅ Temp user created:', tempUser.id)
 
-      // Create account with PropFirm fields
-      return await db.account.create({
-        data: {
+        // Create account with PropFirm fields
+        console.log('🏦 Creating account with data:', {
           login: account.login.toString(),
-          name: account.name || `${account.broker} Account`,
-          broker: account.broker,
-          server: account.server,
-          currency: account.currency,
+          name: account.name || `${account.broker || 'Trading'} Account`,
+          broker: account.broker || 'Unknown',
+          server: account.server || 'Unknown',
+          currency: account.currency || 'USD',
           timezone: account.timezone || 'Europe/Rome',
           userId: tempUser.id,
-          // PropFirm fields with safe defaults
           propFirmId: propFirmId,
           accountType: mapAccountTypeSafe(account.accountType) || 'DEMO',
           currentPhase: mapPhaseSafe(account.phase) || 'DEMO',
-          startBalance: account.startBalance || null,
-          currentBalance: account.currentBalance || null,
-          isChallenge: account.isChallenge || false,
-          isFunded: account.isFunded || false,
-        }
-      })
+        })
+        
+        return await db.account.create({
+          data: {
+            login: account.login.toString(),
+            name: account.name || `${account.broker || 'Trading'} Account`,
+            broker: account.broker || 'Unknown',
+            server: account.server || 'Unknown',
+            currency: account.currency || 'USD',
+            timezone: account.timezone || 'Europe/Rome',
+            userId: tempUser.id,
+            // PropFirm fields with safe defaults
+            propFirmId: propFirmId,
+            accountType: mapAccountTypeSafe(account.accountType) || 'DEMO',
+            currentPhase: mapPhaseSafe(account.phase) || 'DEMO',
+            startBalance: account.startBalance || null,
+            currentBalance: account.currentBalance || null,
+            isChallenge: account.isChallenge || false,
+            isFunded: account.isFunded || false,
+          }
+        })
+      } catch (userError: any) {
+        console.error('❌ Failed to create temp user:', userError.message)
+        throw new Error(`User creation failed: ${userError.message}`)
+      }
     }
   } catch (error: any) {
     console.error('❌ Error in PropFirm account creation:', error)
