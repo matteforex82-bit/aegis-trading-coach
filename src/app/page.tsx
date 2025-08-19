@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress'
 import { RefreshCw, TrendingUp, TrendingDown, DollarSign, Activity, BarChart3, List } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { Terminal } from '@/components/terminal'
+import { RuleCompliancePanel } from '@/components/RuleCompliancePanel'
 import Link from 'next/link'
 
 interface Account {
@@ -237,6 +238,15 @@ export default function Dashboard() {
                 </div>
               </div>
 
+              {/* Rule Compliance Panel */}
+              <div className="mb-8">
+                <RuleCompliancePanel 
+                  accountId={selectedAccount.id} 
+                  autoRefresh={true}
+                  refreshInterval={30000}
+                />
+              </div>
+
               {/* Key Metrics Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <Card>
@@ -344,13 +354,21 @@ export default function Dashboard() {
               )}
 
               {/* Detailed Metrics */}
-              <Tabs defaultValue="drawdown" className="space-y-4">
+              <Tabs defaultValue="rules" className="space-y-4">
                 <TabsList>
+                  <TabsTrigger value="rules">Regole PropFirm</TabsTrigger>
                   <TabsTrigger value="drawdown">Drawdown</TabsTrigger>
                   <TabsTrigger value="losses">Perdite</TabsTrigger>
                   <TabsTrigger value="volume">Volume</TabsTrigger>
                   <TabsTrigger value="debug">Debug</TabsTrigger>
                 </TabsList>
+
+                <TabsContent value="rules" className="space-y-4">
+                  <RuleCompliancePanel 
+                    accountId={selectedAccount.id} 
+                    autoRefresh={false}
+                  />
+                </TabsContent>
 
                 <TabsContent value="drawdown" className="space-y-4">
                   <Card>
