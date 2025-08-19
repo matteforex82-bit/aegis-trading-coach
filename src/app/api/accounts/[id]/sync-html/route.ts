@@ -68,10 +68,23 @@ export async function POST(
     const $ = cheerio.load(htmlContent)
     const parsedData = parseHtmlReport($)
 
-    // Validate parsed data
+    // Validate parsed data with detailed error info
     if (!parsedData.accountLogin) {
+      console.error('❌ Account login not found in HTML')
+      console.error('📋 Debug info:', {
+        accountName: parsedData.accountName,
+        company: parsedData.company,
+        reportDate: parsedData.reportDate
+      })
+      
       return NextResponse.json({ 
-        error: 'Invalid MT5 report: Account login not found' 
+        error: 'Invalid MT5 report: Account login not found',
+        debug: {
+          parsedName: parsedData.accountName,
+          parsedCompany: parsedData.company,
+          parsedDate: parsedData.reportDate,
+          help: 'Check if your HTML report contains the account number in the Account field'
+        }
       }, { status: 400 })
     }
 
@@ -137,13 +150,42 @@ export async function POST(
 }
 
 function parseHtmlReport($: cheerio.CheerioAPI) {
-  // Extract account info
-  const accountLogin = $('th:contains("Account:")').next().text().match(/(\d+)/)?.[1] || ''
+  // Debug: Log HTML structure for troubleshooting
+  console.log('🔍 HTML Parser Debug:')
+  
+  // Try multiple ways to find account info
+  let accountLogin = ''
+  
+  // Method 1: th:contains("Account:")
+  const accountCell1 = $('th:contains("Account:")').next().text()
+  console.log('   Method 1 - th contains Account:', accountCell1)
+  
+  // Method 2: Look for patterns in all table cells
+  const allCells = $('th, td').map((i, el) => $(el).text().trim()).get()
+  console.log('   Found cells:', allCells.slice(0, 10)) // First 10 cells
+  
+  // Method 3: Look for account number patterns
+  const accountMatches = allCells
+    .map(cell => cell.match(/(?:Account[:\s]*)?(\d{4,})/i))
+    .filter(match => match)
+  console.log('   Account matches found:', accountMatches.map(m => m?.[1]))
+  
+  // Extract account login
+  if (accountCell1) {
+    accountLogin = accountCell1.match(/(\d+)/)?.[1] || ''
+  }
+  
+  // Fallback: use any account number found
+  if (!accountLogin && accountMatches.length > 0) {
+    accountLogin = accountMatches[0]?.[1] || ''
+    console.log('   Using fallback account:', accountLogin)
+  }
+  
   const accountName = $('th:contains("Name:")').next().find('b').text().trim()
   const company = $('th:contains("Company:")').next().find('b').text().trim()
   const reportDate = $('th:contains("Date:")').next().find('b').text().trim()
 
-  console.log(`📊 Account: ${accountLogin} - ${accountName}`)
+  console.log(`📊 Parsed - Account: "${accountLogin}" - Name: "${accountName}"`)
 
   // Parse closed trades (Positions section)
   const closedTrades: ParsedTrade[] = []
