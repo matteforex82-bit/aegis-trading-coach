@@ -149,9 +149,38 @@ async function handleMetricsSyncSafe(account: any, metrics: any) {
 //| Create or Update Account - SAFE VERSION                        |
 //+------------------------------------------------------------------+
 async function createOrUpdateAccountSafe(account: any) {
-  console.log('🏦 Creating/updating account SAFELY for login:', account.login)
+  console.log('🏦 Creating/updating account with PropFirm for login:', account.login)
   
   try {
+    // STEP 1: Handle PropFirm creation if needed
+    let propFirmId = null
+    if (account.propFirm) {
+      console.log('🏢 Processing PropFirm:', account.propFirm)
+      try {
+        const propFirm = await db.propFirm.upsert({
+          where: { name: account.propFirm },
+          update: {
+            isActive: true
+          },
+          create: {
+            name: account.propFirm,
+            description: `${account.propFirm} Prop Trading Firm`,
+            defaultRules: {
+              profitTarget: account.profitTarget || null,
+              maxDailyLoss: account.maxDailyLoss || null,
+              maxTotalLoss: account.maxTotalLoss || null,
+              maxDrawdown: account.maxDrawdown || null
+            }
+          }
+        })
+        propFirmId = propFirm.id
+        console.log('✅ PropFirm processed:', propFirmId)
+      } catch (propFirmError: any) {
+        console.error('❌ PropFirm creation error:', propFirmError)
+        // Continue without PropFirm if it fails
+      }
+    }
+
     console.log('🔍 Looking for existing account...')
     const existingAccount = await db.account.findUnique({
       where: { login: account.login.toString() }
@@ -160,7 +189,7 @@ async function createOrUpdateAccountSafe(account: any) {
     if (existingAccount) {
       console.log('📝 Found existing account:', existingAccount.id)
       
-      // Simple update - only basic fields, no PropFirm
+      // Enhanced update with PropFirm fields
       return await db.account.update({
         where: { login: account.login.toString() },
         data: {
@@ -168,24 +197,31 @@ async function createOrUpdateAccountSafe(account: any) {
           broker: account.broker || existingAccount.broker,
           server: account.server || existingAccount.server,
           currency: account.currency || existingAccount.currency,
-          timezone: account.timezone || existingAccount.timezone || 'Europe/Rome'
-          // Skip all PropFirm fields to avoid enum issues
+          timezone: account.timezone || existingAccount.timezone || 'Europe/Rome',
+          // PropFirm fields with safe enum mapping
+          propFirmId: propFirmId || existingAccount.propFirmId,
+          accountType: mapAccountTypeSafe(account.accountType) || existingAccount.accountType,
+          currentPhase: mapPhaseSafe(account.phase) || existingAccount.currentPhase,
+          startBalance: account.startBalance || existingAccount.startBalance,
+          currentBalance: account.currentBalance || existingAccount.currentBalance,
+          isChallenge: account.isChallenge ?? existingAccount.isChallenge,
+          isFunded: account.isFunded ?? existingAccount.isFunded,
         }
       })
     } else {
-      console.log('🆕 Creating new account safely...')
+      console.log('🆕 Creating new account with PropFirm...')
       
       // Create temp user first
       console.log('👤 Creating temp user...')
       const tempUser = await db.user.create({
         data: {
           email: `temp_${account.login}@propcontrol.com`,
-          name: `${account.broker || 'Trading'} Account`
+          name: `${account.propFirm || account.broker || 'Trading'} Account`
         }
       })
       console.log('✅ Temp user created:', tempUser.id)
 
-      // Create simple account - no PropFirm fields at all
+      // Create account with PropFirm fields
       return await db.account.create({
         data: {
           login: account.login.toString(),
@@ -194,17 +230,58 @@ async function createOrUpdateAccountSafe(account: any) {
           server: account.server,
           currency: account.currency,
           timezone: account.timezone || 'Europe/Rome',
-          userId: tempUser.id
-          // No PropFirm fields - completely safe
+          userId: tempUser.id,
+          // PropFirm fields with safe defaults
+          propFirmId: propFirmId,
+          accountType: mapAccountTypeSafe(account.accountType) || 'DEMO',
+          currentPhase: mapPhaseSafe(account.phase) || 'DEMO',
+          startBalance: account.startBalance || null,
+          currentBalance: account.currentBalance || null,
+          isChallenge: account.isChallenge || false,
+          isFunded: account.isFunded || false,
         }
       })
     }
   } catch (error: any) {
-    console.error('❌ Error in safe account creation:', error)
+    console.error('❌ Error in PropFirm account creation:', error)
     console.error('❌ Account data that failed:', JSON.stringify(account, null, 2))
     throw error
   }
 }
 
-// All complex functions removed for safe mode
-// Will add them back gradually once basic functionality works
+//+------------------------------------------------------------------+
+//| Safe Enum Mapping Functions                                    |
+//+------------------------------------------------------------------+
+function mapAccountTypeSafe(value: any): string | null {
+  if (!value) return null
+  
+  try {
+    // Valid types from Prisma schema
+    const validTypes = ['DEMO', 'CHALLENGE', 'FUNDED', 'EVALUATION']
+    const upperValue = value.toString().toUpperCase()
+    
+    // Map common variations
+    if (upperValue === 'LIVE') return 'DEMO'
+    if (upperValue === 'REAL') return 'FUNDED'
+    
+    return validTypes.includes(upperValue) ? upperValue : 'DEMO'
+  } catch (error) {
+    console.error('Error mapping account type:', error)
+    return 'DEMO'
+  }
+}
+
+function mapPhaseSafe(value: any): string | null {
+  if (!value) return null
+  
+  try {
+    // Valid phases from Prisma schema
+    const validPhases = ['DEMO', 'PHASE_1', 'PHASE_2', 'FUNDED', 'VERIFICATION']
+    const upperValue = value.toString().toUpperCase()
+    
+    return validPhases.includes(upperValue) ? upperValue : 'DEMO'
+  } catch (error) {
+    console.error('Error mapping phase:', error)
+    return 'DEMO'
+  }
+}
