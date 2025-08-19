@@ -39,78 +39,104 @@ export default function TradesPage() {
   const [account, setAccount] = useState<Account | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [accounts, setAccounts] = useState<any[]>([])
+
+  const fetchAccounts = async () => {
+    try {
+      const response = await fetch('/api/accounts')
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      const accountsArray = Array.isArray(data) ? data : []
+      setAccounts(accountsArray)
+      
+      // Use the first (and likely only) real account
+      if (accountsArray.length > 0) {
+        return accountsArray[0]
+      }
+      return null
+    } catch (error) {
+      console.error('Error fetching accounts:', error)
+      return null
+    }
+  }
+
+  const fetchTrades = async (accountId: string) => {
+    try {
+      const response = await fetch(`/api/accounts/${accountId}/trades?limit=100`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      
+      // Transform API data to match our Trade interface
+      const transformedTrades = data.trades?.map((trade: any) => ({
+        id: trade.id,
+        ticket: parseInt(trade.ticketId) || 0,
+        symbol: trade.symbol,
+        side: trade.side as 'buy' | 'sell',
+        volume: trade.volume,
+        openPrice: trade.openPrice,
+        closePrice: trade.closePrice || undefined,
+        openTime: trade.openTime,
+        closeTime: trade.closeTime || undefined,
+        pnl: trade.pnlGross || 0,
+        commission: trade.commission || 0,
+        swap: trade.swap || 0,
+        comment: trade.comment,
+        status: trade.closeTime ? 'closed' : 'open' as 'open' | 'closed'
+      })) || []
+      
+      return transformedTrades
+    } catch (error) {
+      console.error('Error fetching trades:', error)
+      return []
+    }
+  }
 
   useEffect(() => {
-    // In a real app, you would fetch this data from your API
-    // For now, we'll use mock data
-    const mockTrades: Trade[] = [
-      {
-        id: '1',
-        ticket: 12345,
-        symbol: 'EURUSD',
-        side: 'buy',
-        volume: 0.1,
-        openPrice: 1.0850,
-        closePrice: 1.0900,
-        openTime: '2025-01-15T10:30:00Z',
-        closeTime: '2025-01-15T15:45:00Z',
-        pnl: 45.0,
-        commission: 2.5,
-        swap: 0.5,
-        comment: 'Trade chiuso a profitto',
-        status: 'closed'
-      },
-      {
-        id: '2',
-        ticket: 12346,
-        symbol: 'GBPUSD',
-        side: 'sell',
-        volume: 0.2,
-        openPrice: 1.2650,
-        closePrice: 1.2600,
-        openTime: '2025-01-15T11:15:00Z',
-        closeTime: '2025-01-15T14:20:00Z',
-        pnl: 85.0,
-        commission: 3.0,
-        swap: -1.2,
-        comment: 'Trade chiuso a profitto',
-        status: 'closed'
-      },
-      {
-        id: '3',
-        ticket: 12347,
-        symbol: 'USDJPY',
-        side: 'buy',
-        volume: 0.05,
-        openPrice: 149.50,
-        openTime: '2025-01-15T14:00:00Z',
-        pnl: -12.5,
-        commission: 1.5,
-        swap: 0.3,
-        status: 'open'
+    const loadData = async () => {
+      setLoading(true)
+      try {
+        // Fetch accounts first
+        const selectedAccount = await fetchAccounts()
+        if (selectedAccount) {
+          setAccount({
+            id: selectedAccount.id,
+            name: selectedAccount.name || selectedAccount.broker || 'Trading Account',
+            login: selectedAccount.login,
+            broker: selectedAccount.broker,
+            server: selectedAccount.server,
+            currency: selectedAccount.currency
+          })
+          
+          // Fetch trades for this account
+          const tradesData = await fetchTrades(selectedAccount.id)
+          setTrades(tradesData)
+        }
+      } catch (error) {
+        console.error('Error loading data:', error)
+      } finally {
+        setLoading(false)
       }
-    ]
-
-    const mockAccount: Account = {
-      id: '1',
-      name: 'Account Demo',
-      login: '123456',
-      broker: 'MetaQuotes',
-      server: 'Demo Server',
-      currency: 'USD'
     }
-
-    setTrades(mockTrades)
-    setAccount(mockAccount)
-    setLoading(false)
+    
+    loadData()
   }, [])
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      if (account?.id) {
+        const tradesData = await fetchTrades(account.id)
+        setTrades(tradesData)
+      }
+    } catch (error) {
+      console.error('Error refreshing trades:', error)
+    } finally {
       setRefreshing(false)
-    }, 1000)
+    }
   }
 
   const formatDateTime = (dateString: string) => {
