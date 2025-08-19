@@ -150,52 +150,63 @@ export async function POST(
 }
 
 function parseHtmlReport($: cheerio.CheerioAPI) {
-  // Debug: Log HTML structure for troubleshooting
-  console.log('🔍 HTML Parser Debug:')
+  console.log('🔍 HTML Parser Debug - Enhanced Version:')
   
-  // Try multiple ways to find account info
   let accountLogin = ''
   
-  // Method 1: th:contains("Account:")
-  const accountCell1 = $('th:contains("Account:")').next().text()
-  console.log('   Method 1 - th contains Account:', accountCell1)
+  // Method 1: th:contains("Account:") - case insensitive
+  const accountCell1 = $('th').filter((i, el) => {
+    return $(el).text().toLowerCase().includes('account')
+  }).next().text().trim()
+  console.log('   Method 1 - Account cell:', `"${accountCell1}"`)
   
-  // Method 2: Look for patterns in all table cells
-  const allCells = $('th, td').map((i, el) => $(el).text().trim()).get()
-  console.log('   Found cells:', allCells.slice(0, 10)) // First 10 cells
-  
-  // Method 3: Look for account number patterns
-  const accountMatches = allCells
-    .map(cell => cell.match(/(?:Account[:\s]*)?(\d{4,})/i))
-    .filter(match => match)
-  console.log('   Account matches found:', accountMatches.map(m => m?.[1]))
-  
-  // Extract account login
-  if (accountCell1) {
-    accountLogin = accountCell1.match(/(\d+)/)?.[1] || ''
+  // Method 2: Extract from title first (most reliable)
+  const title = $('title').text() || ''
+  console.log('   Method 2 - Title:', `"${title}"`)
+  const titleMatch = title.match(/(\d{4,})/)?.[1]
+  if (titleMatch) {
+    accountLogin = titleMatch
+    console.log('   ✅ Found in title:', accountLogin)
   }
   
-  // Fallback 1: Extract from HTML title (format: "2958: Name - Trade History Report")
-  if (!accountLogin) {
-    const title = $('title').text()
-    const titleMatch = title.match(/(\d+):/)?.[1]
-    if (titleMatch) {
-      accountLogin = titleMatch
-      console.log('   Using title account:', accountLogin)
+  // Method 3: Extract from account cell if title failed
+  if (!accountLogin && accountCell1) {
+    const cellMatch = accountCell1.match(/(\d{4,})/)?.[1]
+    if (cellMatch) {
+      accountLogin = cellMatch
+      console.log('   ✅ Found in cell:', accountLogin)
     }
   }
   
-  // Fallback 2: use any account number found in cells
-  if (!accountLogin && accountMatches.length > 0) {
-    accountLogin = accountMatches[0]?.[1] || ''
-    console.log('   Using pattern fallback account:', accountLogin)
+  // Method 4: Search entire HTML for account pattern as last resort
+  if (!accountLogin) {
+    const bodyText = $('body').text()
+    const bodyMatches = bodyText.match(/(\d{4,})\s*[\(\[\s]/g)
+    console.log('   Method 4 - Body patterns:', bodyMatches?.slice(0, 3))
+    if (bodyMatches && bodyMatches.length > 0) {
+      const match = bodyMatches[0].match(/(\d{4,})/)
+      if (match) {
+        accountLogin = match[1]
+        console.log('   ✅ Found in body:', accountLogin)
+      }
+    }
   }
   
-  const accountName = $('th:contains("Name:")').next().find('b').text().trim()
-  const company = $('th:contains("Company:")').next().find('b').text().trim()
-  const reportDate = $('th:contains("Date:")').next().find('b').text().trim()
+  // Extract other info with better selectors
+  const accountName = $('th').filter((i, el) => $(el).text().toLowerCase().includes('name')).next().find('b').text().trim() ||
+                     $('th').filter((i, el) => $(el).text().toLowerCase().includes('name')).next().text().replace(/[<>]/g, '').trim()
+  
+  const company = $('th').filter((i, el) => $(el).text().toLowerCase().includes('company')).next().find('b').text().trim() ||
+                  $('th').filter((i, el) => $(el).text().toLowerCase().includes('company')).next().text().replace(/[<>]/g, '').trim()
+  
+  const reportDate = $('th').filter((i, el) => $(el).text().toLowerCase().includes('date')).next().find('b').text().trim() ||
+                     $('th').filter((i, el) => $(el).text().toLowerCase().includes('date')).next().text().replace(/[<>]/g, '').trim()
 
-  console.log(`📊 Parsed - Account: "${accountLogin}" - Name: "${accountName}"`)
+  console.log(`📊 Final Results:`)
+  console.log(`   Account: "${accountLogin}"`)
+  console.log(`   Name: "${accountName}"`)
+  console.log(`   Company: "${company}"`)
+  console.log(`   Date: "${reportDate}"`)
 
   // Parse closed trades (Positions section)
   const closedTrades: ParsedTrade[] = []
