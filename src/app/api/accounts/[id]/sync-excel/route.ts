@@ -250,12 +250,15 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
   for (let i = 0; i < mainData.length; i++) {
     const row = mainData[i] || []
     const rowStr = row.join('').toLowerCase()
+    console.log(`🔍 Checking row ${i} for 'positions': "${rowStr.substring(0, 50)}..."`)
     if (rowStr.includes('positions') && !rowStr.includes('open')) {
       positionsHeaderIndex = i
       console.log(`✅ Found Positions section at row ${i}`)
       break
     }
   }
+  
+  console.log(`🔍 Positions header index: ${positionsHeaderIndex}`)
   
   if (positionsHeaderIndex >= 0) {
     // Find the actual header row (next row with column names)
@@ -295,6 +298,8 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
       for (let i = headerRowIndex + 1; i < mainData.length; i++) {
         const row = mainData[i] || []
         
+        console.log(`🔍 Processing trade row ${i}:`, row.slice(0, 8))
+        
         // Stop if we reach Orders section or empty rows
         if (row.length === 0 || String(row[0] || '').toLowerCase().includes('orders')) {
           console.log(`📋 Stopping at row ${i} - reached Orders section or empty row`)
@@ -304,8 +309,11 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
         const ticketId = String(row[ticketCol] || '')
         const symbol = String(row[symbolCol] || '')
         
+        console.log(`🔍 Trade data - Ticket: "${ticketId}", Symbol: "${symbol}"`)
+        
         // Skip header rows or empty rows
         if (!ticketId || !symbol || ticketId.toLowerCase().includes('position') || ticketId.toLowerCase().includes('time')) {
+          console.log(`⏭️ Skipping row ${i} - invalid ticket/symbol`)
           continue
         }
         
@@ -319,8 +327,12 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
         const swap = parseFloat(String(row[swapCol] || '0').replace(',', '.')) || 0
         const commission = parseFloat(String(row[commissionCol] || '0').replace(',', '.')) || 0
         
+        console.log(`🔍 Trade parsed - Side: ${side}, Volume: ${volume}, OpenPrice: ${openPrice}, ClosePrice: ${closePrice}`)
+        console.log(`🔍 Times - Open: ${openTime}, Close: ${closeTime}`)
+        console.log(`🔍 P&L - Gross: ${pnlGross}, Swap: ${swap}, Commission: ${commission}`)
+        
         // Only add if we have close time (completed trades)
-        if (closeTime && ticketId && symbol) {
+        if (closeTime && ticketId && symbol && closeTime !== openTime) {
           closedTrades.push({
             ticketId,
             symbol,
@@ -335,7 +347,9 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
             commission,
             comment: ''
           })
-          console.log(`✅ Parsed trade: ${ticketId} ${symbol} ${side} ${volume}`)
+          console.log(`✅ Added trade: ${ticketId} ${symbol} ${side} ${volume}`)
+        } else {
+          console.log(`❌ Rejected trade - Missing closeTime or invalid data`)
         }
       }
     }
@@ -370,6 +384,16 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
   console.log(`   Date: "${reportDate}"`)
   console.log(`   Closed Trades: ${closedTrades.length}`)
   console.log(`   Open Positions: ${openPositions.length}`)
+  
+  // DEBUG: Show first few trades if any found
+  if (closedTrades.length > 0) {
+    console.log('🔍 First few trades found:')
+    closedTrades.slice(0, 3).forEach((trade, i) => {
+      console.log(`  Trade ${i + 1}: ${trade.ticketId} ${trade.symbol} ${trade.side} ${trade.volume} -> P&L: ${trade.pnlGross}`)
+    })
+  } else {
+    console.log('❌ No closed trades were parsed!')
+  }
 
   return {
     accountLogin,
