@@ -500,8 +500,12 @@ async function calculateMetrics(accountId: string) {
 function mapAccountType(value: any): string | null {
   if (!value) return null
   
-  const validTypes = ['DEMO', 'LIVE', 'CHALLENGE', 'FUNDED']
+  // Valid types from Prisma schema
+  const validTypes = ['DEMO', 'CHALLENGE', 'FUNDED', 'EVALUATION']
   const upperValue = value.toString().toUpperCase()
+  
+  // Map LIVE to DEMO (since LIVE doesn't exist in schema)
+  if (upperValue === 'LIVE') return 'DEMO'
   
   return validTypes.includes(upperValue) ? upperValue : null
 }
@@ -509,7 +513,8 @@ function mapAccountType(value: any): string | null {
 function mapPhase(value: any): string | null {
   if (!value) return null
   
-  const validPhases = ['DEMO', 'PHASE_1', 'PHASE_2', 'FUNDED']
+  // Valid phases from Prisma schema
+  const validPhases = ['DEMO', 'PHASE_1', 'PHASE_2', 'FUNDED', 'VERIFICATION']
   const upperValue = value.toString().toUpperCase()
   
   return validPhases.includes(upperValue) ? upperValue : null
