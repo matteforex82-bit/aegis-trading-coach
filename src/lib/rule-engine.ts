@@ -11,12 +11,11 @@ interface Trade {
   closePrice?: number
   openTime: string
   closeTime?: string
-  profit: number
+  pnlGross: number
   swap: number
   commission: number
   comment: string
-  type: 'BUY' | 'SELL'
-  isOpen: boolean
+  side: 'buy' | 'sell'
 }
 
 interface Account {
@@ -143,12 +142,12 @@ export class PropFirmRuleEngine {
   //| Calculate Trading Metrics                                       |
   //+------------------------------------------------------------------+
   private calculateMetrics() {
-    const closedTrades = this.trades.filter(t => !t.isOpen)
-    const openTrades = this.trades.filter(t => t.isOpen)
+    const closedTrades = this.trades.filter(t => t.closeTime !== null)
+    const openTrades = this.trades.filter(t => t.closeTime === null)
     
     // Total P&L (closed + unrealized)
-    const closedProfit = closedTrades.reduce((sum, t) => sum + t.profit + t.swap + t.commission, 0)
-    const unrealizedProfit = openTrades.reduce((sum, t) => sum + t.profit + t.swap + t.commission, 0)
+    const closedProfit = closedTrades.reduce((sum, t) => sum + (t.pnlGross || 0) + (t.swap || 0) + (t.commission || 0), 0)
+    const unrealizedProfit = openTrades.reduce((sum, t) => sum + (t.pnlGross || 0) + (t.swap || 0) + (t.commission || 0), 0)
     const totalProfit = closedProfit + unrealizedProfit
 
     // Daily metrics
@@ -157,7 +156,7 @@ export class PropFirmRuleEngine {
     const bestTradingDay = Math.max(...Object.values(dailyProfits), 0)
 
     // Best single trade
-    const bestSingleTrade = Math.max(...closedTrades.map(t => t.profit + t.swap + t.commission), 0)
+    const bestSingleTrade = Math.max(...closedTrades.map(t => (t.pnlGross || 0) + (t.swap || 0) + (t.commission || 0)), 0)
 
     // Drawdown calculation
     const currentDrawdown = this.calculateDrawdown()
@@ -166,17 +165,26 @@ export class PropFirmRuleEngine {
     const tradingDays = Object.keys(dailyProfits).length
 
     // Win rate
-    const winningTrades = closedTrades.filter(t => (t.profit + t.swap + t.commission) > 0).length
+    const winningTrades = closedTrades.filter(t => {
+      const pnl = (t.pnlGross || 0) + (t.swap || 0) + (t.commission || 0)
+      return pnl > 0
+    }).length
     const winRate = closedTrades.length > 0 ? (winningTrades / closedTrades.length) * 100 : 0
 
     // Profit Factor
     const grossProfit = closedTrades
-      .filter(t => (t.profit + t.swap + t.commission) > 0)
-      .reduce((sum, t) => sum + (t.profit + t.swap + t.commission), 0)
+      .filter(t => {
+        const pnl = (t.pnlGross || 0) + (t.swap || 0) + (t.commission || 0)
+        return pnl > 0
+      })
+      .reduce((sum, t) => sum + (t.pnlGross || 0) + (t.swap || 0) + (t.commission || 0), 0)
     
     const grossLoss = Math.abs(closedTrades
-      .filter(t => (t.profit + t.swap + t.commission) < 0)
-      .reduce((sum, t) => sum + (t.profit + t.swap + t.commission), 0))
+      .filter(t => {
+        const pnl = (t.pnlGross || 0) + (t.swap || 0) + (t.commission || 0)
+        return pnl < 0
+      })
+      .reduce((sum, t) => sum + (t.pnlGross || 0) + (t.swap || 0) + (t.commission || 0), 0))
 
     const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? 999 : 0
 
@@ -331,7 +339,7 @@ export class PropFirmRuleEngine {
     
     this.trades.forEach(trade => {
       const date = this.formatDate(new Date(trade.openTime))
-      const profit = trade.profit + trade.swap + trade.commission
+      const profit = (trade.pnlGross || 0) + (trade.swap || 0) + (trade.commission || 0)
       
       if (!dailyProfits[date]) {
         dailyProfits[date] = 0
@@ -353,7 +361,7 @@ export class PropFirmRuleEngine {
     )
 
     sortedTrades.forEach(trade => {
-      const profit = trade.profit + trade.swap + trade.commission
+      const profit = (trade.pnlGross || 0) + (trade.swap || 0) + (trade.commission || 0)
       runningBalance += profit
 
       if (runningBalance > highWaterMark) {

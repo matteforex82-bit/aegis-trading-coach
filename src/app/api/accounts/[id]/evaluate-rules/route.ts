@@ -58,12 +58,11 @@ export async function POST(
       closePrice: trade.closePrice || undefined,
       openTime: trade.openTime.toISOString(),
       closeTime: trade.closeTime?.toISOString() || undefined,
-      profit: trade.profit,
+      pnlGross: trade.pnlGross,
       swap: trade.swap,
       commission: trade.commission,
       comment: trade.comment || '',
-      type: trade.type as 'BUY' | 'SELL',
-      isOpen: trade.isOpen
+      side: trade.side as 'buy' | 'sell'
     }))
 
     // Convert account to rule engine format
