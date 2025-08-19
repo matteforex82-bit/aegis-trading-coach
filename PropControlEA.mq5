@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, PROP CONTROL Team"
 #property link      "https://prop-control.com"
-#property version   "1.00"
+#property version   "2.00"
 #property description "Expert Advisor completo per PROP CONTROL Dashboard"
 #property description "Sincronizza dati MT5 con dashboard prop firm"
 
@@ -23,7 +23,7 @@ input bool     ENABLE_SSL = true;                                          // Ab
 input group "=== SYNC CONFIGURATION ==="
 input bool     SYNC_HISTORICAL = true;                                     // Sincronizza storico al primo avvio
 input int      SYNC_INTERVAL = 30;                                         // Intervallo sync live (secondi)
-input int      MAX_TRADES_PER_REQUEST = 100;                               // Max trades per richiesta
+input int      MAX_TRADES_PER_REQUEST = 10;                                // Max trades per richiesta
 input bool     SYNC_ON_TRADE_CLOSE = true;                                 // Sync immediato alla chiusura trade
 
 // Prop Firm Rules
@@ -47,6 +47,25 @@ input bool     SHOW_DASHBOARD_INFO = true;                                 // Mo
 //+------------------------------------------------------------------+
 //| Global Variables                                                 |
 //+------------------------------------------------------------------+
+
+// Struttura per tracciare posizioni aperte/chiuse
+struct PositionData {
+    ulong openDeal;
+    ulong closeDeal;
+    string symbol;
+    long type;
+    double volume;
+    double openPrice;
+    double closePrice;
+    datetime openTime;
+    datetime closeTime;
+    double profit;
+    double commission;
+    double swap;
+    string comment;
+    long magic;
+    ulong orderId;
+};
 bool g_FirstRun = true;
 datetime g_LastSyncTime = 0;
 datetime g_LastTradeCheck = 0;
@@ -216,7 +235,7 @@ bool TestAPIConnection()
 //+------------------------------------------------------------------+
 void SyncHistoricalData()
 {
-    Print("📈 Sincronizzazione storico trades iniziata...");
+    Print("📈 Sincronizzazione storico completo iniziata...");
     
     // Seleziona storico completo
     if(!HistorySelect(0, TimeCurrent()))
@@ -228,42 +247,119 @@ void SyncHistoricalData()
     int totalDeals = HistoryDealsTotal();
     Print("📊 Trovati ", totalDeals, " deals nello storico");
     
+    PositionData openPositions[1000]; // Array per posizioni aperte
+    int openCount = 0;
+    
     string tradesJson = "";
     int processedTrades = 0;
+    int skippedDeals = 0;
     
+    // Primo passaggio: colleziona tutti i deals di trading
     for(int i = 0; i < totalDeals; i++)
     {
         ulong ticket = HistoryDealGetTicket(i);
         if(ticket <= 0) continue;
         
+        long dealType = HistoryDealGetInteger(ticket, DEAL_TYPE);
+        long dealEntry = HistoryDealGetInteger(ticket, DEAL_ENTRY);
+        
         // Solo deals di trading (non depositi/prelievi)
-        if(HistoryDealGetInteger(ticket, DEAL_TYPE) == DEAL_TYPE_BUY || 
-           HistoryDealGetInteger(ticket, DEAL_TYPE) == DEAL_TYPE_SELL)
+        if(dealType == DEAL_TYPE_BUY || dealType == DEAL_TYPE_SELL)
         {
-            string tradeData = BuildTradeJSON(ticket, true);
+            string symbol = HistoryDealGetString(ticket, DEAL_SYMBOL);
+            double volume = HistoryDealGetDouble(ticket, DEAL_VOLUME);
+            double price = HistoryDealGetDouble(ticket, DEAL_PRICE);
+            datetime time = (datetime)HistoryDealGetInteger(ticket, DEAL_TIME);
+            double profit = HistoryDealGetDouble(ticket, DEAL_PROFIT);
+            double commission = HistoryDealGetDouble(ticket, DEAL_COMMISSION);
+            double swap = HistoryDealGetDouble(ticket, DEAL_SWAP);
+            string comment = HistoryDealGetString(ticket, DEAL_COMMENT);
+            long magic = HistoryDealGetInteger(ticket, DEAL_MAGIC);
+            ulong orderId = HistoryDealGetInteger(ticket, DEAL_ORDER);
+            
+            if(dealEntry == DEAL_ENTRY_IN) // Deal di apertura
+            {
+                if(openCount < 1000)
+                {
+                    openPositions[openCount].openDeal = ticket;
+                    openPositions[openCount].symbol = symbol;
+                    openPositions[openCount].type = dealType;
+                    openPositions[openCount].volume = volume;
+                    openPositions[openCount].openPrice = price;
+                    openPositions[openCount].openTime = time;
+                    openPositions[openCount].commission = commission;
+                    openPositions[openCount].swap = swap;
+                    openPositions[openCount].comment = comment;
+                    openPositions[openCount].magic = magic;
+                    openPositions[openCount].orderId = orderId;
+                    openPositions[openCount].profit = 0;
+                    openPositions[openCount].closeDeal = 0;
+                    openCount++;
+                }
+            }
+            else if(dealEntry == DEAL_ENTRY_OUT) // Deal di chiusura
+            {
+                // Trova la posizione aperta corrispondente
+                for(int j = 0; j < openCount; j++)
+                {
+                    if(openPositions[j].closeDeal == 0 && 
+                       openPositions[j].symbol == symbol &&
+                       openPositions[j].volume == volume &&
+                       MathAbs(openPositions[j].openTime - time) < 86400*7) // Entro 7 giorni
+                    {
+                        openPositions[j].closeDeal = ticket;
+                        openPositions[j].closePrice = price;
+                        openPositions[j].closeTime = time;
+                        openPositions[j].profit = profit;
+                        openPositions[j].commission += commission;
+                        openPositions[j].swap += swap;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    
+    // Secondo passaggio: processa posizioni complete
+    Print("📊 Trovate ", openCount, " posizioni da processare");
+    
+    for(int i = 0; i < openCount; i++)
+    {
+        if(openPositions[i].closeDeal > 0) // Solo posizioni chiuse complete
+        {
+            string tradeData = BuildCompleteTradeJSON(openPositions[i]);
             if(tradeData != "")
             {
                 if(tradesJson != "") tradesJson += ",";
                 tradesJson += tradeData;
                 processedTrades++;
+                
+                if(ENABLE_DETAILED_LOGGING && processedTrades <= 10)
+                    Print("✅ Trade completo ", processedTrades, ": ", openPositions[i].openDeal, " -> ", openPositions[i].closeDeal);
             }
-        }
-        
-        // Invia a blocchi per evitare timeout
-        if(processedTrades >= MAX_TRADES_PER_REQUEST)
-        {
-            SendTradesBatch(tradesJson);
-            tradesJson = "";
-            processedTrades = 0;
-            Sleep(1000); // Pausa tra batch
+            
+            // Invia a blocchi per evitare timeout
+            if(processedTrades >= MAX_TRADES_PER_REQUEST)
+            {
+                Print("📦 Invio batch di ", processedTrades, " trades");
+                SendTradesBatch(tradesJson);
+                tradesJson = "";
+                processedTrades = 0;
+                Sleep(1000);
+            }
         }
     }
     
     // Invia ultimo batch
     if(tradesJson != "")
     {
+        Print("📦 Invio ultimo batch di ", processedTrades, " trades");
         SendTradesBatch(tradesJson);
     }
+    
+    Print("📊 STATISTICHE FINALI:");
+    Print("   📈 Trades completi processati: ", processedTrades);
+    Print("   🔢 Totale posizioni trovate: ", openCount);
     
     g_FirstRun = false;
     Print("✅ Sincronizzazione storico completata");
@@ -310,6 +406,50 @@ string BuildAccountJSON()
     json += "\"maxDailyLoss\":" + DoubleToString(MAX_DAILY_LOSS, 2) + ",";
     json += "\"maxTotalLoss\":" + DoubleToString(MAX_TOTAL_LOSS, 2) + ",";
     json += "\"maxDrawdown\":" + DoubleToString(MAX_DRAWDOWN_PERCENT, 2);
+    json += "}";
+    
+    return json;
+}
+
+//+------------------------------------------------------------------+
+//| Build Complete Trade JSON from Position Data                   |
+//+------------------------------------------------------------------+
+string BuildCompleteTradeJSON(PositionData &position)
+{
+    string side = (position.type == DEAL_TYPE_BUY) ? "buy" : "sell";
+    
+    // Calcola metriche aggiuntive
+    double currentEquity = AccountInfoDouble(ACCOUNT_EQUITY);
+    double currentDrawdown = CalculateCurrentDrawdown();
+    double dailyPnL = CalculateDailyPnL();
+    
+    string json = "{";
+    json += "\"ticket_id\":\"" + IntegerToString(position.openDeal) + "\",";
+    json += "\"position_id\":\"" + IntegerToString(position.openDeal) + "\",";
+    json += "\"order_id\":\"" + IntegerToString(position.orderId) + "\",";
+    json += "\"symbol\":\"" + CleanJsonString(position.symbol) + "\",";
+    json += "\"side\":\"" + side + "\",";
+    json += "\"volume\":" + DoubleToString(position.volume, 2) + ",";
+    json += "\"open_price\":" + DoubleToString(position.openPrice, 5) + ",";
+    json += "\"close_price\":" + DoubleToString(position.closePrice, 5) + ",";
+    json += "\"open_time\":\"" + TimeToString(position.openTime, TIME_DATE|TIME_SECONDS) + "\",";
+    json += "\"close_time\":\"" + TimeToString(position.closeTime, TIME_DATE|TIME_SECONDS) + "\",";
+    json += "\"pnl\":" + DoubleToString(position.profit, 2) + ",";
+    json += "\"commission\":" + DoubleToString(position.commission, 2) + ",";
+    json += "\"swap\":" + DoubleToString(position.swap, 2) + ",";
+    json += "\"comment\":\"" + CleanJsonString(position.comment) + "\",";
+    json += "\"magic\":" + IntegerToString(position.magic) + ",";
+    
+    // Dati prop firm specifici
+    json += "\"phase\":\"" + CleanJsonString(ACCOUNT_PHASE) + "\",";
+    json += "\"equityAtOpen\":" + DoubleToString(currentEquity, 2) + ",";
+    json += "\"equityAtClose\":" + DoubleToString(currentEquity, 2) + ",";
+    json += "\"drawdownAtOpen\":" + DoubleToString(currentDrawdown, 2) + ",";
+    json += "\"drawdownAtClose\":" + DoubleToString(currentDrawdown, 2) + ",";
+    json += "\"dailyPnLAtOpen\":" + DoubleToString(dailyPnL, 2) + ",";
+    json += "\"dailyPnLAtClose\":" + DoubleToString(dailyPnL, 2) + ",";
+    json += "\"violatesRules\":" + (CheckRuleViolations() ? "true" : "false") + ",";
+    json += "\"isWeekendTrade\":" + (IsWeekendTime(position.openTime) ? "true" : "false");
     json += "}";
     
     return json;

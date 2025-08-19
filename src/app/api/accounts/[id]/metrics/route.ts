@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
 
 export async function GET(
   request: NextRequest,
@@ -6,37 +7,81 @@ export async function GET(
 ) {
   try {
     const { id } = params
+
+    // Get account info
+    const account = await db.account.findUnique({
+      where: { id },
+      include: {
+        user: { select: { name: true, email: true } }
+      }
+    })
+
+    if (!account) {
+      return NextResponse.json(
+        { error: 'Account not found' },
+        { status: 404 }
+      )
+    }
+
+    // Get all trades for this account
+    const trades = await db.trade.findMany({
+      where: { accountId: id },
+      orderBy: { createdAt: 'desc' }
+    })
+
+    // Calculate metrics from real trades
+    const totalTrades = trades.length
+    const winningTrades = trades.filter(t => (t.pnlGross || 0) > 0).length
+    const losingTrades = trades.filter(t => (t.pnlGross || 0) < 0).length
+    const winRate = totalTrades > 0 ? (winningTrades / totalTrades) * 100 : 0
+
+    const totalVolume = trades.reduce((sum, t) => sum + (t.volume || 0), 0)
+    const totalCommission = trades.reduce((sum, t) => sum + (t.commission || 0), 0)
+    const totalSwap = trades.reduce((sum, t) => sum + (t.swap || 0), 0)
+    const totalPnL = trades.reduce((sum, t) => sum + (t.pnlGross || 0), 0)
+
+    // Calculate drawdown (simplified - from start balance)
+    const startBalance = account.startBalance || 50000
+    const currentBalance = startBalance + totalPnL
+    const currentDrawdown = Math.max(0, ((startBalance - currentBalance) / startBalance) * 100)
+
+    // Find max/min losses
+    const dailyLosses = trades
+      .filter(t => (t.pnlGross || 0) < 0)
+      .map(t => t.pnlGross || 0)
     
-    // Hardcoded response for testing
+    const maxDailyLoss = dailyLosses.length > 0 ? Math.min(...dailyLosses) : 0
+    const totalMaxLoss = Math.min(0, totalPnL)
+
     return NextResponse.json({
       summary: {
-        totalTrades: 3,
-        winningTrades: 2,
-        losingTrades: 1,
-        winRate: 66.67,
-        totalVolume: 0.35,
-        totalCommission: 7.0,
-        totalSwap: -0.4,
-        totalPnL: 117.5,
-        accountBalance: 10117.5,
-        currentDrawdown: 1.2,
-        maxDrawdown: 2.5,
-        maxDailyLoss: -50.0,
-        totalMaxLoss: -200.0
+        totalTrades,
+        winningTrades,
+        losingTrades,
+        winRate: Math.round(winRate * 100) / 100,
+        totalVolume: Math.round(totalVolume * 100) / 100,
+        totalCommission: Math.round(totalCommission * 100) / 100,
+        totalSwap: Math.round(totalSwap * 100) / 100,
+        totalPnL: Math.round(totalPnL * 100) / 100,
+        accountBalance: Math.round(currentBalance * 100) / 100,
+        currentDrawdown: Math.round(currentDrawdown * 100) / 100,
+        maxDrawdown: Math.round(currentDrawdown * 100) / 100,
+        maxDailyLoss: Math.round(maxDailyLoss * 100) / 100,
+        totalMaxLoss: Math.round(totalMaxLoss * 100) / 100
       },
       account: {
-        id: id,
-        name: 'Account Demo MT5',
-        login: '123456',
-        broker: 'MetaQuotes',
-        server: 'Demo Server',
-        currency: 'USD',
-        timezone: 'Europe/Rome'
+        id: account.id,
+        name: account.name || account.broker || 'Trading Account',
+        login: account.login,
+        broker: account.broker,
+        server: account.server,
+        currency: account.currency,
+        timezone: account.timezone
       }
     })
 
   } catch (error) {
-    console.error('Error fetching metrics:', error)
+    console.error('Error calculating metrics:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
