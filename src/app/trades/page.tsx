@@ -66,8 +66,8 @@ export default function TradesPage() {
   
   // Filters
   const [searchTerm, setSearchTerm] = useState('')
-  const [sideFilter, setSideFilter] = useState<string>('')
-  const [symbolFilter, setSymbolFilter] = useState('')
+  const [sideFilter, setSideFilter] = useState<string>('all')
+  const [symbolFilter, setSymbolFilter] = useState('all')
   const [sortBy, setSortBy] = useState<'openTime' | 'pnl' | 'volume'>('openTime')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
@@ -209,8 +209,8 @@ export default function TradesPage() {
         trade.ticketId.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (trade.comment || '').toLowerCase().includes(searchTerm.toLowerCase())
       
-      const matchesSide = !sideFilter || trade.side === sideFilter
-      const matchesSymbol = !symbolFilter || trade.symbol === symbolFilter
+      const matchesSide = !sideFilter || sideFilter === 'all' || trade.side === sideFilter
+      const matchesSymbol = !symbolFilter || symbolFilter === 'all' || trade.symbol === symbolFilter
 
       return matchesSearch && matchesSide && matchesSymbol
     })
@@ -387,7 +387,7 @@ export default function TradesPage() {
                   <SelectValue placeholder="Tutti i lati" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tutti i lati</SelectItem>
+                  <SelectItem value="all">Tutti i lati</SelectItem>
                   <SelectItem value="BUY">Buy</SelectItem>
                   <SelectItem value="SELL">Sell</SelectItem>
                 </SelectContent>
@@ -398,7 +398,7 @@ export default function TradesPage() {
                   <SelectValue placeholder="Tutti i simboli" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tutti i simboli</SelectItem>
+                  <SelectItem value="all">Tutti i simboli</SelectItem>
                   {getUniqueSymbols().map(symbol => (
                     <SelectItem key={symbol} value={symbol}>{symbol}</SelectItem>
                   ))}
