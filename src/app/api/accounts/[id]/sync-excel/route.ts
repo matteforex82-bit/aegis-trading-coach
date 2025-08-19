@@ -166,20 +166,38 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
   const mainData = XLSX.utils.sheet_to_json(mainSheet, { header: 1 }) as any[][]
   console.log(`📊 Total rows in sheet: ${mainData.length}`)
   
+  // DEBUG: Print first 20 rows to understand structure
+  console.log('🔍 DEBUG - First 20 rows of Excel data:')
+  for (let i = 0; i < Math.min(mainData.length, 20); i++) {
+    const row = mainData[i] || []
+    console.log(`Row ${i}:`, row.slice(0, 5)) // Show first 5 columns of each row
+  }
+  
   // Search for account info in the data
   for (let i = 0; i < Math.min(mainData.length, 50); i++) { // Check first 50 rows for account info
     const row = mainData[i] || []
+    
+    // DEBUG: Log each row we're checking
+    console.log(`🔍 Checking row ${i}:`, row.slice(0, 3))
     
     for (let j = 0; j < row.length; j++) {
       const cell = String(row[j] || '').toLowerCase().trim()
       const nextCell = String(row[j + 1] || '').trim()
       
+      // DEBUG: Log cells that contain 'account'
+      if (cell.includes('account')) {
+        console.log(`🔍 Found 'account' in cell [${i}][${j}]: "${cell}" -> next: "${nextCell}"`)
+      }
+      
       // Look for Account field - more flexible matching
       if (cell.includes('account') && !cell.includes('type') && !cell.includes('report')) {
+        console.log(`🔍 Trying to extract account from: "${nextCell}"`)
         const accountMatch = nextCell.match(/(\d{4,})/)?.[1]
         if (accountMatch) {
           accountLogin = accountMatch
           console.log('✅ Found account login:', accountLogin)
+        } else {
+          console.log('❌ No account number found in:', nextCell)
         }
       }
       
@@ -198,6 +216,30 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
     
     // Stop early if we found account login
     if (accountLogin) break
+  }
+  
+  console.log(`🔍 After search - Account: "${accountLogin}", Name: "${accountName}", Date: "${reportDate}"`)
+  
+  // FALLBACK: If we didn't find account login, search more aggressively
+  if (!accountLogin) {
+    console.log('🔍 FALLBACK: Searching for account number in all text...')
+    
+    // Search in all cells of first 50 rows for any 4+ digit number
+    for (let i = 0; i < Math.min(mainData.length, 50); i++) {
+      const row = mainData[i] || []
+      const rowText = row.join(' ')
+      
+      // Look for patterns like "2958" or "Account: 2958" anywhere in the row
+      const numberMatches = rowText.match(/\b(\d{4,})\b/g)
+      if (numberMatches) {
+        console.log(`🔍 Found numbers in row ${i}: ${numberMatches}`)
+        
+        // Take the first 4+ digit number we find
+        accountLogin = numberMatches[0]
+        console.log('✅ Using first number found as account:', accountLogin)
+        break
+      }
+    }
   }
 
   // Parse closed trades from the main sheet

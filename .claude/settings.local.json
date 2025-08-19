@@ -13,7 +13,8 @@
       "Bash(npx next:*)",
       "Bash(curl:*)",
       "Bash(git count-objects:*)",
-      "Bash(git fsck:*)"
+      "Bash(git fsck:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": [],
