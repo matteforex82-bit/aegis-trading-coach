@@ -248,7 +248,7 @@ export default function Dashboard() {
               </div>
 
               {/* Key Metrics Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">P&L Chiuse</CardTitle>
@@ -312,24 +312,6 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-blue-200 bg-blue-50">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-blue-800">P&L Totale</CardTitle>
-                    <BarChart3 className="h-4 w-4 text-blue-600" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className={`text-2xl font-bold ${
-                      ((metrics.summary?.totalPnL || 0) + (metrics.openTrades?.reduce((sum, trade) => sum + trade.currentPnL, 0) || 0)) >= 0 
-                        ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {formatCurrency((metrics.summary?.totalPnL || 0) + (metrics.openTrades?.reduce((sum, trade) => sum + trade.currentPnL, 0) || 0))}
-                    </div>
-                    <p className="text-xs text-blue-700">
-                      Chiuse + Aperte
-                    </p>
-                  </CardContent>
-                </Card>
-
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Volume Totale</CardTitle>
@@ -384,6 +366,26 @@ export default function Dashboard() {
                           </div>
                         </div>
                       ))}
+                      
+                      {/* P&L Totale positioned under open positions */}
+                      <div className="mt-6 p-4 bg-gray-100 rounded-lg border-2 border-gray-200">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Activity className="h-5 w-5 text-gray-600" />
+                            <span className="font-semibold text-gray-800">P&L Totale (Chiuse + Aperte)</span>
+                          </div>
+                          <div className={`text-2xl font-bold ${
+                            ((metrics.summary?.totalPnL || 0) + (metrics.openTrades?.reduce((sum, trade) => sum + trade.currentPnL, 0) || 0)) >= 0 
+                              ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {formatCurrency((metrics.summary?.totalPnL || 0) + (metrics.openTrades?.reduce((sum, trade) => sum + trade.currentPnL, 0) || 0))}
+                          </div>
+                        </div>
+                        <div className="text-sm text-gray-600 mt-2">
+                          Chiuse: {formatCurrency(metrics.summary?.totalPnL || 0)} + 
+                          Aperte: {formatCurrency(metrics.openTrades?.reduce((sum, trade) => sum + trade.currentPnL, 0) || 0)}
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
