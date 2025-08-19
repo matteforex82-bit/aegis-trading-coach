@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { ArrowLeft, Settings, CheckCircle, AlertCircle, DollarSign, Target, Shield } from 'lucide-react'
+import { ArrowLeft, Settings, CheckCircle, AlertCircle, DollarSign, Target, Shield, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 
 interface PropFirmTemplate {
@@ -58,6 +58,8 @@ export default function SettingsPage() {
   const [currentPhase, setCurrentPhase] = useState<string>('PHASE_1')
   const [loading, setLoading] = useState(true)
   const [assigning, setAssigning] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -127,6 +129,38 @@ export default function SettingsPage() {
       alert('Failed to assign template')
     } finally {
       setAssigning(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (!selectedAccount) {
+      alert('Please select an account to delete')
+      return
+    }
+
+    setDeleting(true)
+    try {
+      const response = await fetch(`/api/accounts/${selectedAccount.id}/delete`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        alert(`Account deleted successfully!\n\nDeleted data:\n• Account: ${result.deletedData.accountLogin}\n• Trades: ${result.deletedData.tradesDeleted}\n• Challenges: ${result.deletedData.challengesDeleted}\n• Metrics: ${result.deletedData.metricsDeleted}`)
+        
+        // Refresh data and reset selection
+        await fetchData()
+        setSelectedAccount(null)
+        setShowDeleteConfirm(false)
+      } else {
+        const error = await response.json()
+        alert(`Error deleting account: ${error.error}`)
+      }
+    } catch (error) {
+      console.error('Error deleting account:', error)
+      alert('Failed to delete account')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -284,6 +318,71 @@ export default function SettingsPage() {
                 </Button>
               </CardContent>
             </Card>
+
+            {/* Delete Account Section */}
+            {selectedAccount && (
+              <Card className="border-red-200 bg-red-50">
+                <CardHeader>
+                  <CardTitle className="text-red-700 flex items-center space-x-2">
+                    <Trash2 className="h-5 w-5" />
+                    <span>⚠️ Zona Pericolosa</span>
+                  </CardTitle>
+                  <CardDescription className="text-red-600">
+                    Elimina completamente l'account e tutti i suoi dati
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {!showDeleteConfirm ? (
+                    <Button
+                      onClick={() => setShowDeleteConfirm(true)}
+                      variant="destructive"
+                      className="w-full"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Elimina Account
+                    </Button>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="p-4 bg-red-100 rounded-lg border border-red-300">
+                        <h4 className="font-semibold text-red-800 mb-2">
+                          ⚠️ Conferma Eliminazione
+                        </h4>
+                        <p className="text-red-700 text-sm mb-2">
+                          Stai per eliminare l'account <strong>{selectedAccount.login}</strong> 
+                          e tutti i suoi dati:
+                        </p>
+                        <ul className="text-red-700 text-sm list-disc list-inside space-y-1">
+                          <li>Tutte le operazioni di trading</li>
+                          <li>Storico delle performance</li>
+                          <li>Configurazioni PropFirm</li>
+                          <li>Challenge e metriche</li>
+                        </ul>
+                        <p className="text-red-800 font-semibold text-sm mt-2">
+                          ⚠️ Questa azione NON può essere annullata!
+                        </p>
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          onClick={handleDeleteAccount}
+                          disabled={deleting}
+                          variant="destructive"
+                          className="flex-1"
+                        >
+                          {deleting ? 'Eliminando...' : 'SÌ, ELIMINA'}
+                        </Button>
+                        <Button
+                          onClick={() => setShowDeleteConfirm(false)}
+                          variant="outline"
+                          className="flex-1"
+                        >
+                          Annulla
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Template Preview & Current Settings */}

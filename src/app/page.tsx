@@ -248,10 +248,10 @@ export default function Dashboard() {
               </div>
 
               {/* Key Metrics Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">P&L Totale</CardTitle>
+                    <CardTitle className="text-sm font-medium">P&L Chiuse</CardTitle>
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
@@ -259,7 +259,25 @@ export default function Dashboard() {
                       {formatCurrency(metrics.summary?.totalPnL || 0)}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {metrics.summary?.totalTrades || 0} operazioni
+                      {metrics.summary?.totalTrades || 0} operazioni chiuse
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">P&L Aperte</CardTitle>
+                    <Activity className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className={`text-2xl font-bold ${
+                      (metrics.openTrades?.reduce((sum, trade) => sum + trade.currentPnL, 0) || 0) >= 0 
+                        ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {formatCurrency(metrics.openTrades?.reduce((sum, trade) => sum + trade.currentPnL, 0) || 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {metrics.openTrades?.length || 0} posizioni aperte
                     </p>
                   </CardContent>
                 </Card>
@@ -290,6 +308,24 @@ export default function Dashboard() {
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Max: {formatPercentage(metrics.summary?.maxDrawdown || 0)}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-blue-200 bg-blue-50">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-blue-800">P&L Totale</CardTitle>
+                    <BarChart3 className="h-4 w-4 text-blue-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className={`text-2xl font-bold ${
+                      ((metrics.summary?.totalPnL || 0) + (metrics.openTrades?.reduce((sum, trade) => sum + trade.currentPnL, 0) || 0)) >= 0 
+                        ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {formatCurrency((metrics.summary?.totalPnL || 0) + (metrics.openTrades?.reduce((sum, trade) => sum + trade.currentPnL, 0) || 0))}
+                    </div>
+                    <p className="text-xs text-blue-700">
+                      Chiuse + Aperte
                     </p>
                   </CardContent>
                 </Card>
