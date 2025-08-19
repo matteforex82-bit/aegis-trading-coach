@@ -300,11 +300,17 @@ export default function SettingsPage() {
                       <SelectValue placeholder="Seleziona account" />
                     </SelectTrigger>
                     <SelectContent>
-                      {accounts.map(account => (
-                        <SelectItem key={account.id} value={account.id}>
-                          {account.name || account.login} - {account.login}
+                      {accounts && accounts.length > 0 ? (
+                        accounts.map(account => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.name || account.login} - {account.login}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>
+                          Caricando account...
                         </SelectItem>
-                      ))}
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -317,18 +323,20 @@ export default function SettingsPage() {
                       <SelectValue placeholder="Seleziona template" />
                     </SelectTrigger>
                     <SelectContent>
-                      {propFirms.length === 0 ? (
-                        <SelectItem value="" disabled>
-                          Nessun template disponibile
-                        </SelectItem>
-                      ) : (
+                      {propFirms && propFirms.length > 0 ? (
                         propFirms.flatMap(firm => 
-                          firm.templates.map(template => (
-                            <SelectItem key={template.id} value={template.id}>
-                              {firm.name} - {template.name} ({formatCurrency(template.accountSize, template.currency)})
-                            </SelectItem>
-                          ))
+                          firm.templates && firm.templates.length > 0 
+                            ? firm.templates.map(template => (
+                                <SelectItem key={template.id} value={template.id}>
+                                  {firm.name} - {template.name} ({formatCurrency(template.accountSize, template.currency)})
+                                </SelectItem>
+                              ))
+                            : []
                         )
+                      ) : (
+                        <SelectItem value="" disabled>
+                          {propFirms.length === 0 ? 'Nessun template disponibile' : 'Caricando template...'}
+                        </SelectItem>
                       )}
                     </SelectContent>
                   </Select>
@@ -590,29 +598,35 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {propFirms.map(firm => (
-                    <div key={firm.id} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold">{firm.name}</h3>
-                        <Badge variant={firm.isActive ? "default" : "secondary"}>
-                          {firm.templates.length} templates
-                        </Badge>
+                  {propFirms && propFirms.length > 0 ? (
+                    propFirms.map(firm => (
+                      <div key={firm.id} className="border rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-semibold">{firm.name}</h3>
+                          <Badge variant={firm.isActive ? "default" : "secondary"}>
+                            {firm.templates?.length || 0} templates
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-3">{firm.description}</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {firm.templates && firm.templates.slice(0, 4).map(template => (
+                            <div key={template.id} className="text-xs bg-gray-50 p-2 rounded">
+                              {formatCurrency(template.accountSize, template.currency)}
+                            </div>
+                          ))}
+                          {firm.templates && firm.templates.length > 4 && (
+                            <div className="text-xs text-gray-500 p-2">
+                              +{firm.templates.length - 4} altri
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-600 mb-3">{firm.description}</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {firm.templates.slice(0, 4).map(template => (
-                          <div key={template.id} className="text-xs bg-gray-50 p-2 rounded">
-                            {formatCurrency(template.accountSize, template.currency)}
-                          </div>
-                        ))}
-                        {firm.templates.length > 4 && (
-                          <div className="text-xs text-gray-500 p-2">
-                            +{firm.templates.length - 4} altri
-                          </div>
-                        )}
-                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>Nessun PropFirm disponibile</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </CardContent>
             </Card>
