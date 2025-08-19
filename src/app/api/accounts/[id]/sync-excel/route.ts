@@ -294,7 +294,7 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
       
       console.log(`📋 Column mapping: Time(${openTimeCol}), Ticket(${ticketCol}), Symbol(${symbolCol}), Type(${sideCol})`)
       
-      // Parse trade rows after header
+      // Parse trade rows after header - use the same logic as test-excel
       for (let i = headerRowIndex + 1; i < mainData.length; i++) {
         const row = mainData[i] || []
         
@@ -306,14 +306,17 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
           break
         }
         
+        // Use same validation as test-excel: look for numeric ticket in column 1
         const ticketId = String(row[ticketCol] || '')
         const symbol = String(row[symbolCol] || '')
         
         console.log(`🔍 Trade data - Ticket: "${ticketId}", Symbol: "${symbol}"`)
         
-        // Skip header rows or empty rows
-        if (!ticketId || !symbol || ticketId.toLowerCase().includes('position') || ticketId.toLowerCase().includes('time')) {
-          console.log(`⏭️ Skipping row ${i} - invalid ticket/symbol`)
+        // More lenient validation - just check if ticket looks like a number and we have data
+        const isValidTicket = ticketId && ticketId.match(/^\d+$/) && row.length > 5
+        
+        if (!isValidTicket) {
+          console.log(`⏭️ Skipping row ${i} - ticket "${ticketId}" not numeric or insufficient data`)
           continue
         }
         
@@ -339,12 +342,12 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
         console.log(`🔍 Close validation - hasCloseTime: ${hasCloseTime}, hasClosePrice: ${hasClosePrice}`)
         
         // FIXED: For historical MT5 reports, all trades in Positions section are closed trades
-        // If we have ticket, symbol, and either closePrice OR closeTime, it's a valid closed trade
-        if (ticketId && symbol && (hasCloseTime || hasClosePrice || closePrice > 0)) {
-          // For MT5 historical data, if we don't have explicit closeTime, use openTime + small offset
+        // Accept any trade that has a valid ticket and symbol (all trades in history are closed)
+        if (isValidTicket && symbol) {
+          // For MT5 historical data, ensure we have a closeTime
           let finalCloseTime = closeTime
-          if (!hasCloseTime && hasClosePrice) {
-            // Add 1 minute to openTime as fallback closeTime
+          if (!finalCloseTime || finalCloseTime === openTime) {
+            // Add 1 minute to openTime as fallback closeTime for historical trades
             const openDate = new Date(openTime)
             openDate.setMinutes(openDate.getMinutes() + 1)
             finalCloseTime = openDate.toISOString()
