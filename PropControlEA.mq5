@@ -725,10 +725,71 @@ void SendLiveMetrics()
     metricsJson += "\"timestamp\":\"" + TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS) + "\"";
     metricsJson += "}";
     
-    string payload = "{\"account\":" + accountData + ",\"metrics\":" + metricsJson + "}";
+    // Aggiungi posizioni aperte correnti
+    string openPositionsJson = BuildCurrentOpenPositionsJSON();
+    
+    string payload = "{\"account\":" + accountData + ",\"metrics\":" + metricsJson + ",\"openPositions\":[" + openPositionsJson + "]}";
     
     SendHTTPRequest(payload);
     g_LastSyncTime = TimeCurrent();
+}
+
+//+------------------------------------------------------------------+
+//| Build Current Open Positions JSON                             |
+//+------------------------------------------------------------------+
+string BuildCurrentOpenPositionsJSON()
+{
+    string positionsJson = "";
+    int totalPositions = PositionsTotal();
+    
+    if(ENABLE_DETAILED_LOGGING)
+    {
+        Print("🔍 Trovate ", totalPositions, " posizioni aperte correnti");
+    }
+    
+    for(int i = 0; i < totalPositions; i++)
+    {
+        ulong positionTicket = PositionGetTicket(i);
+        if(positionTicket <= 0) continue;
+        
+        if(!PositionSelectByTicket(positionTicket)) continue;
+        
+        string symbol = PositionGetString(POSITION_SYMBOL);
+        long positionType = PositionGetInteger(POSITION_TYPE);
+        double volume = PositionGetDouble(POSITION_VOLUME);
+        double openPrice = PositionGetDouble(POSITION_PRICE_OPEN);
+        datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
+        double currentProfit = PositionGetDouble(POSITION_PROFIT);
+        double swap = PositionGetDouble(POSITION_SWAP);
+        string comment = PositionGetString(POSITION_COMMENT);
+        long magic = PositionGetInteger(POSITION_MAGIC);
+        
+        string side = (positionType == POSITION_TYPE_BUY) ? "buy" : "sell";
+        
+        if(ENABLE_DETAILED_LOGGING)
+        {
+            Print("📊 Posizione: ", positionTicket, " ", symbol, " ", side, " ", volume, " lots, P&L: ", currentProfit);
+        }
+        
+        if(positionsJson != "") positionsJson += ",";
+        
+        positionsJson += "{";
+        positionsJson += "\"ticket_id\":\"" + IntegerToString(positionTicket) + "\",";
+        positionsJson += "\"symbol\":\"" + CleanJsonString(symbol) + "\",";
+        positionsJson += "\"side\":\"" + side + "\",";
+        positionsJson += "\"volume\":" + DoubleToString(volume, 2) + ",";
+        positionsJson += "\"open_price\":" + DoubleToString(openPrice, 5) + ",";
+        positionsJson += "\"open_time\":\"" + TimeToString(openTime, TIME_DATE|TIME_SECONDS) + "\",";
+        positionsJson += "\"pnl\":" + DoubleToString(currentProfit, 2) + ",";
+        positionsJson += "\"swap\":" + DoubleToString(swap, 2) + ",";
+        positionsJson += "\"commission\":0.0,";  // Le commissioni per posizioni aperte sono spesso 0
+        positionsJson += "\"comment\":\"" + CleanJsonString(comment) + "\",";
+        positionsJson += "\"magic\":" + IntegerToString(magic) + ",";
+        positionsJson += "\"phase\":\"" + CleanJsonString(ACCOUNT_PHASE) + "\"";
+        positionsJson += "}";
+    }
+    
+    return positionsJson;
 }
 
 //+------------------------------------------------------------------+

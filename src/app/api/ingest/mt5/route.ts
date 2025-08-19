@@ -24,8 +24,8 @@ export async function POST(request: NextRequest) {
     console.log('📏 Payload size:', payloadSize, 'characters')
     
     // Support different payload formats
-    const { account, trades, metrics } = body
-    console.log('🔍 Request type - account:', !!account, 'trades:', !!trades, 'metrics:', !!metrics)
+    const { account, trades, metrics, openPositions } = body
+    console.log('🔍 Request type - account:', !!account, 'trades:', !!trades, 'metrics:', !!metrics, 'openPositions:', !!openPositions)
     
     // Validate required fields
     if (!account) {
@@ -57,6 +57,11 @@ export async function POST(request: NextRequest) {
       return await handleTradeSyncSafe(account, trades)
     } else if (metrics) {
       console.log('📊 Processing metrics sync')
+      // If openPositions are included, sync them too
+      if (openPositions && Array.isArray(openPositions)) {
+        console.log('🔴 Syncing', openPositions.length, 'open positions')
+        await syncOpenPositionsSafe(account, openPositions)
+      }
       return await handleMetricsSyncSafe(account, metrics)
     } else {
       console.log('❌ No valid data type found')
@@ -456,6 +461,77 @@ async function createTradeSafe(trade: any, accountId: string) {
   } catch (error: any) {
     console.error('❌ Error creating trade safely:', error.message)
     console.error('❌ Trade data:', JSON.stringify(trade, null, 2))
+    throw error
+  }
+}
+
+//+------------------------------------------------------------------+
+//| Sync Open Positions - SAFE VERSION                             |
+//+------------------------------------------------------------------+
+async function syncOpenPositionsSafe(account: any, openPositions: any[]) {
+  try {
+    console.log('🔴 Starting open positions sync...')
+    
+    // Get account first
+    const accountRecord = await createOrUpdateAccountSafe(account)
+    
+    // Clear old open positions for this account first
+    await db.trade.deleteMany({
+      where: { 
+        accountId: accountRecord.id,
+        closeTime: null 
+      }
+    })
+    console.log('✅ Cleared old open positions')
+    
+    let syncedPositions = 0
+    
+    for (const position of openPositions) {
+      try {
+        await db.trade.create({
+          data: {
+            ticketId: String(position.ticket_id),
+            symbol: position.symbol,
+            side: position.side === 'buy' ? 'BUY' : 'SELL',
+            volume: Number(position.volume),
+            openPrice: Number(position.open_price),
+            closePrice: null, // Open position
+            openTime: new Date(position.open_time),
+            closeTime: null, // Open position
+            pnlGross: Number(position.pnl || 0),
+            swap: Number(position.swap || 0),
+            commission: Number(position.commission || 0),
+            comment: position.comment || null,
+            magic: position.magic ? Number(position.magic) : null,
+            accountId: accountRecord.id,
+            
+            // PropFirm fields
+            tradePhase: mapPhaseSafe(position.phase),
+            violatesRules: false, // Open positions don't violate rules yet
+            equityAtOpen: null,
+            equityAtClose: null,
+            drawdownAtOpen: null,
+            drawdownAtClose: null,
+            dailyPnLAtOpen: null,
+            dailyPnLAtClose: null,
+            isWeekendTrade: false,
+            newsTime: false,
+            holdingTime: null,
+            riskReward: null,
+            riskPercent: null
+          }
+        })
+        syncedPositions++
+        console.log(`✅ Synced open position: ${position.ticket_id} ${position.symbol}`)
+      } catch (error: any) {
+        console.error(`❌ Error syncing position ${position.ticket_id}:`, error.message)
+      }
+    }
+    
+    console.log(`🔴 Synced ${syncedPositions}/${openPositions.length} open positions`)
+    
+  } catch (error: any) {
+    console.error('❌ Error in syncOpenPositionsSafe:', error.message)
     throw error
   }
 }
