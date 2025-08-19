@@ -61,12 +61,12 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   
-  // HTML Sync states - temporarily disabled
-  // const [htmlFile, setHtmlFile] = useState<File | null>(null)
-  // const [syncMode, setSyncMode] = useState<'preview' | 'import'>('preview')
-  // const [clearBeforeSync, setClearBeforeSync] = useState(true)
-  // const [syncing, setSyncing] = useState(false)
-  // const [syncResult, setSyncResult] = useState<any>(null)
+  // HTML Sync states
+  const [htmlFile, setHtmlFile] = useState<File | null>(null)
+  const [syncMode, setSyncMode] = useState<'preview' | 'import'>('preview')
+  const [clearBeforeSync, setClearBeforeSync] = useState(true)
+  const [syncing, setSyncing] = useState(false)
+  const [syncResult, setSyncResult] = useState<any>(null)
 
   useEffect(() => {
     fetchData()
@@ -171,55 +171,55 @@ export default function SettingsPage() {
     }
   }
 
-  // HTML Sync functions - temporarily disabled for debugging
-  // const handleFileUpload = (file: File) => {
-  //   if (file.type === 'text/html' || file.name.endsWith('.html')) {
-  //     setHtmlFile(file)
-  //     setSyncResult(null)
-  //   } else {
-  //     alert('Please select an HTML file')
-  //   }
-  // }
+  // HTML Sync functions
+  const handleFileUpload = (file: File) => {
+    if (file.type === 'text/html' || file.name.endsWith('.html')) {
+      setHtmlFile(file)
+      setSyncResult(null)
+    } else {
+      alert('Please select an HTML file')
+    }
+  }
 
-  // const handleSyncHtml = async () => {
-  //   if (!selectedAccount || !htmlFile) {
-  //     alert('Please select an account and HTML file')
-  //     return
-  //   }
+  const handleSyncHtml = async () => {
+    if (!selectedAccount || !htmlFile) {
+      alert('Please select an account and HTML file')
+      return
+    }
 
-  //   setSyncing(true)
-  //   try {
-  //     const formData = new FormData()
-  //     formData.append('htmlFile', htmlFile)
-  //     formData.append('options', JSON.stringify({
-  //       clearExisting: clearBeforeSync,
-  //       mode: syncMode
-  //     }))
+    setSyncing(true)
+    try {
+      const formData = new FormData()
+      formData.append('htmlFile', htmlFile)
+      formData.append('options', JSON.stringify({
+        clearExisting: clearBeforeSync,
+        mode: syncMode
+      }))
 
-  //     const response = await fetch(`/api/accounts/${selectedAccount.id}/sync-html`, {
-  //       method: 'POST',
-  //       body: formData
-  //     })
+      const response = await fetch(`/api/accounts/${selectedAccount.id}/sync-html`, {
+        method: 'POST',
+        body: formData
+      })
 
-  //     if (response.ok) {
-  //       const result = await response.json()
-  //       setSyncResult(result)
-  //       
-  //       if (syncMode === 'import') {
-  //         alert('Sincronizzazione completata con successo!')
-  //         await fetchData() // Refresh data
-  //       }
-  //     } else {
-  //       const error = await response.json()
-  //       alert(`Errore: ${error.error}`)
-  //     }
-  //   } catch (error) {
-  //     console.error('Error syncing HTML:', error)
-  //     alert('Errore durante la sincronizzazione')
-  //   } finally {
-  //     setSyncing(false)
-  //   }
-  // }
+      if (response.ok) {
+        const result = await response.json()
+        setSyncResult(result)
+        
+        if (syncMode === 'import') {
+          alert('Sincronizzazione completata con successo!')
+          await fetchData() // Refresh data
+        }
+      } else {
+        const error = await response.json()
+        alert(`Errore: ${error.error}`)
+      }
+    } catch (error) {
+      console.error('Error syncing HTML:', error)
+      alert('Errore durante la sincronizzazione')
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   const getSelectedTemplateInfo = () => {
     if (!selectedTemplate) return null
@@ -384,7 +384,7 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
 
-            {/* MT5 HTML Sync Section - Temporarily disabled for debugging */}
+            {/* MT5 HTML Sync Section */}
             {selectedAccount && (
               <Card className="border-blue-200 bg-blue-50">
                 <CardHeader>
@@ -393,13 +393,129 @@ export default function SettingsPage() {
                     <span>📊 Sincronizzazione MT5</span>
                   </CardTitle>
                   <CardDescription className="text-blue-600">
-                    Funzionalità temporaneamente disabilitata per debug
+                    Carica il report HTML di MT5 per sincronizzare i dati
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600">
-                    La sincronizzazione MT5 sarà disponibile presto dopo i fix.
-                  </p>
+                <CardContent className="space-y-6">
+                  
+                  {/* File Upload */}
+                  <div className="space-y-2">
+                    <Label>Report HTML MT5</Label>
+                    <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center">
+                      <input
+                        type="file"
+                        accept=".html"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) handleFileUpload(file)
+                        }}
+                        className="hidden"
+                        id="html-upload"
+                      />
+                      <label htmlFor="html-upload" className="cursor-pointer">
+                        <Upload className="h-8 w-8 mx-auto text-blue-500 mb-2" />
+                        <p className="text-blue-600 font-medium">
+                          {htmlFile ? htmlFile.name : 'Clicca per selezionare il file HTML'}
+                        </p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Carica il report completo esportato da MT5
+                        </p>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Sync Options */}
+                  {htmlFile && (
+                    <div className="space-y-4 p-4 bg-white rounded-lg border">
+                      <div className="flex items-center justify-between">
+                        <Label>Modalità Sincronizzazione</Label>
+                        <Select value={syncMode} onValueChange={(value: 'preview' | 'import') => setSyncMode(value)}>
+                          <SelectTrigger className="w-40">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="preview">📋 Anteprima</SelectItem>
+                            <SelectItem value="import">💾 Importa</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="clear-before-sync"
+                          checked={clearBeforeSync}
+                          onChange={(e) => setClearBeforeSync(e.target.checked)}
+                          className="rounded"
+                        />
+                        <Label htmlFor="clear-before-sync" className="text-sm">
+                          Pulisci dati esistenti prima della sincronizzazione
+                        </Label>
+                      </div>
+
+                      <Button
+                        onClick={handleSyncHtml}
+                        disabled={syncing}
+                        className="w-full bg-blue-600 hover:bg-blue-700"
+                      >
+                        {syncing ? (
+                          <>🔄 Sincronizzando...</>
+                        ) : (
+                          <>{syncMode === 'preview' ? '👀 Anteprima Dati' : '💾 Importa Dati'}</>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Sync Results */}
+                  {syncResult && (
+                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <h4 className="font-semibold text-green-800 mb-2">✅ Risultati Sincronizzazione</h4>
+                      
+                      {syncResult.data && (
+                        <div className="space-y-2 text-sm">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <span className="font-medium text-green-700">Account:</span>
+                              <span className="ml-2">{syncResult.data.accountInfo.login}</span>
+                            </div>
+                            <div>
+                              <span className="font-medium text-green-700">Report:</span>
+                              <span className="ml-2">{syncResult.data.accountInfo.reportDate}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-3 gap-4 mt-3">
+                            <div className="text-center p-2 bg-white rounded">
+                              <div className="font-semibold text-blue-600">{syncResult.data.summary.closedTrades}</div>
+                              <div className="text-xs text-gray-600">Operazioni Chiuse</div>
+                            </div>
+                            <div className="text-center p-2 bg-white rounded">
+                              <div className="font-semibold text-orange-600">{syncResult.data.summary.openPositions}</div>
+                              <div className="text-xs text-gray-600">Posizioni Aperte</div>
+                            </div>
+                            <div className="text-center p-2 bg-white rounded">
+                              <div className={`font-semibold ${syncResult.data.summary.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                ${syncResult.data.summary.totalPnL.toFixed(2)}
+                              </div>
+                              <div className="text-xs text-gray-600">P&L Totale</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {syncResult.result && (
+                        <div className="mt-3 p-3 bg-green-100 rounded">
+                          <div className="text-sm text-green-800">
+                            <div>✅ Importate: {syncResult.result.imported.closedTrades} operazioni, {syncResult.result.imported.openPositions} posizioni</div>
+                            {syncResult.result.cleared.trades > 0 && (
+                              <div>🧹 Puliti: {syncResult.result.cleared.trades} operazioni precedenti</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
