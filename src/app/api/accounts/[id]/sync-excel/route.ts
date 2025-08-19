@@ -154,140 +154,131 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
   let accountName = ''
   let reportDate = ''
   
-  // Try to find account info from different possible sheet names
-  const summarySheetNames = ['Account Summary', 'Summary', 'Account', 'Info', 'Report']
-  let summarySheet: XLSX.WorkSheet | null = null
+  // Use the first sheet (most MT5 exports use a single sheet)
+  const mainSheet = workbook.Sheets[workbook.SheetNames[0]]
+  console.log(`📋 Using sheet: ${workbook.SheetNames[0]}`)
   
-  for (const sheetName of summarySheetNames) {
-    const exactMatch = workbook.SheetNames.find(s => s.toLowerCase() === sheetName.toLowerCase())
-    if (exactMatch) {
-      summarySheet = workbook.Sheets[exactMatch]
-      console.log(`✅ Found summary sheet: ${exactMatch}`)
-      break
-    }
+  if (!mainSheet) {
+    throw new Error('No sheet found in Excel file')
   }
   
-  // If no exact match, try partial match
-  if (!summarySheet) {
-    const partialMatch = workbook.SheetNames.find(s => 
-      s.toLowerCase().includes('summary') || 
-      s.toLowerCase().includes('account') ||
-      s.toLowerCase().includes('info')
-    )
-    if (partialMatch) {
-      summarySheet = workbook.Sheets[partialMatch]
-      console.log(`✅ Found summary sheet (partial): ${partialMatch}`)
-    }
-  }
+  // Parse the main sheet data
+  const mainData = XLSX.utils.sheet_to_json(mainSheet, { header: 1 }) as any[][]
+  console.log(`📊 Total rows in sheet: ${mainData.length}`)
   
-  // Use first sheet as fallback
-  if (!summarySheet && workbook.SheetNames.length > 0) {
-    summarySheet = workbook.Sheets[workbook.SheetNames[0]]
-    console.log(`⚠️ Using first sheet as fallback: ${workbook.SheetNames[0]}`)
-  }
-  
-  if (summarySheet) {
-    const summaryData = XLSX.utils.sheet_to_json(summarySheet, { header: 1 }) as any[][]
+  // Search for account info in the data
+  for (let i = 0; i < Math.min(mainData.length, 50); i++) { // Check first 50 rows for account info
+    const row = mainData[i] || []
     
-    // Search for account info in the summary data
-    for (let i = 0; i < summaryData.length; i++) {
-      const row = summaryData[i] || []
+    for (let j = 0; j < row.length; j++) {
+      const cell = String(row[j] || '').toLowerCase().trim()
+      const nextCell = String(row[j + 1] || '').trim()
       
-      for (let j = 0; j < row.length; j++) {
-        const cell = String(row[j] || '').toLowerCase()
-        const nextCell = String(row[j + 1] || '')
-        
-        // Look for Account field
-        if (cell.includes('account') && !cell.includes('type')) {
-          const accountMatch = nextCell.match(/(\d{4,})/)?.[1]
-          if (accountMatch) {
-            accountLogin = accountMatch
-            console.log('✅ Found account login:', accountLogin)
-          }
-        }
-        
-        // Look for Name field
-        if (cell.includes('name') && !accountLogin) {
-          accountName = nextCell.trim()
-          console.log('✅ Found account name:', accountName)
-        }
-        
-        // Look for date
-        if (cell.includes('date') || cell.includes('report')) {
-          reportDate = nextCell
-          console.log('✅ Found report date:', reportDate)
+      // Look for Account field - more flexible matching
+      if (cell.includes('account') && !cell.includes('type') && !cell.includes('report')) {
+        const accountMatch = nextCell.match(/(\d{4,})/)?.[1]
+        if (accountMatch) {
+          accountLogin = accountMatch
+          console.log('✅ Found account login:', accountLogin)
         }
       }
+      
+      // Look for Name field
+      if (cell.includes('name') && nextCell && !accountName) {
+        accountName = nextCell.trim()
+        console.log('✅ Found account name:', accountName)
+      }
+      
+      // Look for date
+      if (cell.includes('date') && nextCell) {
+        reportDate = nextCell
+        console.log('✅ Found report date:', reportDate)
+      }
     }
+    
+    // Stop early if we found account login
+    if (accountLogin) break
   }
 
-  // Parse closed trades
+  // Parse closed trades from the main sheet
   const closedTrades: ParsedTrade[] = []
-  const tradesSheetNames = ['Closed Trades', 'Trades', 'History', 'Positions']
-  let tradesSheet: XLSX.WorkSheet | null = null
   
-  for (const sheetName of tradesSheetNames) {
-    const exactMatch = workbook.SheetNames.find(s => s.toLowerCase() === sheetName.toLowerCase())
-    if (exactMatch) {
-      tradesSheet = workbook.Sheets[exactMatch]
-      console.log(`✅ Found trades sheet: ${exactMatch}`)
+  // Find the "Positions" section header
+  let positionsHeaderIndex = -1
+  for (let i = 0; i < mainData.length; i++) {
+    const row = mainData[i] || []
+    const rowStr = row.join('').toLowerCase()
+    if (rowStr.includes('positions') && !rowStr.includes('open')) {
+      positionsHeaderIndex = i
+      console.log(`✅ Found Positions section at row ${i}`)
       break
     }
   }
   
-  if (tradesSheet) {
-    const tradesData = XLSX.utils.sheet_to_json(tradesSheet, { header: 1 }) as any[][]
-    
-    // Find header row
+  if (positionsHeaderIndex >= 0) {
+    // Find the actual header row (next row with column names)
     let headerRowIndex = -1
-    for (let i = 0; i < tradesData.length; i++) {
-      const row = tradesData[i] || []
+    for (let i = positionsHeaderIndex + 1; i < Math.min(positionsHeaderIndex + 5, mainData.length); i++) {
+      const row = mainData[i] || []
       const rowStr = row.join('').toLowerCase()
-      if (rowStr.includes('ticket') || rowStr.includes('position') || rowStr.includes('symbol')) {
+      if (rowStr.includes('time') && (rowStr.includes('position') || rowStr.includes('symbol'))) {
         headerRowIndex = i
+        console.log(`✅ Found header row at ${i}`)
         break
       }
     }
     
     if (headerRowIndex >= 0) {
-      const headers = tradesData[headerRowIndex].map((h: any) => String(h || '').toLowerCase())
+      const headers = mainData[headerRowIndex].map((h: any) => String(h || '').toLowerCase().trim())
       console.log('📋 Trade headers:', headers)
       
-      // Map column indices
-      const ticketCol = headers.findIndex(h => h.includes('ticket') || h.includes('position'))
-      const symbolCol = headers.findIndex(h => h.includes('symbol'))
-      const sideCol = headers.findIndex(h => h.includes('type') || h.includes('side'))
-      const volumeCol = headers.findIndex(h => h.includes('volume') || h.includes('lots'))
-      const openPriceCol = headers.findIndex(h => h.includes('open') && h.includes('price'))
-      const closePriceCol = headers.findIndex(h => h.includes('close') && h.includes('price'))
-      const openTimeCol = headers.findIndex(h => h.includes('open') && h.includes('time'))
-      const closeTimeCol = headers.findIndex(h => h.includes('close') && h.includes('time'))
-      const pnlCol = headers.findIndex(h => h.includes('profit') || h.includes('pnl'))
-      const swapCol = headers.findIndex(h => h.includes('swap'))
-      const commissionCol = headers.findIndex(h => h.includes('commission'))
+      // Map column indices based on MT5 standard columns
+      const openTimeCol = 0  // Time column is usually first
+      const ticketCol = 1    // Position column is usually second
+      const symbolCol = 2    // Symbol column is usually third
+      const sideCol = 3      // Type column is usually fourth
+      const volumeCol = 4    // Volume column
+      const openPriceCol = 5 // Price column
+      const slCol = 6        // S/L column
+      const tpCol = 7        // T/P column
+      const closeTimeCol = 8 // Close Time column
+      const closePriceCol = 9 // Close Price column
+      const commissionCol = 10 // Commission column
+      const swapCol = 11     // Swap column
+      const pnlCol = 12      // Profit column
       
-      // Parse trade rows
-      for (let i = headerRowIndex + 1; i < tradesData.length; i++) {
-        const row = tradesData[i] || []
+      console.log(`📋 Column mapping: Time(${openTimeCol}), Ticket(${ticketCol}), Symbol(${symbolCol}), Type(${sideCol})`)
+      
+      // Parse trade rows after header
+      for (let i = headerRowIndex + 1; i < mainData.length; i++) {
+        const row = mainData[i] || []
         
-        if (row.length === 0) continue
+        // Stop if we reach Orders section or empty rows
+        if (row.length === 0 || String(row[0] || '').toLowerCase().includes('orders')) {
+          console.log(`📋 Stopping at row ${i} - reached Orders section or empty row`)
+          break
+        }
         
         const ticketId = String(row[ticketCol] || '')
         const symbol = String(row[symbolCol] || '')
         
-        if (!ticketId || !symbol || ticketId === 'Total') continue
+        // Skip header rows or empty rows
+        if (!ticketId || !symbol || ticketId.toLowerCase().includes('position') || ticketId.toLowerCase().includes('time')) {
+          continue
+        }
         
         const side = String(row[sideCol] || '').toLowerCase().includes('sell') ? 'sell' : 'buy'
-        const volume = parseFloat(String(row[volumeCol] || '0')) || 0
-        const openPrice = parseFloat(String(row[openPriceCol] || '0')) || 0
-        const closePrice = parseFloat(String(row[closePriceCol] || '0')) || 0
+        const volume = parseFloat(String(row[volumeCol] || '0').replace(',', '.')) || 0
+        const openPrice = parseFloat(String(row[openPriceCol] || '0').replace(',', '.')) || 0
+        const closePrice = parseFloat(String(row[closePriceCol] || '0').replace(',', '.')) || 0
         const openTime = convertExcelDate(row[openTimeCol])
         const closeTime = convertExcelDate(row[closeTimeCol])
-        const pnlGross = parseFloat(String(row[pnlCol] || '0')) || 0
-        const swap = parseFloat(String(row[swapCol] || '0')) || 0
-        const commission = parseFloat(String(row[commissionCol] || '0')) || 0
+        const pnlGross = parseFloat(String(row[pnlCol] || '0').replace(',', '.')) || 0
+        const swap = parseFloat(String(row[swapCol] || '0').replace(',', '.')) || 0
+        const commission = parseFloat(String(row[commissionCol] || '0').replace(',', '.')) || 0
         
-        if (closeTime) {
+        // Only add if we have close time (completed trades)
+        if (closeTime && ticketId && symbol) {
           closedTrades.push({
             ticketId,
             symbol,
@@ -302,114 +293,34 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
             commission,
             comment: ''
           })
+          console.log(`✅ Parsed trade: ${ticketId} ${symbol} ${side} ${volume}`)
         }
       }
     }
   }
   
-  // Parse open positions (similar logic but for open positions sheet)
+  // Parse open positions - for now, skip since MT5 typically doesn't include open positions in historical reports
   const openPositions: ParsedOpenPosition[] = []
-  const openSheetNames = ['Open Positions', 'Open', 'Current Positions']
-  let openSheet: XLSX.WorkSheet | null = null
   
-  for (const sheetName of openSheetNames) {
-    const exactMatch = workbook.SheetNames.find(s => s.toLowerCase() === sheetName.toLowerCase())
-    if (exactMatch) {
-      openSheet = workbook.Sheets[exactMatch]
-      console.log(`✅ Found open positions sheet: ${exactMatch}`)
-      break
-    }
-  }
+  // Note: Most MT5 exports are historical and don't include current open positions
+  // Open positions would typically be in a separate export or live data
+  console.log('📋 Open positions parsing skipped for historical MT5 report')
   
-  if (openSheet) {
-    const openData = XLSX.utils.sheet_to_json(openSheet, { header: 1 }) as any[][]
-    
-    // Similar parsing logic for open positions
-    let headerRowIndex = -1
-    for (let i = 0; i < openData.length; i++) {
-      const row = openData[i] || []
-      const rowStr = row.join('').toLowerCase()
-      if (rowStr.includes('ticket') || rowStr.includes('position') || rowStr.includes('symbol')) {
-        headerRowIndex = i
-        break
-      }
-    }
-    
-    if (headerRowIndex >= 0) {
-      const headers = openData[headerRowIndex].map((h: any) => String(h || '').toLowerCase())
-      
-      const ticketCol = headers.findIndex(h => h.includes('ticket') || h.includes('position'))
-      const symbolCol = headers.findIndex(h => h.includes('symbol'))
-      const sideCol = headers.findIndex(h => h.includes('type') || h.includes('side'))
-      const volumeCol = headers.findIndex(h => h.includes('volume') || h.includes('lots'))
-      const openPriceCol = headers.findIndex(h => h.includes('open') && h.includes('price'))
-      const openTimeCol = headers.findIndex(h => h.includes('open') && h.includes('time'))
-      const pnlCol = headers.findIndex(h => h.includes('profit') || h.includes('pnl'))
-      const swapCol = headers.findIndex(h => h.includes('swap'))
-      
-      for (let i = headerRowIndex + 1; i < openData.length; i++) {
-        const row = openData[i] || []
-        
-        if (row.length === 0) continue
-        
-        const ticketId = String(row[ticketCol] || '')
-        const symbol = String(row[symbolCol] || '')
-        
-        if (!ticketId || !symbol) continue
-        
-        const side = String(row[sideCol] || '').toLowerCase().includes('sell') ? 'sell' : 'buy'
-        const volume = parseFloat(String(row[volumeCol] || '0')) || 0
-        const openPrice = parseFloat(String(row[openPriceCol] || '0')) || 0
-        const openTime = convertExcelDate(row[openTimeCol])
-        const currentPnL = parseFloat(String(row[pnlCol] || '0')) || 0
-        const swap = parseFloat(String(row[swapCol] || '0')) || 0
-        
-        openPositions.push({
-          ticketId,
-          symbol,
-          side,
-          volume,
-          openPrice,
-          openTime,
-          currentPnL,
-          swap,
-          comment: ''
-        })
-      }
-    }
-  }
-  
-  // Extract summary data from summary sheet
+  // Extract summary data - calculate from trades for historical reports
   let balance = 0
   let equity = 0
   let floatingPnL = 0
   let totalNetProfit = 0
   
-  if (summarySheet) {
-    const summaryData = XLSX.utils.sheet_to_json(summarySheet, { header: 1 }) as any[][]
-    
-    for (let i = 0; i < summaryData.length; i++) {
-      const row = summaryData[i] || []
-      
-      for (let j = 0; j < row.length; j++) {
-        const cell = String(row[j] || '').toLowerCase()
-        const nextCell = String(row[j + 1] || '').replace(/[^0-9.-]/g, '')
-        
-        if (cell.includes('balance') && !cell.includes('initial')) {
-          balance = parseFloat(nextCell) || 0
-        }
-        if (cell.includes('equity')) {
-          equity = parseFloat(nextCell) || 0
-        }
-        if (cell.includes('floating') && cell.includes('p/l')) {
-          floatingPnL = parseFloat(nextCell) || 0
-        }
-        if (cell.includes('total') && cell.includes('profit')) {
-          totalNetProfit = parseFloat(nextCell) || 0
-        }
-      }
-    }
-  }
+  // Calculate total P&L from closed trades
+  totalNetProfit = closedTrades.reduce((sum, trade) => sum + trade.pnlGross + trade.swap + trade.commission, 0)
+  
+  // For historical reports, balance and equity are often the same as final P&L
+  balance = totalNetProfit
+  equity = totalNetProfit
+  floatingPnL = 0 // No floating P&L in historical reports
+  
+  console.log(`📊 Summary calculated: ${closedTrades.length} trades, Total P&L: ${totalNetProfit}`)
 
   console.log(`📊 Final Excel Results:`)
   console.log(`   Account: "${accountLogin}"`)
@@ -446,37 +357,43 @@ function convertExcelDate(dateValue: any): string {
     
     // Handle string dates
     if (typeof dateValue === 'string') {
-      // Try various date formats
+      const dateStr = dateValue.trim()
+      
+      // Handle MT5 format: "2025.07.23 12:58:57"
+      const mt5Match = dateStr.match(/(\d{4})\.(\d{2})\.(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/)
+      if (mt5Match) {
+        const [, year, month, day, hour, minute, second] = mt5Match
+        const date = new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}`)
+        if (!isNaN(date.getTime())) {
+          return date.toISOString()
+        }
+      }
+      
+      // Try other formats
       const formats = [
-        /(\d{4})\.(\d{2})\.(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/, // MT5 format
         /(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})/, // US format
         /(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2}):(\d{2})/, // European format
       ]
       
       for (const format of formats) {
-        const match = dateValue.match(format)
+        const match = dateStr.match(format)
         if (match) {
           const [, p1, p2, p3, h, m, s] = match
-          let year, month, day
-          
-          if (format === formats[0]) { // MT5 format YYYY.MM.DD
-            [year, month, day] = [p1, p2, p3]
-          } else { // Other formats MM/DD/YYYY or DD-MM-YYYY
-            [month, day, year] = [p2, p1, p3]
+          const date = new Date(`${p3}-${p1}-${p2}T${h}:${m}:${s}`)
+          if (!isNaN(date.getTime())) {
+            return date.toISOString()
           }
-          
-          const date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${h}:${m}:${s}`)
-          return date.toISOString()
         }
       }
       
       // Try direct parsing as last resort
-      const date = new Date(dateValue)
+      const date = new Date(dateStr)
       if (!isNaN(date.getTime())) {
         return date.toISOString()
       }
     }
     
+    console.warn('Could not parse date:', dateValue)
     return new Date().toISOString()
   } catch (error) {
     console.error('Error converting Excel date:', dateValue, error)
