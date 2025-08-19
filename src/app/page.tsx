@@ -316,8 +316,10 @@ export default function Dashboard() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className="text-lg font-bold text-blue-600">
-                              In corso...
+                            <div className={`text-lg font-bold ${
+                              trade.currentPnL >= 0 ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {formatCurrency(trade.currentPnL)}
                             </div>
                             <div className="text-sm text-gray-500">
                               {new Date(trade.openTime).toLocaleString('it-IT')}

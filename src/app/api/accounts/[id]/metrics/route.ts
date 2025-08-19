@@ -105,7 +105,7 @@ export async function GET(
         volume: t.volume,
         openPrice: t.openPrice,
         openTime: t.openTime,
-        currentPnL: 0, // This would need real-time price feed
+        currentPnL: (t.pnlGross || 0) + (t.swap || 0) + (t.commission || 0), // Use latest unrealized P&L from MT5
         comment: t.comment
       }))
     })
