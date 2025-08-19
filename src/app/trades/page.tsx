@@ -142,6 +142,25 @@ export default function TradesPage() {
     }
   }
 
+  const handleDebug = async () => {
+    if (!account?.id) return
+    
+    try {
+      const response = await fetch(`/api/accounts/${account.id}/debug-trades`)
+      const data = await response.json()
+      
+      if (data.success) {
+        console.log('🔍 DEBUG TRADES:', data.debug)
+        alert(`Debug Info:\n\nAccount: ${data.debug.account.login} (${data.debug.account.name})\n\nTrade Counts:\n- Total: ${data.debug.tradeCounts.total}\n- Closed: ${data.debug.tradeCounts.closed}\n- Open: ${data.debug.tradeCounts.open}\n\nRecent trades: ${data.debug.recentTrades.length}\n\nCheck console for full details`)
+      } else {
+        alert('Debug failed: ' + data.error)
+      }
+    } catch (error) {
+      console.error('Debug error:', error)
+      alert('Debug request failed')
+    }
+  }
+
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString('it-IT', {
       year: 'numeric',
@@ -179,14 +198,23 @@ export default function TradesPage() {
               </p>
             </div>
           </div>
-          <Button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center space-x-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            <span>Aggiorna</span>
-          </Button>
+          <div className="flex space-x-2">
+            <Button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center space-x-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              <span>Aggiorna</span>
+            </Button>
+            <Button
+              onClick={handleDebug}
+              variant="outline"
+              className="flex items-center space-x-2"
+            >
+              🔍 Debug
+            </Button>
+          </div>
         </div>
       </header>
 
