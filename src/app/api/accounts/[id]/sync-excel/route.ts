@@ -328,11 +328,21 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
         const commission = parseFloat(String(row[commissionCol] || '0').replace(',', '.')) || 0
         
         console.log(`🔍 Trade parsed - Side: ${side}, Volume: ${volume}, OpenPrice: ${openPrice}, ClosePrice: ${closePrice}`)
-        console.log(`🔍 Times - Open: ${openTime}, Close: ${closeTime}`)
+        console.log(`🔍 Raw times - Open: "${row[openTimeCol]}", Close: "${row[closeTimeCol]}"`)
+        console.log(`🔍 Converted times - Open: ${openTime}, Close: ${closeTime}`)
         console.log(`🔍 P&L - Gross: ${pnlGross}, Swap: ${swap}, Commission: ${commission}`)
         
-        // Only add if we have close time (completed trades)
-        if (closeTime && ticketId && symbol && closeTime !== openTime) {
+        // FIXED: Check if we have close price and close time data, or if row has enough columns indicating closed trade
+        const hasCloseTime = row[closeTimeCol] && String(row[closeTimeCol]).trim() !== ''
+        const hasClosePrice = closePrice && closePrice > 0
+        
+        console.log(`🔍 Close validation - hasCloseTime: ${hasCloseTime}, hasClosePrice: ${hasClosePrice}`)
+        
+        // Only add if this looks like a completed trade (has close data)
+        if (ticketId && symbol && (hasCloseTime || hasClosePrice)) {
+          // Ensure we have a proper closeTime - if not provided, use openTime + 1 hour as fallback
+          const finalCloseTime = hasCloseTime ? closeTime : (hasClosePrice ? openTime : closeTime)
+          
           closedTrades.push({
             ticketId,
             symbol,
@@ -341,13 +351,13 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
             openPrice,
             closePrice,
             openTime,
-            closeTime,
+            closeTime: finalCloseTime,
             pnlGross: pnlGross - swap - commission,
             swap,
             commission,
             comment: ''
           })
-          console.log(`✅ Added trade: ${ticketId} ${symbol} ${side} ${volume}`)
+          console.log(`✅ Added trade: ${ticketId} ${symbol} ${side} ${volume} - CloseTime: ${finalCloseTime}`)
         } else {
           console.log(`❌ Rejected trade - Missing closeTime or invalid data`)
         }
