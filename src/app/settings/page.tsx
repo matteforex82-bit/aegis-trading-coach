@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { ArrowLeft, Settings, CheckCircle, AlertCircle, DollarSign, Target, Shield, Trash2 } from 'lucide-react'
+import { ArrowLeft, Settings, CheckCircle, AlertCircle, DollarSign, Target, Shield, Trash2, Upload, FileText, Sync } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
 import Link from 'next/link'
 
 interface PropFirmTemplate {
@@ -60,6 +61,14 @@ export default function SettingsPage() {
   const [assigning, setAssigning] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  
+  // HTML Sync states
+  const [htmlFile, setHtmlFile] = useState<File | null>(null)
+  const [syncMode, setSyncMode] = useState<'preview' | 'import'>('preview')
+  const [clearBeforeSync, setClearBeforeSync] = useState(true)
+  const [syncing, setSyncing] = useState(false)
+  const [syncResult, setSyncResult] = useState<any>(null)
+  const [dragActive, setDragActive] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -161,6 +170,77 @@ export default function SettingsPage() {
       alert('Failed to delete account')
     } finally {
       setDeleting(false)
+    }
+  }
+
+  // HTML Sync functions
+  const handleFileUpload = (file: File) => {
+    if (file.type === 'text/html' || file.name.endsWith('.html')) {
+      setHtmlFile(file)
+      setSyncResult(null)
+    } else {
+      alert('Please select an HTML file')
+    }
+  }
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true)
+    } else if (e.type === 'dragleave') {
+      setDragActive(false)
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(false)
+    
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length > 0) {
+      handleFileUpload(files[0])
+    }
+  }
+
+  const handleSyncHtml = async () => {
+    if (!selectedAccount || !htmlFile) {
+      alert('Please select an account and HTML file')
+      return
+    }
+
+    setSyncing(true)
+    try {
+      const formData = new FormData()
+      formData.append('htmlFile', htmlFile)
+      formData.append('options', JSON.stringify({
+        clearExisting: clearBeforeSync,
+        mode: syncMode
+      }))
+
+      const response = await fetch(`/api/accounts/${selectedAccount.id}/sync-html`, {
+        method: 'POST',
+        body: formData
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setSyncResult(result)
+        
+        if (syncMode === 'import') {
+          alert('Sincronizzazione completata con successo!')
+          await fetchData() // Refresh data
+        }
+      } else {
+        const error = await response.json()
+        alert(`Errore: ${error.error}`)
+      }
+    } catch (error) {
+      console.error('Error syncing HTML:', error)
+      alert('Errore durante la sincronizzazione')
+    } finally {
+      setSyncing(false)
     }
   }
 
@@ -318,6 +398,190 @@ export default function SettingsPage() {
                 </Button>
               </CardContent>
             </Card>
+
+            {/* MT5 HTML Sync Section */}
+            {selectedAccount && (
+              <Card className="border-blue-200 bg-blue-50">
+                <CardHeader>
+                  <CardTitle className="text-blue-700 flex items-center space-x-2">
+                    <Sync className="h-5 w-5" />
+                    <span>📊 Sincronizzazione MT5</span>
+                  </CardTitle>
+                  <CardDescription className="text-blue-600">
+                    Carica un report HTML di MT5 per sincronizzare i dati dell'account
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  
+                  {/* File Upload Area */}
+                  <div className="space-y-2">
+                    <Label>Report HTML MT5</Label>
+                    <div 
+                      className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                        dragActive 
+                          ? 'border-blue-400 bg-blue-100' 
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                      onDragEnter={handleDrag}
+                      onDragLeave={handleDrag}
+                      onDragOver={handleDrag}
+                      onDrop={handleDrop}
+                    >
+                      {htmlFile ? (
+                        <div className="space-y-2">
+                          <FileText className="h-12 w-12 mx-auto text-green-500" />
+                          <div className="text-sm font-medium text-green-700">
+                            {htmlFile.name}
+                          </div>
+                          <div className="text-xs text-green-600">
+                            {(htmlFile.size / 1024).toFixed(1)} KB
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setHtmlFile(null)}
+                          >
+                            Rimuovi
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <Upload className="h-12 w-12 mx-auto text-gray-400" />
+                          <div>
+                            <p className="text-sm text-gray-600 mb-2">
+                              Trascina il file HTML qui o clicca per selezionare
+                            </p>
+                            <Button
+                              variant="outline"
+                              onClick={() => document.getElementById('htmlFileInput')?.click()}
+                            >
+                              Seleziona File HTML
+                            </Button>
+                            <input
+                              id="htmlFileInput"
+                              type="file"
+                              accept=".html"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) handleFileUpload(file)
+                              }}
+                            />
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            Carica il report "Trade History Report" esportato da MT5
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Sync Options */}
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="clearBeforeSync"
+                        checked={clearBeforeSync}
+                        onCheckedChange={(checked) => setClearBeforeSync(checked as boolean)}
+                      />
+                      <Label htmlFor="clearBeforeSync" className="text-sm">
+                        Pulisci dati esistenti prima di importare (raccomandato)
+                      </Label>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Modalità di sincronizzazione</Label>
+                      <Select 
+                        value={syncMode} 
+                        onValueChange={(value: 'preview' | 'import') => setSyncMode(value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="preview">Anteprima - Solo visualizza i dati</SelectItem>
+                          <SelectItem value="import">Importa - Sincronizza nel database</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Sync Button */}
+                  <Button
+                    onClick={handleSyncHtml}
+                    disabled={!htmlFile || syncing}
+                    className="w-full"
+                  >
+                    {syncing ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        {syncMode === 'preview' ? 'Analizzando...' : 'Sincronizzando...'}
+                      </>
+                    ) : (
+                      <>
+                        <Sync className="h-4 w-4 mr-2" />
+                        {syncMode === 'preview' ? 'Anteprima Dati' : 'Sincronizza Dati'}
+                      </>
+                    )}
+                  </Button>
+
+                  {/* Sync Results */}
+                  {syncResult && (
+                    <div className="mt-6 p-4 bg-white rounded-lg border">
+                      <h4 className="font-semibold mb-3 flex items-center">
+                        <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                        Risultati {syncMode === 'preview' ? 'Anteprima' : 'Sincronizzazione'}
+                      </h4>
+                      
+                      {syncResult.data && (
+                        <div className="space-y-3 text-sm">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <span className="text-gray-600">Account:</span>
+                              <div className="font-medium">{syncResult.data.accountInfo?.name}</div>
+                              <div className="text-xs text-gray-500">{syncResult.data.accountInfo?.login}</div>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">Report:</span>
+                              <div className="font-medium">{syncResult.data.accountInfo?.reportDate}</div>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-3 gap-4 pt-2 border-t">
+                            <div>
+                              <div className="font-medium text-blue-600">{syncResult.data.summary?.closedTrades}</div>
+                              <div className="text-xs text-gray-600">Operazioni chiuse</div>
+                            </div>
+                            <div>
+                              <div className="font-medium text-green-600">{syncResult.data.summary?.openPositions}</div>
+                              <div className="text-xs text-gray-600">Posizioni aperte</div>
+                            </div>
+                            <div>
+                              <div className="font-medium text-purple-600">${syncResult.data.summary?.balance?.toFixed(2)}</div>
+                              <div className="text-xs text-gray-600">Balance finale</div>
+                            </div>
+                          </div>
+
+                          {syncResult.result && (
+                            <div className="pt-2 border-t">
+                              <div className="text-green-700 font-medium">
+                                ✅ Importati: {syncResult.result.imported?.closedTrades} operazioni, {syncResult.result.imported?.openPositions} posizioni
+                              </div>
+                              {syncResult.result.cleared && clearBeforeSync && (
+                                <div className="text-orange-600 text-xs mt-1">
+                                  🧹 Rimossi: {syncResult.result.cleared.trades} dati precedenti
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                </CardContent>
+              </Card>
+            )}
 
             {/* Delete Account Section */}
             {selectedAccount && (
