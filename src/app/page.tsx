@@ -22,6 +22,18 @@ interface Account {
   _count: { trades: number }
 }
 
+interface OpenTrade {
+  id: string
+  ticketId: string
+  symbol: string
+  side: 'buy' | 'sell'
+  volume: number
+  openPrice: number
+  openTime: string
+  currentPnL: number
+  comment?: string
+}
+
 interface Metrics {
   summary: {
     totalTrades: number
@@ -47,6 +59,7 @@ interface Metrics {
     currency: string
     timezone: string
   }
+  openTrades: OpenTrade[]
 }
 
 export default function Dashboard() {
@@ -275,6 +288,47 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Open Positions Section */}
+              {metrics.openTrades && metrics.openTrades.length > 0 && (
+                <Card className="mb-8">
+                  <CardHeader>
+                    <CardTitle>🔴 Posizioni Aperte</CardTitle>
+                    <CardDescription>
+                      Posizioni attualmente attive sul conto
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {metrics.openTrades.map((trade) => (
+                        <div key={trade.id} className="flex items-center justify-between p-4 border rounded-lg bg-blue-50">
+                          <div className="flex items-center space-x-4">
+                            <div>
+                              <div className="font-semibold">{trade.symbol}</div>
+                              <div className="text-sm text-gray-600">#{trade.ticketId}</div>
+                            </div>
+                            <Badge variant={trade.side === 'buy' ? 'default' : 'secondary'}>
+                              {trade.side === 'buy' ? 'Compra' : 'Vendi'}
+                            </Badge>
+                            <div className="text-sm">
+                              <div>Volume: {trade.volume.toFixed(2)} lots</div>
+                              <div>Prezzo: {trade.openPrice.toFixed(5)}</div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-lg font-bold text-blue-600">
+                              In corso...
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {new Date(trade.openTime).toLocaleString('it-IT')}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Detailed Metrics */}
               <Tabs defaultValue="drawdown" className="space-y-4">

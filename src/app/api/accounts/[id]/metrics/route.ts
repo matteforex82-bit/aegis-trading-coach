@@ -24,10 +24,14 @@ export async function GET(
     }
 
     // Get all trades for this account
-    const trades = await db.trade.findMany({
+    const allTrades = await db.trade.findMany({
       where: { accountId: id },
       orderBy: { createdAt: 'desc' }
     })
+
+    // Separate open and closed trades
+    const trades = allTrades.filter(t => t.closeTime) // ONLY closed trades for P&L
+    const openTrades = allTrades.filter(t => !t.closeTime)
 
     // Calculate metrics from real trades (using net P&L like MT5)
     const totalTrades = trades.length
@@ -70,7 +74,7 @@ export async function GET(
 
     return NextResponse.json({
       summary: {
-        totalTrades,
+        totalTrades, // Only closed trades
         winningTrades,
         losingTrades,
         winRate: Math.round(winRate * 100) / 100,
@@ -92,7 +96,18 @@ export async function GET(
         server: account.server,
         currency: account.currency,
         timezone: account.timezone
-      }
+      },
+      openTrades: openTrades.map(t => ({
+        id: t.id,
+        ticketId: t.ticketId,
+        symbol: t.symbol,
+        side: t.side,
+        volume: t.volume,
+        openPrice: t.openPrice,
+        openTime: t.openTime,
+        currentPnL: 0, // This would need real-time price feed
+        comment: t.comment
+      }))
     })
 
   } catch (error) {

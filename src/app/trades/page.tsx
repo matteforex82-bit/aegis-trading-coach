@@ -70,8 +70,11 @@ export default function TradesPage() {
       }
       const data = await response.json()
       
+      // Filter only CLOSED trades for trades page
+      const closedTrades = data.trades?.filter((trade: any) => trade.closeTime) || []
+      
       // Transform API data to match our Trade interface
-      const transformedTrades = data.trades?.map((trade: any) => ({
+      const transformedTrades = closedTrades.map((trade: any) => ({
         id: trade.id,
         ticket: parseInt(trade.ticketId) || 0,
         symbol: trade.symbol,
