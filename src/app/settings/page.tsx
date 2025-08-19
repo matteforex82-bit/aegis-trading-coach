@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { ArrowLeft, Settings, CheckCircle, AlertCircle, DollarSign, Target, Shield, Trash2, Upload, FileText, Sync } from 'lucide-react'
+import { ArrowLeft, Settings, CheckCircle, AlertCircle, DollarSign, Target, Shield, Trash2, Upload, FileText, RotateCcw } from 'lucide-react'
 import Link from 'next/link'
 
 interface PropFirmTemplate {
@@ -389,7 +389,7 @@ export default function SettingsPage() {
               <Card className="border-blue-200 bg-blue-50">
                 <CardHeader>
                   <CardTitle className="text-blue-700 flex items-center space-x-2">
-                    <Sync className="h-5 w-5" />
+                    <RotateCcw className="h-5 w-5" />
                     <span>📊 Sincronizzazione MT5</span>
                   </CardTitle>
                   <CardDescription className="text-blue-600">
