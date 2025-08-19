@@ -61,8 +61,9 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   
-  // HTML Sync states
-  const [htmlFile, setHtmlFile] = useState<File | null>(null)
+  // MT5 Sync states
+  const [reportFile, setReportFile] = useState<File | null>(null)
+  const [fileType, setFileType] = useState<'html' | 'excel'>('html')
   const [syncMode, setSyncMode] = useState<'preview' | 'import'>('preview')
   const [clearBeforeSync, setClearBeforeSync] = useState(true)
   const [syncing, setSyncing] = useState(false)
@@ -171,32 +172,39 @@ export default function SettingsPage() {
     }
   }
 
-  // HTML Sync functions
+  // MT5 Sync functions
   const handleFileUpload = (file: File) => {
-    if (file.type === 'text/html' || file.name.endsWith('.html')) {
-      setHtmlFile(file)
+    const isHtml = file.type === 'text/html' || file.name.endsWith('.html')
+    const isExcel = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || file.name.endsWith('.xlsx')
+    
+    if (isHtml || isExcel) {
+      setReportFile(file)
+      setFileType(isHtml ? 'html' : 'excel')
       setSyncResult(null)
+      console.log(`📄 File uploaded: ${file.name} (${isHtml ? 'HTML' : 'Excel'})`)
     } else {
-      alert('Please select an HTML file')
+      alert('Please select an HTML (.html) or Excel (.xlsx) file')
     }
   }
 
-  const handleSyncHtml = async () => {
-    if (!selectedAccount || !htmlFile) {
-      alert('Please select an account and HTML file')
+  const handleSyncReport = async () => {
+    if (!selectedAccount || !reportFile) {
+      alert('Please select an account and report file')
       return
     }
 
     setSyncing(true)
     try {
       const formData = new FormData()
-      formData.append('htmlFile', htmlFile)
+      const fileKey = fileType === 'html' ? 'htmlFile' : 'excelFile'
+      formData.append(fileKey, reportFile)
       formData.append('options', JSON.stringify({
         clearExisting: clearBeforeSync,
         mode: syncMode
       }))
 
-      const response = await fetch(`/api/accounts/${selectedAccount.id}/sync-html`, {
+      const endpoint = fileType === 'html' ? 'sync-html' : 'sync-excel'
+      const response = await fetch(`/api/accounts/${selectedAccount.id}/${endpoint}`, {
         method: 'POST',
         body: formData
       })
@@ -211,10 +219,10 @@ export default function SettingsPage() {
         }
       } else {
         const error = await response.json()
-        alert(`Errore: ${error.error}`)
+        alert(`Errore: ${error.error}${error.debug ? '\n\nDebug: ' + JSON.stringify(error.debug, null, 2) : ''}`)
       }
     } catch (error) {
-      console.error('Error syncing HTML:', error)
+      console.error('Error syncing report:', error)
       alert('Errore durante la sincronizzazione')
     } finally {
       setSyncing(false)
@@ -393,39 +401,43 @@ export default function SettingsPage() {
                     <span>📊 Sincronizzazione MT5</span>
                   </CardTitle>
                   <CardDescription className="text-blue-600">
-                    Carica il report HTML di MT5 per sincronizzare i dati
+                    Carica il report HTML o Excel di MT5 per sincronizzare i dati
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   
                   {/* File Upload */}
                   <div className="space-y-2">
-                    <Label>Report HTML MT5</Label>
+                    <Label>Report MT5 ({fileType === 'html' ? 'HTML' : 'Excel'})</Label>
                     <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center">
                       <input
                         type="file"
-                        accept=".html"
+                        accept=".html,.xlsx"
                         onChange={(e) => {
                           const file = e.target.files?.[0]
                           if (file) handleFileUpload(file)
                         }}
                         className="hidden"
-                        id="html-upload"
+                        id="report-upload"
                       />
-                      <label htmlFor="html-upload" className="cursor-pointer">
+                      <label htmlFor="report-upload" className="cursor-pointer">
                         <Upload className="h-8 w-8 mx-auto text-blue-500 mb-2" />
                         <p className="text-blue-600 font-medium">
-                          {htmlFile ? htmlFile.name : 'Clicca per selezionare il file HTML'}
+                          {reportFile ? reportFile.name : 'Clicca per selezionare il file'}
                         </p>
                         <p className="text-sm text-gray-500 mt-1">
-                          Carica il report completo esportato da MT5
+                          Carica report HTML o Excel esportato da MT5
                         </p>
+                        <div className="mt-3 flex justify-center space-x-4 text-xs text-gray-600">
+                          <span className="bg-white px-2 py-1 rounded">.html</span>
+                          <span className="bg-white px-2 py-1 rounded">.xlsx</span>
+                        </div>
                       </label>
                     </div>
                   </div>
 
                   {/* Sync Options */}
-                  {htmlFile && (
+                  {reportFile && (
                     <div className="space-y-4 p-4 bg-white rounded-lg border">
                       <div className="flex items-center justify-between">
                         <Label>Modalità Sincronizzazione</Label>
@@ -454,7 +466,7 @@ export default function SettingsPage() {
                       </div>
 
                       <Button
-                        onClick={handleSyncHtml}
+                        onClick={handleSyncReport}
                         disabled={syncing}
                         className="w-full bg-blue-600 hover:bg-blue-700"
                       >
