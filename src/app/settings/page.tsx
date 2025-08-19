@@ -69,7 +69,10 @@ export default function SettingsPage() {
       const templatesResponse = await fetch('/api/propfirm-templates')
       if (templatesResponse.ok) {
         const templatesData = await templatesResponse.json()
+        console.log('📊 PropFirm data loaded:', templatesData.propFirms?.length || 0, 'firms')
         setPropFirms(templatesData.propFirms || [])
+      } else {
+        console.error('❌ Failed to fetch PropFirm templates:', templatesResponse.status)
       }
 
       // Fetch accounts
@@ -223,15 +226,19 @@ export default function SettingsPage() {
                       <SelectValue placeholder="Seleziona template" />
                     </SelectTrigger>
                     <SelectContent>
-                      {propFirms.map(firm => (
-                        <optgroup key={firm.id} label={firm.name}>
-                          {firm.templates.map(template => (
+                      {propFirms.length === 0 ? (
+                        <SelectItem value="" disabled>
+                          Nessun template disponibile
+                        </SelectItem>
+                      ) : (
+                        propFirms.flatMap(firm => 
+                          firm.templates.map(template => (
                             <SelectItem key={template.id} value={template.id}>
-                              {template.name} - {formatCurrency(template.accountSize, template.currency)}
+                              {firm.name} - {template.name} ({formatCurrency(template.accountSize, template.currency)})
                             </SelectItem>
-                          ))}
-                        </optgroup>
-                      ))}
+                          ))
+                        )
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
