@@ -119,28 +119,75 @@ async function handleTradeSyncSafe(account: any, trades: any[]) {
 //+------------------------------------------------------------------+
 async function handleMetricsSyncSafe(account: any, metrics: any) {
   try {
-    console.log('📊 Starting SAFE metrics sync...')
+    console.log('📊 Starting metrics sync with database storage...')
     
-    // Only basic account creation - no complex metrics processing
+    // Create/update account with PropFirm
     const accountRecord = await createOrUpdateAccountSafe(account)
     console.log('✅ Account processed for metrics:', accountRecord.id)
 
-    // Log metrics data but don't store in database yet
-    console.log('📈 Metrics received (safe mode):')
+    // Log metrics data
+    console.log('📈 Metrics received:')
     console.log('   Equity:', metrics.equity)
     console.log('   Balance:', metrics.balance)
     console.log('   Drawdown:', metrics.drawdown)
     console.log('   Daily P&L:', metrics.dailyPnL)
     
+    // Store metrics in database with safe error handling
+    try {
+      const currentDate = new Date()
+      const dateKey = currentDate.toISOString().split('T')[0]
+      
+      console.log('💾 Storing metrics in database for date:', dateKey)
+      
+      await db.metric.upsert({
+        where: {
+          accountId_date: {
+            accountId: accountRecord.id,
+            date: new Date(dateKey)
+          }
+        },
+        update: {
+          dailyPnL: Number(metrics.dailyPnL) || 0,
+          cumulativePnL: Number(metrics.totalPnL) || 0,
+          currentDrawdown: Number(metrics.drawdown) || 0,
+          maxDrawdown: Number(metrics.maxDrawdown) || 0,
+          accountBalance: Number(metrics.balance) || null,
+          equity: Number(metrics.equity) || null,
+          phase: mapPhaseSafe(metrics.phase),
+          tradingDays: Number(metrics.tradingDays) || null,
+        },
+        create: {
+          accountId: accountRecord.id,
+          date: new Date(dateKey),
+          dailyPnL: Number(metrics.dailyPnL) || 0,
+          cumulativePnL: Number(metrics.totalPnL) || 0,
+          maxDailyLoss: 0,
+          totalMaxLoss: 0,
+          currentDrawdown: Number(metrics.drawdown) || 0,
+          maxDrawdown: Number(metrics.maxDrawdown) || 0,
+          accountBalance: Number(metrics.balance) || null,
+          equity: Number(metrics.equity) || null,
+          phase: mapPhaseSafe(metrics.phase),
+          tradingDays: Number(metrics.tradingDays) || null,
+        }
+      })
+      
+      console.log('✅ Metrics stored in database successfully')
+      
+    } catch (metricsError: any) {
+      console.error('❌ Error storing metrics (continuing anyway):', metricsError)
+      // Continue without failing the whole request
+    }
+    
     return NextResponse.json({
       success: true,
-      message: 'Metrics acknowledged successfully (safe mode)',
-      mode: 'safe',
+      message: 'Metrics processed successfully',
+      mode: 'enhanced',
       timestamp: new Date().toISOString()
     })
   } catch (error: any) {
-    console.error('❌ Error in safe metrics sync:', error)
-    console.error('❌ Safe metrics sync stack:', error.stack)
+    console.error('❌ Error in metrics sync:', error)
+    console.error('❌ Metrics sync stack:', error.stack)
     throw error
   }
 }
