@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { ArrowLeft, Settings, CheckCircle, AlertCircle, DollarSign, Target, Shield, Trash2, Upload, FileText, Sync } from 'lucide-react'
-import { Checkbox } from '@/components/ui/checkbox'
 import Link from 'next/link'
 
 interface PropFirmTemplate {
@@ -68,7 +67,6 @@ export default function SettingsPage() {
   const [clearBeforeSync, setClearBeforeSync] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<any>(null)
-  const [dragActive, setDragActive] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -183,26 +181,27 @@ export default function SettingsPage() {
     }
   }
 
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true)
-    } else if (e.type === 'dragleave') {
-      setDragActive(false)
-    }
-  }
+  // Simplified file upload without drag and drop for now
+  // const handleDrag = (e: React.DragEvent) => {
+  //   e.preventDefault()
+  //   e.stopPropagation()
+  //   if (e.type === 'dragenter' || e.type === 'dragover') {
+  //     setDragActive(true)
+  //   } else if (e.type === 'dragleave') {
+  //     setDragActive(false)
+  //   }
+  // }
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setDragActive(false)
-    
-    const files = Array.from(e.dataTransfer.files)
-    if (files.length > 0) {
-      handleFileUpload(files[0])
-    }
-  }
+  // const handleDrop = (e: React.DragEvent) => {
+  //   e.preventDefault()
+  //   e.stopPropagation()
+  //   setDragActive(false)
+  //   
+  //   const files = Array.from(e.dataTransfer.files)
+  //   if (files.length > 0) {
+  //     handleFileUpload(files[0])
+  //   }
+  // }
 
   const handleSyncHtml = async () => {
     if (!selectedAccount || !htmlFile) {
@@ -417,15 +416,7 @@ export default function SettingsPage() {
                   <div className="space-y-2">
                     <Label>Report HTML MT5</Label>
                     <div 
-                      className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                        dragActive 
-                          ? 'border-blue-400 bg-blue-100' 
-                          : 'border-gray-300 hover:border-gray-400'
-                      }`}
-                      onDragEnter={handleDrag}
-                      onDragLeave={handleDrag}
-                      onDragOver={handleDrag}
-                      onDrop={handleDrop}
+                      className="border-2 border-dashed rounded-lg p-8 text-center transition-colors border-gray-300 hover:border-gray-400"
                     >
                       {htmlFile ? (
                         <div className="space-y-2">
@@ -449,7 +440,7 @@ export default function SettingsPage() {
                           <Upload className="h-12 w-12 mx-auto text-gray-400" />
                           <div>
                             <p className="text-sm text-gray-600 mb-2">
-                              Trascina il file HTML qui o clicca per selezionare
+                              Seleziona il file HTML del report MT5
                             </p>
                             <Button
                               variant="outline"
@@ -479,10 +470,12 @@ export default function SettingsPage() {
                   {/* Sync Options */}
                   <div className="space-y-4">
                     <div className="flex items-center space-x-2">
-                      <Checkbox 
+                      <input
+                        type="checkbox"
                         id="clearBeforeSync"
                         checked={clearBeforeSync}
-                        onCheckedChange={(checked) => setClearBeforeSync(checked as boolean)}
+                        onChange={(e) => setClearBeforeSync(e.target.checked)}
+                        className="h-4 w-4 rounded border-gray-300"
                       />
                       <Label htmlFor="clearBeforeSync" className="text-sm">
                         Pulisci dati esistenti prima di importare (raccomandato)
