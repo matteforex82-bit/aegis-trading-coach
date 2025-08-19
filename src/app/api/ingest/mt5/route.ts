@@ -57,11 +57,21 @@ export async function POST(request: NextRequest) {
       return await handleTradeSyncSafe(account, trades)
     } else if (metrics) {
       console.log('📊 Processing metrics sync')
-      // If openPositions are included, sync them too
+      
+      // FIRST: Sync open positions if included (before metrics)
       if (openPositions && Array.isArray(openPositions)) {
         console.log('🔴 Syncing', openPositions.length, 'open positions')
-        await syncOpenPositionsSafe(account, openPositions)
+        try {
+          await syncOpenPositionsSafe(account, openPositions)
+          console.log('✅ Open positions sync completed successfully')
+        } catch (error: any) {
+          console.error('❌ Open positions sync failed:', error.message)
+          // Continue with metrics sync even if positions fail
+        }
+      } else {
+        console.log('⚠️ No openPositions found in payload')
       }
+      
       return await handleMetricsSyncSafe(account, metrics)
     } else {
       console.log('❌ No valid data type found')
@@ -245,22 +255,29 @@ async function createOrUpdateAccountSafe(account: any) {
     if (account.propFirm) {
       console.log('🏢 Processing PropFirm:', account.propFirm)
       try {
-        const propFirm = await db.propFirm.upsert({
-          where: { name: account.propFirm },
-          update: {
-            isActive: true
-          },
-          create: {
-            name: account.propFirm,
-            description: `${account.propFirm} Prop Trading Firm`,
-            defaultRules: {
-              profitTarget: account.profitTarget || null,
-              maxDailyLoss: account.maxDailyLoss || null,
-              maxTotalLoss: account.maxTotalLoss || null,
-              maxDrawdown: account.maxDrawdown || null
-            }
-          }
+        // Find existing PropFirm or create new one
+        let propFirm = await db.propFirm.findFirst({
+          where: { name: account.propFirm }
         })
+        
+        if (!propFirm) {
+          console.log('🔄 Creating new PropFirm:', account.propFirm)
+          propFirm = await db.propFirm.create({
+            data: {
+              name: account.propFirm,
+              description: `${account.propFirm} Prop Trading Firm`,
+              defaultRules: {
+                profitTarget: account.profitTarget || null,
+                maxDailyLoss: account.maxDailyLoss || null,
+                maxTotalLoss: account.maxTotalLoss || null,
+                maxDrawdown: account.maxDrawdown || null
+              }
+            }
+          })
+        } else {
+          console.log('📝 Found existing PropFirm:', propFirm.id)
+        }
+        
         propFirmId = propFirm.id
         console.log('✅ PropFirm processed:', propFirmId)
       } catch (propFirmError: any) {
@@ -471,18 +488,20 @@ async function createTradeSafe(trade: any, accountId: string) {
 async function syncOpenPositionsSafe(account: any, openPositions: any[]) {
   try {
     console.log('🔴 Starting open positions sync...')
+    console.log('🔍 OpenPositions payload:', JSON.stringify(openPositions, null, 2))
     
     // Get account first
     const accountRecord = await createOrUpdateAccountSafe(account)
+    console.log('✅ Account retrieved:', accountRecord.id)
     
     // Clear old open positions for this account first
-    await db.trade.deleteMany({
+    const deletedCount = await db.trade.deleteMany({
       where: { 
         accountId: accountRecord.id,
         closeTime: null 
       }
     })
-    console.log('✅ Cleared old open positions')
+    console.log('✅ Cleared', deletedCount.count, 'old open positions')
     
     let syncedPositions = 0
     
@@ -491,6 +510,7 @@ async function syncOpenPositionsSafe(account: any, openPositions: any[]) {
         await db.trade.create({
           data: {
             ticketId: String(position.ticket_id),
+            positionId: String(position.ticket_id), // Use ticket as position ID for open positions
             symbol: position.symbol,
             side: position.side === 'buy' ? 'BUY' : 'SELL',
             volume: Number(position.volume),
