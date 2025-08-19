@@ -3,11 +3,12 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { BarChart3, List } from 'lucide-react'
+import { BarChart3, List, Settings } from 'lucide-react'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: BarChart3 },
   { name: 'Operazioni', href: '/trades', icon: List },
+  { name: 'Impostazioni', href: '/settings', icon: Settings },
 ]
 
 export function Navigation() {
