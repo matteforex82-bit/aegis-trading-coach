@@ -29,26 +29,41 @@ export async function GET(
       orderBy: { createdAt: 'desc' }
     })
 
-    // Calculate metrics from real trades
+    // Calculate metrics from real trades (using net P&L like MT5)
     const totalTrades = trades.length
-    const winningTrades = trades.filter(t => (t.pnlGross || 0) > 0).length
-    const losingTrades = trades.filter(t => (t.pnlGross || 0) < 0).length
+    const winningTrades = trades.filter(t => {
+      const netPnL = (t.pnlGross || 0) + (t.swap || 0) + (t.commission || 0)
+      return netPnL > 0
+    }).length
+    const losingTrades = trades.filter(t => {
+      const netPnL = (t.pnlGross || 0) + (t.swap || 0) + (t.commission || 0)
+      return netPnL < 0
+    }).length
     const winRate = totalTrades > 0 ? (winningTrades / totalTrades) * 100 : 0
 
     const totalVolume = trades.reduce((sum, t) => sum + (t.volume || 0), 0)
     const totalCommission = trades.reduce((sum, t) => sum + (t.commission || 0), 0)
     const totalSwap = trades.reduce((sum, t) => sum + (t.swap || 0), 0)
-    const totalPnL = trades.reduce((sum, t) => sum + (t.pnlGross || 0), 0)
+    // Calculate total P&L including swap and commission (like MT5)
+    const totalPnL = trades.reduce((sum, t) => {
+      const grossPnL = t.pnlGross || 0
+      const swap = t.swap || 0
+      const commission = t.commission || 0
+      return sum + grossPnL + swap + commission
+    }, 0)
 
     // Calculate drawdown (simplified - from start balance)
     const startBalance = account.startBalance || 50000
     const currentBalance = startBalance + totalPnL
     const currentDrawdown = Math.max(0, ((startBalance - currentBalance) / startBalance) * 100)
 
-    // Find max/min losses
+    // Find max/min losses (using net P&L)
     const dailyLosses = trades
-      .filter(t => (t.pnlGross || 0) < 0)
-      .map(t => t.pnlGross || 0)
+      .filter(t => {
+        const netPnL = (t.pnlGross || 0) + (t.swap || 0) + (t.commission || 0)
+        return netPnL < 0
+      })
+      .map(t => (t.pnlGross || 0) + (t.swap || 0) + (t.commission || 0))
     
     const maxDailyLoss = dailyLosses.length > 0 ? Math.min(...dailyLosses) : 0
     const totalMaxLoss = Math.min(0, totalPnL)

@@ -81,7 +81,7 @@ export default function TradesPage() {
         closePrice: trade.closePrice || undefined,
         openTime: trade.openTime,
         closeTime: trade.closeTime || undefined,
-        pnl: trade.pnlGross || 0,
+        pnl: (trade.pnlGross || 0) + (trade.swap || 0) + (trade.commission || 0), // Net P&L like MT5
         commission: trade.commission || 0,
         swap: trade.swap || 0,
         comment: trade.comment,
