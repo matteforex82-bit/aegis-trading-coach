@@ -511,6 +511,7 @@ async function syncOpenPositionsSafe(account: any, openPositions: any[]) {
           data: {
             ticketId: String(position.ticket_id),
             positionId: String(position.ticket_id), // Use ticket as position ID for open positions
+            orderId: String(position.ticket_id), // Use ticket as order ID for open positions
             symbol: position.symbol,
             side: position.side === 'buy' ? 'BUY' : 'SELL',
             volume: Number(position.volume),
