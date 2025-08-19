@@ -89,27 +89,63 @@ export async function POST(request: NextRequest) {
 //+------------------------------------------------------------------+
 async function handleTradeSyncSafe(account: any, trades: any[]) {
   try {
-    console.log('🚀 Starting SAFE trade sync...')
+    console.log('🚀 Starting FULL trade sync...')
     
-    // Only basic account creation - no PropFirm yet
+    // Create/update account with PropFirm
     const accountRecord = await createOrUpdateAccountSafe(account)
     console.log('✅ Account processed:', accountRecord.id)
 
-    // For now, just acknowledge trades without processing
-    console.log('📊 Acknowledging', trades.length, 'trades (safe mode)')
+    // Process trades with safe error handling
+    let processedTrades = 0
+    let skippedTrades = 0
+    
+    console.log('📊 Processing', trades.length, 'trades...')
+    
+    for (const trade of trades) {
+      try {
+        console.log('🔄 Processing trade:', trade.ticket_id || trade.ticket)
+        
+        // Check if trade already exists
+        const ticketId = trade.ticket_id?.toString() || trade.ticket?.toString()
+        if (!ticketId) {
+          console.log('⚠️ Trade missing ticket ID, skipping')
+          skippedTrades++
+          continue
+        }
+        
+        const existingTrade = await db.trade.findUnique({
+          where: { ticketId: ticketId }
+        })
+
+        if (!existingTrade) {
+          // Create trade with safe error handling
+          await createTradeSafe(trade, accountRecord.id)
+          processedTrades++
+          console.log('✅ Trade processed:', ticketId)
+        } else {
+          skippedTrades++
+          console.log('⏭️ Trade exists, skipping:', ticketId)
+        }
+      } catch (tradeError: any) {
+        console.error('❌ Error processing trade (continuing):', tradeError.message)
+        skippedTrades++
+      }
+    }
+
+    console.log(`🎉 Trade sync completed: ${processedTrades} processed, ${skippedTrades} skipped`)
     
     return NextResponse.json({
       success: true,
-      message: 'Trades acknowledged successfully (safe mode)',
-      processedTrades: 0,
-      acknowledgedTrades: trades.length,
+      message: 'Trades processed successfully',
+      processedTrades: processedTrades,
+      skippedTrades: skippedTrades,
       accountLogin: account.login,
-      mode: 'safe',
+      mode: 'full',
       dashboardUrl: process.env.NEXTAUTH_URL || 'https://new2dash.vercel.app'
     })
   } catch (error: any) {
-    console.error('❌ Error in safe trade sync:', error)
-    console.error('❌ Safe trade sync stack:', error.stack)
+    console.error('❌ Error in trade sync:', error)
+    console.error('❌ Trade sync stack:', error.stack)
     throw error
   }
 }
@@ -330,5 +366,96 @@ function mapPhaseSafe(value: any): string | null {
   } catch (error) {
     console.error('Error mapping phase:', error)
     return 'DEMO'
+  }
+}
+
+//+------------------------------------------------------------------+
+//| Create Trade Safely                                            |
+//+------------------------------------------------------------------+
+async function createTradeSafe(trade: any, accountId: string) {
+  try {
+    // Parse and validate all required fields with safe defaults
+    const ticketId = trade.ticket_id?.toString() || trade.ticket?.toString()
+    const positionId = trade.position_id?.toString() || '0'
+    const orderId = trade.order_id?.toString() || trade.order?.toString() || '0'
+    const symbol = trade.symbol || 'UNKNOWN'
+    const side = trade.side || 'buy'
+    const volume = Number(trade.volume) || 0
+    
+    // Handle dates safely
+    let openTime = new Date()
+    if (trade.open_time) {
+      try {
+        openTime = new Date(trade.open_time)
+      } catch (dateError) {
+        console.log('Warning: Invalid open_time, using current time')
+      }
+    }
+    
+    let closeTime = null
+    if (trade.close_time) {
+      try {
+        closeTime = new Date(trade.close_time)
+      } catch (dateError) {
+        console.log('Warning: Invalid close_time, using null')
+      }
+    }
+    
+    // Handle numeric fields safely
+    const openPrice = Number(trade.open_price) || Number(trade.price) || 0
+    const closePrice = Number(trade.close_price) || 0
+    const sl = trade.sl ? Number(trade.sl) : null
+    const tp = trade.tp ? Number(trade.tp) : null
+    const commission = Number(trade.commission) || 0
+    const swap = Number(trade.swap) || 0
+    const taxes = Number(trade.taxes) || 0
+    const pnlGross = Number(trade.pnl_gross) || Number(trade.pnl) || 0
+    
+    // Create trade in database
+    return await db.trade.create({
+      data: {
+        // Basic MT5 fields
+        ticketId: ticketId,
+        positionId: positionId,
+        orderId: orderId,
+        symbol: symbol,
+        side: side,
+        volume: volume,
+        openTime: openTime,
+        closeTime: closeTime,
+        openPrice: openPrice,
+        closePrice: closePrice,
+        sl: sl,
+        tp: tp,
+        commission: commission,
+        swap: swap,
+        taxes: taxes,
+        pnlGross: pnlGross,
+        comment: trade.comment || null,
+        magic: trade.magic ? Number(trade.magic) : null,
+        dealReason: trade.deal_reason || null,
+        closeReason: trade.close_reason || null,
+        accountId: accountId,
+        
+        // PropFirm extensions with safe defaults
+        tradePhase: mapPhaseSafe(trade.phase),
+        violatesRules: Boolean(trade.violatesRules),
+        equityAtOpen: trade.equityAtOpen ? Number(trade.equityAtOpen) : null,
+        equityAtClose: trade.equityAtClose ? Number(trade.equityAtClose) : null,
+        drawdownAtOpen: trade.drawdownAtOpen ? Number(trade.drawdownAtOpen) : null,
+        drawdownAtClose: trade.drawdownAtClose ? Number(trade.drawdownAtClose) : null,
+        dailyPnLAtOpen: trade.dailyPnLAtOpen ? Number(trade.dailyPnLAtOpen) : null,
+        dailyPnLAtClose: trade.dailyPnLAtClose ? Number(trade.dailyPnLAtClose) : null,
+        isWeekendTrade: Boolean(trade.isWeekendTrade),
+        newsTime: Boolean(trade.newsTime),
+        holdingTime: trade.holdingTime ? Number(trade.holdingTime) : null,
+        riskReward: trade.riskReward ? Number(trade.riskReward) : null,
+        riskPercent: trade.riskPercent ? Number(trade.riskPercent) : null,
+      }
+    })
+  } catch (error: any) {
+    console.error('❌ Error creating trade safely:', error.message)
+    console.error('❌ Trade data:', JSON.stringify(trade, null, 2))
+    throw error
   }
 }
