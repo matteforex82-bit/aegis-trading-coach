@@ -79,6 +79,17 @@ export default function Dashboard() {
     }
   }, [selectedAccount])
 
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    if (selectedAccount) {
+      const interval = setInterval(() => {
+        fetchMetrics(selectedAccount.id)
+      }, 30000) // 30 seconds
+      
+      return () => clearInterval(interval)
+    }
+  }, [selectedAccount])
+
   const fetchAccounts = async () => {
     try {
       const response = await fetch('/api/accounts')
