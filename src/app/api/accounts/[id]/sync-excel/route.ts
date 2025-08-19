@@ -166,11 +166,11 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
   const mainData = XLSX.utils.sheet_to_json(mainSheet, { header: 1 }) as any[][]
   console.log(`📊 Total rows in sheet: ${mainData.length}`)
   
-  // DEBUG: Print first 20 rows to understand structure
-  console.log('🔍 DEBUG - First 20 rows of Excel data:')
-  for (let i = 0; i < Math.min(mainData.length, 20); i++) {
+  // DEBUG: Print first 30 rows to understand structure
+  console.log('🔍 DEBUG - First 30 rows of Excel data:')
+  for (let i = 0; i < Math.min(mainData.length, 30); i++) {
     const row = mainData[i] || []
-    console.log(`Row ${i}:`, row.slice(0, 5)) // Show first 5 columns of each row
+    console.log(`Row ${i}:`, row) // Show ALL columns of each row
   }
   
   // Search for account info in the data
@@ -338,10 +338,18 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
         
         console.log(`🔍 Close validation - hasCloseTime: ${hasCloseTime}, hasClosePrice: ${hasClosePrice}`)
         
-        // Only add if this looks like a completed trade (has close data)
-        if (ticketId && symbol && (hasCloseTime || hasClosePrice)) {
-          // Ensure we have a proper closeTime - if not provided, use openTime + 1 hour as fallback
-          const finalCloseTime = hasCloseTime ? closeTime : (hasClosePrice ? openTime : closeTime)
+        // FIXED: For historical MT5 reports, all trades in Positions section are closed trades
+        // If we have ticket, symbol, and either closePrice OR closeTime, it's a valid closed trade
+        if (ticketId && symbol && (hasCloseTime || hasClosePrice || closePrice > 0)) {
+          // For MT5 historical data, if we don't have explicit closeTime, use openTime + small offset
+          let finalCloseTime = closeTime
+          if (!hasCloseTime && hasClosePrice) {
+            // Add 1 minute to openTime as fallback closeTime
+            const openDate = new Date(openTime)
+            openDate.setMinutes(openDate.getMinutes() + 1)
+            finalCloseTime = openDate.toISOString()
+            console.log(`🔧 Generated closeTime from openTime: ${finalCloseTime}`)
+          }
           
           closedTrades.push({
             ticketId,
@@ -349,7 +357,7 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
             side,
             volume,
             openPrice,
-            closePrice,
+            closePrice: closePrice || openPrice, // Use openPrice if no closePrice
             openTime,
             closeTime: finalCloseTime,
             pnlGross: pnlGross - swap - commission,
@@ -357,9 +365,11 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
             commission,
             comment: ''
           })
-          console.log(`✅ Added trade: ${ticketId} ${symbol} ${side} ${volume} - CloseTime: ${finalCloseTime}`)
+          console.log(`✅ Added closed trade: ${ticketId} ${symbol} ${side} ${volume}`)
+          console.log(`   OpenTime: ${openTime} -> CloseTime: ${finalCloseTime}`)
+          console.log(`   P&L: ${pnlGross}, Commission: ${commission}, Swap: ${swap}`)
         } else {
-          console.log(`❌ Rejected trade - Missing closeTime or invalid data`)
+          console.log(`❌ Rejected trade - Ticket: "${ticketId}", Symbol: "${symbol}", ClosePrice: ${closePrice}`)
         }
       }
     }

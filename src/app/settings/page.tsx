@@ -187,6 +187,47 @@ export default function SettingsPage() {
     }
   }
 
+  const handleTestExcel = async () => {
+    if (!selectedAccount || !reportFile || fileType !== 'excel') {
+      alert('Please select an Excel file first')
+      return
+    }
+
+    setSyncing(true)
+    try {
+      const formData = new FormData()
+      formData.append('excelFile', reportFile)
+
+      const response = await fetch(`/api/accounts/${selectedAccount.id}/test-excel`, {
+        method: 'POST',
+        body: formData
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        console.log('🔬 EXCEL TEST RESULTS:', result.debug)
+        
+        alert(`Excel Test Results:
+
+File: ${result.debug.fileName}
+Total Rows: ${result.debug.totalRows}
+Account Found: ${result.debug.accountFound ? 'YES' : 'NO'} (${result.debug.accountLogin})
+Positions Section: ${result.debug.positionsFound ? 'YES' : 'NO'} (row ${result.debug.positionsRowIndex})
+Trade Rows Found: ${result.debug.tradeRowsFound}
+
+Check console for detailed data structure`)
+      } else {
+        const error = await response.json()
+        alert(`Test failed: ${error.error}`)
+      }
+    } catch (error) {
+      console.error('Error testing Excel:', error)
+      alert('Test failed')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   const handleSyncReport = async () => {
     if (!selectedAccount || !reportFile) {
       alert('Please select an account and report file')
@@ -465,17 +506,28 @@ export default function SettingsPage() {
                         </Label>
                       </div>
 
-                      <Button
-                        onClick={handleSyncReport}
-                        disabled={syncing}
-                        className="w-full bg-blue-600 hover:bg-blue-700"
-                      >
-                        {syncing ? (
-                          <>🔄 Sincronizzando...</>
-                        ) : (
-                          <>{syncMode === 'preview' ? '👀 Anteprima Dati' : '💾 Importa Dati'}</>
-                        )}
-                      </Button>
+                      <div className="space-y-2">
+                        <Button
+                          onClick={handleTestExcel}
+                          disabled={syncing || fileType !== 'excel'}
+                          variant="outline"
+                          className="w-full"
+                        >
+                          🔬 Test Parsing Excel
+                        </Button>
+                        
+                        <Button
+                          onClick={handleSyncReport}
+                          disabled={syncing}
+                          className="w-full bg-blue-600 hover:bg-blue-700"
+                        >
+                          {syncing ? (
+                            <>🔄 Sincronizzando...</>
+                          ) : (
+                            <>{syncMode === 'preview' ? '👀 Anteprima Dati' : '💾 Importa Dati'}</>
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   )}
 
