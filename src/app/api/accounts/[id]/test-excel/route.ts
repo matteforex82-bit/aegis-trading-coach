@@ -66,8 +66,20 @@ export async function POST(
     
     if (positionsRowIndex >= 0) {
       // Look for data rows after positions header
-      for (let i = positionsRowIndex + 1; i < Math.min(positionsRowIndex + 20, mainData.length); i++) {
+      for (let i = positionsRowIndex + 1; i < Math.min(positionsRowIndex + 100, mainData.length); i++) {
         const row = mainData[i] || []
+        
+        // Stop if we reach Orders or Deals sections
+        const firstCell = String(row[0] || '').toLowerCase().trim()
+        if (firstCell.includes('orders') || firstCell.includes('deals')) {
+          console.log(`📋 Stopping at row ${i} - reached ${firstCell} section`)
+          break
+        }
+        
+        // Skip empty rows but continue parsing
+        if (row.length === 0 || row.every(cell => !cell || String(cell).trim() === '')) {
+          continue
+        }
         
         // Look for rows that might be trades (have ticket numbers)
         if (row.length > 5) {

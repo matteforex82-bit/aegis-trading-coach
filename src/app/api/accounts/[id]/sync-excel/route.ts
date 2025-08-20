@@ -277,11 +277,24 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
   if (positionsHeaderIndex >= 0) {
     console.log(`🔍 Looking for trade data after position row ${positionsHeaderIndex}`)
     
-    // Look for data rows after positions header (EXACT same range as test-excel)
-    for (let i = positionsHeaderIndex + 1; i < Math.min(positionsHeaderIndex + 20, mainData.length); i++) {
+    // Look for data rows after positions header (EXPANDED range for complete import)
+    for (let i = positionsHeaderIndex + 1; i < Math.min(positionsHeaderIndex + 100, mainData.length); i++) {
       const row = mainData[i] || []
       
       console.log(`🔍 Checking potential trade row ${i}:`, row.slice(0, 8))
+      
+      // Stop if we reach Orders or Deals sections
+      const firstCell = String(row[0] || '').toLowerCase().trim()
+      if (firstCell.includes('orders') || firstCell.includes('deals')) {
+        console.log(`📋 Stopping at row ${i} - reached ${firstCell} section`)
+        break
+      }
+      
+      // Skip empty rows but continue parsing
+      if (row.length === 0 || row.every(cell => !cell || String(cell).trim() === '')) {
+        console.log(`⏭️ Skipping empty row ${i}`)
+        continue
+      }
       
       // EXACT same validation as test-excel: look for rows that might be trades
       if (row.length > 5) {
