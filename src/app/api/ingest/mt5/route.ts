@@ -601,6 +601,8 @@ async function syncOpenPositionsSafe(account: any, openPositions: any[]) {
         }
       } catch (error: any) {
         console.error(`❌ Error syncing position ${position.ticket_id}:`, error.message)
+        console.error(`❌ Full error details:`, error)
+        console.error(`❌ Position data:`, JSON.stringify(position, null, 2))
       }
     }
     

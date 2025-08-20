@@ -834,8 +834,8 @@ export default function AccountDashboard() {
           </div>
         )}
 
-        {/* Action Button */}
-        <div className="flex justify-center pt-6">
+        {/* Action Buttons */}
+        <div className="flex justify-center gap-4 pt-6">
           <Link href={`/account/${accountId}/trades`}>
             <Button size="lg" className="bg-slate-800 hover:bg-slate-700 text-white px-8 py-3">
               <Eye className="h-5 w-5 mr-2" />
@@ -843,6 +843,34 @@ export default function AccountDashboard() {
               <ArrowRight className="h-5 w-5 ml-2" />
             </Button>
           </Link>
+          
+          <Button 
+            size="lg" 
+            variant="outline"
+            className="border-2 border-orange-500 text-orange-600 hover:bg-orange-50 px-6 py-3"
+            onClick={async () => {
+              const confirmed = confirm('🧹 ATTENZIONE: Questa operazione cancellerà TUTTE le posizioni live dal database per preparare la sincronizzazione fresca con l\'EA. Procedere?')
+              if (confirmed) {
+                try {
+                  const response = await fetch(`/api/accounts/${accountId}/cleanup-live`, {
+                    method: 'POST'
+                  })
+                  const data = await response.json()
+                  
+                  if (data.success) {
+                    alert(`✅ Pulizia completata! Cancellate ${data.deletedCount} posizioni live. Ora puoi avviare l'EA per la sincronizzazione fresca.`)
+                    window.location.reload()
+                  } else {
+                    alert(`❌ Errore durante la pulizia: ${data.error}`)
+                  }
+                } catch (error) {
+                  alert(`❌ Errore di rete durante la pulizia: ${error}`)
+                }
+              }
+            }}
+          >
+            🧹 Pulisci Live
+          </Button>
         </div>
       </div>
     </DashboardLayout>

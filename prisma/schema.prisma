@@ -180,7 +180,7 @@ model Challenge {
 
 model Trade {
   id            String   @id @default(cuid())
-  ticketId      String   @unique // MT5 ticket ID
+  ticketId      String   // MT5 ticket ID (unique per account+status)
   positionId    String
   orderId       String
   symbol        String
@@ -229,6 +229,8 @@ model Trade {
   account       Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
   challenge     Challenge? @relation(fields: [challengeId], references: [id])
   
+  // Unique constraints
+  @@unique([accountId, ticketId])  // Same ticketId allowed in different accounts
   @@map("trades")
 }
 
