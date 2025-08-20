@@ -421,18 +421,23 @@ bool SendHTTPRequest(string payload)
 //+------------------------------------------------------------------+
 string CleanJsonString(string input)
 {
-    // Semplice pulizia per JSON - rimuove caratteri problematici
-    string output = input;
+    // Semplice pulizia per JSON - sostituisce caratteri problematici con spazi
+    string result = input;
     
-    // Sostituisci caratteri di escape manualmente
-    for(int i = 0; i < StringLen(output); i++)
+    // Sostituisce virgolette con underscore per evitare problemi JSON
+    int len = StringLen(result);
+    for(int i = 0; i < len; i++)
     {
-        ushort ch = StringGetCharacter(output, i);
-        if(ch == '"' || ch == '\r' || ch == '\n' || ch == '\t')
+        ushort char_code = StringGetCharacter(result, i);
+        if(char_code == 34) // virgolette "
         {
-            StringSetCharacter(output, i, ' '); // Sostituisci con spazio
+            StringSetCharacter(result, i, 95); // underscore _
+        }
+        else if(char_code < 32) // caratteri di controllo (tab, newline, etc.)
+        {
+            StringSetCharacter(result, i, 32); // spazio
         }
     }
     
-    return output;
+    return result;
 }
