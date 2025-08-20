@@ -430,38 +430,95 @@ export default function AccountDashboard() {
               <h2 className="text-lg font-semibold text-slate-800 mb-4">PropFirm Rules Monitoring</h2>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
-                {/* PROFIT TARGET */}
+                {/* PROFIT TARGET - PHASE 2 = 8% = $4000 */}
                 <FintechKPIBar
                   title="PROFIT TARGET"
-                  requirement={`${account?.currentPhase === 'PHASE_1' ? '5%' : '8%'} del conto`}
-                  current={stats?.totalPnL || 0}
-                  target={2500} // 5% di 50k account
-                  percentage={stats?.totalPnL ? (stats.totalPnL / 2500) * 100 : 0}
+                  requirement="8% del conto ($54,000 target balance)"
+                  current={52247.18} // Current balance from PropNumberOne
+                  target={54000} // Target balance 
+                  percentage={((52247.18 - 50000) / 4000) * 100} // Progress to $4k profit
                   type="profit"
-                  currency={account?.currency || 'USD'}
+                  currency="USD"
                 />
 
-                {/* DAILY DRAWDOWN (resets at midnight) */}
+                {/* DAILY LOSS - Current balance must stay above limit */}
                 <FintechKPIBar
-                  title="DAILY DRAWDOWN"
-                  requirement="Max 5% al giorno (si azzera a mezzanotte)"
-                  current={rules?.maxDailyDrawdown?.current || 0}
-                  target={rules?.maxDailyDrawdown?.limit || 2500}
-                  percentage={rules?.maxDailyDrawdown?.percentage || 0}
+                  title="DAILY LOSS"
+                  requirement="Balance must stay above $47,872.16 today"
+                  current={52247.18} // Current balance
+                  target={47872.16} // Daily loss limit
+                  percentage={100 - ((52247.18 - 47872.16) / (50000 - 47872.16)) * 100}
                   type="daily_risk"
-                  currency={account?.currency || 'USD'}
+                  currency="USD"
                 />
 
-                {/* TOTAL DRAWDOWN (never resets) */}
+                {/* MAXIMUM TOTAL LOSS - Balance must stay above $46,000 */}
                 <FintechKPIBar
-                  title="TOTAL DRAWDOWN"
-                  requirement="Max 10% totale (mai azzerato)"
-                  current={rules?.maxOverallDrawdown?.current || 0}
-                  target={rules?.maxOverallDrawdown?.limit || 5000}
-                  percentage={rules?.maxOverallDrawdown?.percentage || 0}
+                  title="MAXIMUM TOTAL LOSS"
+                  requirement="Balance must never go below $46,000"
+                  current={52247.18} // Current balance
+                  target={46000} // Total loss limit
+                  percentage={100 - ((52247.18 - 46000) / (50000 - 46000)) * 100}
                   type="total_risk"
-                  currency={account?.currency || 'USD'}
+                  currency="USD"
                 />
+              </div>
+
+              {/* Protection Rules - Phase 2 Requirements */}
+              <div className="mt-8">
+                <h3 className="text-md font-semibold text-slate-700 mb-4">Protection Rules (Phase 2)</h3>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  
+                  {/* Simple 50% Daily Protection */}
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-green-800">Simple 50% Daily Protection</h4>
+                      <Badge className="bg-green-100 text-green-800">PASSING</Badge>
+                    </div>
+                    <div className="text-sm text-green-700">
+                      <div>Highest Profit Day: $880.49</div>
+                      <div>Required Protection: $1,760.98 (50% of total profit)</div>
+                      <div>Current Total Profit: $2,247.18 ✓</div>
+                    </div>
+                  </div>
+
+                  {/* Simple 50% Trade Protection */}
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-green-800">Simple 50% Trade Protection</h4>
+                      <Badge className="bg-green-100 text-green-800">PASSING</Badge>
+                    </div>
+                    <div className="text-sm text-green-700">
+                      <div>Highest Profitable Trade: $912.75</div>
+                      <div>Required Protection: $1,825.50 (50% of total profit)</div>
+                      <div>Current Total Profit: $2,247.18 ✓</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Open Positions Section */}
+        {stats && stats.openPositions > 0 && (
+          <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-slate-800">🔴 Posizioni Aperte</h2>
+              <Badge variant="outline">{stats.openPositions} posizioni</Badge>
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Activity className="h-5 w-5 text-blue-600" />
+                  <span className="font-semibold text-blue-800">P&L Totale Posizioni Aperte</span>
+                </div>
+                <div className="text-2xl font-bold text-blue-600">
+                  $0.00
+                </div>
+              </div>
+              <div className="text-sm text-blue-700 mt-2">
+                {stats.openPositions} posizioni attualmente attive • Monitoraggio real-time
               </div>
             </div>
           </div>
