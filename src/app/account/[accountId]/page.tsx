@@ -90,64 +90,66 @@ interface RuleMetrics {
   isCompliant: boolean
 }
 
-// ✨ SPECTACULAR VISUAL PROGRESS BAR with AMAZING COLORS! ✨
-function SpectacularKPIBar({ 
-  label, 
+// 🏦 PROFESSIONAL FINTECH KPI PROGRESS BAR
+function FintechKPIBar({ 
+  title,
+  requirement,
   current, 
   target, 
   percentage, 
   type = 'profit',
-  showAmounts = false,
-  currency = 'USD',
-  icon
+  currency = 'USD'
 }: {
-  label: string
+  title: string
+  requirement: string
   current: number
   target: number
   percentage: number
-  type?: 'profit' | 'risk' | 'performance'
-  showAmounts?: boolean
+  type?: 'profit' | 'daily_risk' | 'total_risk'
   currency?: string
-  icon?: React.ComponentType<any>
 }) {
   
-  // 🌈 SPECTACULAR COLOR GRADIENTS!
-  const getGradientClass = () => {
+  // 🎨 Professional Fintech Colors
+  const getProgressColor = () => {
     if (type === 'profit') {
-      if (percentage >= 80) return 'from-emerald-400 via-green-500 to-teal-600'
-      if (percentage >= 60) return 'from-lime-400 via-green-500 to-emerald-600' 
-      if (percentage >= 40) return 'from-yellow-400 via-orange-500 to-amber-600'
-      return 'from-red-400 via-pink-500 to-rose-600'
-    } else if (type === 'risk') {
-      if (percentage <= 25) return 'from-emerald-400 via-green-500 to-teal-600'
-      if (percentage <= 50) return 'from-lime-400 via-green-500 to-emerald-600'
-      if (percentage <= 75) return 'from-yellow-400 via-orange-500 to-amber-600'
-      return 'from-red-400 via-pink-500 to-rose-600'
-    } else { // performance
-      if (percentage >= 60) return 'from-blue-400 via-indigo-500 to-purple-600'
-      if (percentage >= 45) return 'from-cyan-400 via-blue-500 to-indigo-600'
-      if (percentage >= 30) return 'from-yellow-400 via-orange-500 to-amber-600'
-      return 'from-red-400 via-pink-500 to-rose-600'
+      if (percentage >= 90) return 'bg-green-600'
+      if (percentage >= 70) return 'bg-green-500' 
+      if (percentage >= 40) return 'bg-yellow-500'
+      return 'bg-gray-400'
+    } else { // risk types
+      if (percentage <= 25) return 'bg-green-500'
+      if (percentage <= 50) return 'bg-yellow-500'
+      if (percentage <= 75) return 'bg-orange-500'
+      return 'bg-red-500'
     }
   }
 
-  // 🎭 Dynamic Icon Colors
-  const getIconColor = () => {
+  const getStatusColor = () => {
     if (type === 'profit') {
-      if (percentage >= 80) return 'text-emerald-600'
-      if (percentage >= 60) return 'text-green-600'
-      if (percentage >= 40) return 'text-orange-600'
-      return 'text-red-600'
-    } else if (type === 'risk') {
-      if (percentage <= 25) return 'text-emerald-600'
-      if (percentage <= 50) return 'text-green-600'
+      if (percentage >= 90) return 'text-green-600'
+      if (percentage >= 70) return 'text-green-600' 
+      if (percentage >= 40) return 'text-yellow-600'
+      return 'text-gray-600'
+    } else { // risk types
+      if (percentage <= 25) return 'text-green-600'
+      if (percentage <= 50) return 'text-yellow-600'
       if (percentage <= 75) return 'text-orange-600'
       return 'text-red-600'
-    } else {
-      if (percentage >= 60) return 'text-blue-600'
-      if (percentage >= 45) return 'text-indigo-600'
-      if (percentage >= 30) return 'text-orange-600'
-      return 'text-red-600'
+    }
+  }
+
+  const getStatus = () => {
+    if (type === 'profit') {
+      if (percentage >= 100) return '✓ TARGET RAGGIUNTO'
+      if (percentage >= 90) return 'QUASI COMPLETATO'
+      if (percentage >= 70) return 'BUON PROGRESSO'
+      if (percentage >= 40) return 'IN CORSO'
+      return 'INIZIALE'
+    } else { // risk types
+      if (percentage <= 25) return '✓ SICURO'
+      if (percentage <= 50) return '⚠ ATTENZIONE'
+      if (percentage <= 75) return '⚠ ALTO RISCHIO'
+      return '🚨 CRITICO'
     }
   }
 
@@ -155,78 +157,62 @@ function SpectacularKPIBar({
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     }).format(value)
   }
 
-  const IconComponent = icon || Target
-
   return (
-    <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-      {/* Header with Icon and Label */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-3">
-          <div className={`p-2 rounded-lg bg-gradient-to-br ${getGradientClass()} shadow-md`}>
-            <IconComponent className={`h-5 w-5 text-white`} />
-          </div>
-          <span className="font-semibold text-gray-800">{label}</span>
+    <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+      {/* Header */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-semibold text-gray-900 text-lg">{title}</h3>
+          <span className={`text-sm font-medium ${getStatusColor()}`}>
+            {getStatus()}
+          </span>
         </div>
-        <div className="text-right">
-          <div className={`text-2xl font-bold ${getIconColor()}`}>
-            {showAmounts ? formatCurrency(current) : `${percentage.toFixed(1)}%`}
-          </div>
-          {showAmounts && (
-            <div className="text-sm text-gray-500">
-              target: {formatCurrency(target)}
-            </div>
-          )}
-        </div>
+        <p className="text-sm text-gray-600">{requirement}</p>
       </div>
-      
-      {/* 🚀 SPECTACULAR ANIMATED PROGRESS BAR! */}
-      <div className="relative">
-        <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden shadow-inner">
-          <div 
-            className={`h-full bg-gradient-to-r ${getGradientClass()} 
-                       transition-all duration-2000 ease-out shadow-lg
-                       animate-pulse hover:animate-none relative`}
-            style={{ width: `${Math.min(percentage, 100)}%` }}
-          >
-            {/* Shine effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent 
-                           animate-pulse"></div>
-          </div>
+
+      {/* Progress Bar */}
+      <div className="mb-4">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-sm font-medium text-gray-700">
+            {formatCurrency(current)}
+          </span>
+          <span className="text-sm font-medium text-gray-700">
+            {formatCurrency(target)}
+          </span>
         </div>
-        
-        {/* Progress indicators */}
-        <div className="flex justify-between mt-2 text-xs font-medium">
-          <span className="text-gray-500">0%</span>
-          <span className={`${getIconColor()} font-bold animate-pulse`}>
+        <div className="w-full bg-gray-200 rounded-full h-3">
+          <div 
+            className={`h-3 rounded-full transition-all duration-1000 ease-out ${getProgressColor()}`}
+            style={{ width: `${Math.min(percentage, 100)}%` }}
+          />
+        </div>
+        <div className="flex justify-between items-center mt-2">
+          <span className="text-xs text-gray-500">0%</span>
+          <span className={`text-sm font-bold ${getStatusColor()}`}>
             {percentage.toFixed(1)}%
           </span>
-          <span className="text-gray-500">100%</span>
+          <span className="text-xs text-gray-500">100%</span>
         </div>
       </div>
-      
-      {/* Status indicator */}
-      <div className="flex items-center justify-center mt-3">
-        <div className={`px-3 py-1 rounded-full text-xs font-semibold
-                        bg-gradient-to-r ${getGradientClass()} text-white shadow-md`}>
-          {type === 'profit' && percentage >= 80 && '🚀 OTTIMO!'}
-          {type === 'profit' && percentage >= 60 && percentage < 80 && '📈 BUONO'}
-          {type === 'profit' && percentage >= 40 && percentage < 60 && '⚠️ MEDIO'}
-          {type === 'profit' && percentage < 40 && '🔴 BASSO'}
-          
-          {type === 'risk' && percentage <= 25 && '✅ SICURO'}
-          {type === 'risk' && percentage <= 50 && percentage > 25 && '⚠️ MEDIO'}
-          {type === 'risk' && percentage <= 75 && percentage > 50 && '🔶 ALTO'}
-          {type === 'risk' && percentage > 75 && '🚨 CRITICO'}
-          
-          {type === 'performance' && percentage >= 60 && '⭐ ECCELLENTE'}
-          {type === 'performance' && percentage >= 45 && percentage < 60 && '✨ BUONO'}
-          {type === 'performance' && percentage >= 30 && percentage < 45 && '📊 MEDIO'}
-          {type === 'performance' && percentage < 30 && '📉 SCARSO'}
+
+      {/* Details */}
+      <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+        <div>
+          <p className="text-xs text-gray-500 uppercase tracking-wide">Attuale</p>
+          <p className={`text-lg font-semibold ${getStatusColor()}`}>
+            {formatCurrency(current)}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500 uppercase tracking-wide">Rimanente</p>
+          <p className="text-lg font-semibold text-gray-600">
+            {formatCurrency(Math.max(0, target - current))}
+          </p>
         </div>
       </div>
     </div>
@@ -294,32 +280,68 @@ export default function AccountDashboard() {
             totalVolume: trades.reduce((sum: number, t: any) => sum + t.volume, 0)
           })
 
-          // Calculate rule metrics (mock data for now - would come from evaluate-rules endpoint)
-          const accountSize = currentAccount.initialBalance || 50000
-          const profitTargetPercent = currentAccount.currentPhase === 'PHASE_1' ? 5 : 8 // Fixed: PHASE_1=5%, PHASE_2=8%
+          // Calculate proper PropFirm metrics
+          const accountSize = currentAccount.propFirmTemplate?.accountSize || currentAccount.initialBalance || 50000
+          const profitTargetPercent = currentAccount.currentPhase === 'PHASE_1' ? 5 : 8
           const profitTargetAmount = accountSize * (profitTargetPercent / 100)
+          
+          // Calculate daily drawdown (resets at midnight)
+          const today = new Date().toISOString().split('T')[0]
+          const todayTrades = trades.filter(t => {
+            const tradeDate = new Date(t.openTime).toISOString().split('T')[0]
+            return tradeDate === today
+          })
+          const dailyPnL = todayTrades.reduce((sum, t) => sum + (t.pnlGross + t.commission + t.swap), 0)
+          const dailyDrawdownAmount = Math.min(0, dailyPnL) // Only negative values count as drawdown
+          const dailyDrawdownLimit = accountSize * 0.05 // 5% limit
+          
+          // Calculate total drawdown (never resets)
+          let runningBalance = accountSize
+          let maxBalance = accountSize
+          let maxDrawdownAmount = 0
+          
+          // Sort trades by time to calculate running drawdown
+          const sortedTrades = [...trades].sort((a, b) => 
+            new Date(a.openTime).getTime() - new Date(b.openTime).getTime()
+          )
+          
+          sortedTrades.forEach(trade => {
+            const pnl = trade.pnlGross + trade.commission + trade.swap
+            runningBalance += pnl
+            if (runningBalance > maxBalance) {
+              maxBalance = runningBalance
+            }
+            const currentDrawdown = maxBalance - runningBalance
+            if (currentDrawdown > maxDrawdownAmount) {
+              maxDrawdownAmount = currentDrawdown
+            }
+          })
+          
+          const totalDrawdownLimit = accountSize * 0.10 // 10% limit
           
           setRules({
             profitTarget: {
               current: totalPnL,
               target: profitTargetAmount,
-              percentage: (totalPnL / profitTargetAmount) * 100,
+              percentage: Math.max(0, (totalPnL / profitTargetAmount) * 100),
               amount: totalPnL,
               targetAmount: profitTargetAmount
             },
             maxDailyDrawdown: {
-              current: 0, // Would calculate from daily data
-              limit: accountSize * 0.05, // 5% daily DD limit
-              percentage: 0
+              current: Math.abs(dailyDrawdownAmount),
+              limit: dailyDrawdownLimit,
+              percentage: Math.abs(dailyDrawdownAmount) / dailyDrawdownLimit * 100
             },
             maxOverallDrawdown: {
-              current: 0, // Would calculate from account history
-              limit: accountSize * 0.10, // 10% overall DD limit  
-              percentage: 0
+              current: maxDrawdownAmount,
+              limit: totalDrawdownLimit,
+              percentage: (maxDrawdownAmount / totalDrawdownLimit) * 100
             },
-            tradingDays: Math.ceil(trades.length / 3), // Rough estimate
+            tradingDays: Math.ceil(trades.length / 3),
             minTradingDays: currentAccount.currentPhase === 'PHASE_1' ? 4 : 5,
-            isCompliant: true
+            isCompliant: totalPnL >= profitTargetAmount && 
+                         Math.abs(dailyDrawdownAmount) <= dailyDrawdownLimit && 
+                         maxDrawdownAmount <= totalDrawdownLimit
           })
         }
       }
@@ -366,215 +388,169 @@ export default function AccountDashboard() {
       title={account.name} 
       subtitle={`Account: ${account.login} | ${account.broker} | ${account.server}`}
     >
-      <div className="p-6 space-y-8">
-        {/* 🎯 SPECTACULAR ACCOUNT HEADER */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 p-8 text-white shadow-2xl">
-          <div className="absolute inset-0 bg-black/20"></div>
-          <div className="relative z-10">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-4xl font-bold mb-2 flex items-center">
-                  <Flame className="mr-3 h-8 w-8 text-yellow-300 animate-pulse" />
-                  {account.name}
-                </h1>
-                <div className="text-indigo-100 text-lg">
-                  🏦 {account.login} | 💼 {account.broker} | 🌐 {account.server}
+      <div className="p-6 space-y-6">
+        {/* Professional Account Header */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-800 mb-2">{account.name}</h1>
+              <div className="text-sm text-gray-600">
+                Account: {account.login} | Broker: {account.broker} | Server: {account.server}
+              </div>
+              {account.propFirmTemplate && (
+                <div className="mt-2 flex items-center space-x-2">
+                  <Badge variant="outline" className="text-xs">
+                    {account.propFirmTemplate.propFirm.name}
+                  </Badge>
+                  <Badge variant="outline" className="text-xs">
+                    {account.propFirmTemplate.name}
+                  </Badge>
+                  <Badge variant={rules?.isCompliant ? "default" : "destructive"} className="text-xs">
+                    {rules?.isCompliant ? 'COMPLIANT' : 'VIOLATION'}
+                  </Badge>
                 </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <Button
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                  className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white border-white/30"
-                  size="lg"
-                >
-                  <RefreshCw className={`h-5 w-5 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                  Refresh
-                </Button>
-              </div>
+              )}
             </div>
+            <Button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              variant="outline"
+              size="sm"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
           </div>
-          {/* Animated background elements */}
-          <div className="absolute top-4 right-4 w-20 h-20 bg-yellow-300/20 rounded-full animate-ping"></div>
-          <div className="absolute bottom-4 left-4 w-16 h-16 bg-blue-300/20 rounded-full animate-bounce"></div>
         </div>
 
-        {/* 🚀 SPECTACULAR PROPFIRM COMPLIANCE SECTION */}
-        {account.propFirmTemplate && (
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 via-blue-50 to-purple-50 p-8 border-2 border-emerald-200 shadow-xl">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent flex items-center">
-                  <Shield className="mr-3 h-8 w-8 text-emerald-600 animate-pulse" />
-                  PropFirm Compliance
-                </h2>
-                <p className="text-xl text-gray-700 mt-2">
-                  🏢 {account.propFirmTemplate.propFirm.name} - {account.propFirmTemplate.name}
-                </p>
-              </div>
-              <div className={`px-6 py-3 rounded-full text-xl font-bold shadow-lg animate-pulse
-                ${rules?.isCompliant 
-                  ? 'bg-gradient-to-r from-emerald-400 to-green-500 text-white' 
-                  : 'bg-gradient-to-r from-red-400 to-pink-500 text-white'
-                }`}>
-                {rules?.isCompliant ? '✅ COMPLIANT' : '🚨 VIOLATION'}
-              </div>
-            </div>
-
-            {rules && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* 🎯 PROFIT TARGET - SPECTACULAR BAR */}
-                <SpectacularKPIBar
-                  label={`${account.currentPhase === 'PHASE_1' ? '5%' : '8%'} Profit Target`}
+        {/* Core PropFirm KPIs */}
+        {account.propFirmTemplate && rules && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-800 mb-4">PropFirm Rules Monitoring</h2>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* PROFIT TARGET */}
+                <FintechKPIBar
+                  title="PROFIT TARGET"
+                  requirement={`${account.currentPhase === 'PHASE_1' ? '5%' : '8%'} del conto (${account.propFirmTemplate.propFirm.name})`}
                   current={rules.profitTarget.current}
                   target={rules.profitTarget.target}
                   percentage={rules.profitTarget.percentage}
                   type="profit"
-                  showAmounts={true}
                   currency={account.currency}
-                  icon={Target}
                 />
 
-                {/* 🛡️ DAILY DRAWDOWN */}
-                <SpectacularKPIBar
-                  label="Max Daily Drawdown (5%)"
-                  current={Math.abs(rules.maxDailyDrawdown.current)}
+                {/* DAILY DRAWDOWN (resets at midnight) */}
+                <FintechKPIBar
+                  title="DAILY DRAWDOWN"
+                  requirement="Max 5% al giorno (si azzera a mezzanotte)"
+                  current={rules.maxDailyDrawdown.current}
                   target={rules.maxDailyDrawdown.limit}
-                  percentage={Math.abs(rules.maxDailyDrawdown.percentage)}
-                  type="risk"
-                  showAmounts={true}
+                  percentage={rules.maxDailyDrawdown.percentage}
+                  type="daily_risk"
                   currency={account.currency}
-                  icon={AlertTriangle}
                 />
 
-                {/* 📊 OVERALL DRAWDOWN */}
-                <SpectacularKPIBar
-                  label="Max Overall Drawdown (10%)"
-                  current={Math.abs(rules.maxOverallDrawdown.current)}
+                {/* TOTAL DRAWDOWN (never resets) */}
+                <FintechKPIBar
+                  title="TOTAL DRAWDOWN"
+                  requirement="Max 10% totale (mai azzerato)"
+                  current={rules.maxOverallDrawdown.current}
                   target={rules.maxOverallDrawdown.limit}
-                  percentage={Math.abs(rules.maxOverallDrawdown.percentage)}
-                  type="risk"
-                  showAmounts={true}
+                  percentage={rules.maxOverallDrawdown.percentage}
+                  type="total_risk"
                   currency={account.currency}
-                  icon={TrendingDown}
-                />
-
-                {/* ⭐ WIN RATE */}
-                <SpectacularKPIBar
-                  label="Win Rate Performance"
-                  current={stats?.winRate || 0}
-                  target={100}
-                  percentage={stats?.winRate || 0}
-                  type="performance"
-                  showAmounts={false}
-                  currency={account.currency}
-                  icon={Award}
                 />
               </div>
-            )}
-            
-            {rules?.isCompliant && (
-              <div className="mt-8 p-6 bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 rounded-xl text-white text-center shadow-lg">
-                <div className="flex items-center justify-center space-x-3 text-2xl font-bold">
-                  <Star className="h-8 w-8 animate-spin" />
-                  <span>🎉 All Rules Are Compliant! 🎉</span>
-                  <Star className="h-8 w-8 animate-spin" />
-                </div>
-              </div>
-            )}
+            </div>
           </div>
         )}
 
-        {/* 💰 SPECTACULAR PERFORMANCE CARDS */}
+        {/* Performance Summary Cards */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* P&L CLOSED */}
-            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 p-6 text-white shadow-xl hover:shadow-2xl transition-all hover:scale-105">
-              <div className="flex items-center justify-between mb-4">
-                <DollarSign className="h-8 w-8 text-emerald-100" />
-                <div className="text-right">
-                  <div className="text-2xl font-bold">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-800 mb-4">Trading Performance</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              
+              {/* P&L Chiuse */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">P&L Chiuse</CardTitle>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {new Intl.NumberFormat('en-US', {
                       style: 'currency',
                       currency: account.currency,
                       minimumFractionDigits: 2
                     }).format(stats.totalPnL)}
                   </div>
-                  <div className="text-sm text-emerald-100">
-                    💼 {stats.closedTrades} operazioni
-                  </div>
-                </div>
-              </div>
-              <div className="text-lg font-semibold">P&L Chiuse</div>
-              <div className="absolute -top-4 -right-4 w-16 h-16 bg-white/20 rounded-full animate-pulse"></div>
-            </div>
+                  <p className="text-xs text-muted-foreground">
+                    {stats.closedTrades} operazioni chiuse
+                  </p>
+                </CardContent>
+              </Card>
 
-            {/* P&L OPEN */}
-            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-400 to-indigo-600 p-6 text-white shadow-xl hover:shadow-2xl transition-all hover:scale-105">
-              <div className="flex items-center justify-between mb-4">
-                <Activity className="h-8 w-8 text-blue-100" />
-                <div className="text-right">
-                  <div className="text-2xl font-bold">$0.00</div>
-                  <div className="text-sm text-blue-100">
-                    🔄 {stats.openPositions} posizioni
+              {/* P&L Aperte */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">P&L Aperte</CardTitle>
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-600">
+                    $0.00
                   </div>
-                </div>
-              </div>
-              <div className="text-lg font-semibold">P&L Aperte</div>
-              <div className="absolute -top-4 -right-4 w-16 h-16 bg-white/20 rounded-full animate-bounce"></div>
-            </div>
+                  <p className="text-xs text-muted-foreground">
+                    {stats.openPositions} posizioni aperte
+                  </p>
+                </CardContent>
+              </Card>
 
-            {/* WIN RATE */}
-            <div className={`relative overflow-hidden rounded-xl p-6 text-white shadow-xl hover:shadow-2xl transition-all hover:scale-105
-              ${stats.winRate >= 50 
-                ? 'bg-gradient-to-br from-green-400 to-emerald-600' 
-                : 'bg-gradient-to-br from-orange-400 to-red-600'
-              }`}>
-              <div className="flex items-center justify-between mb-4">
-                <TrendingUp className="h-8 w-8 text-white/80" />
-                <div className="text-right">
-                  <div className="text-2xl font-bold">
+              {/* Win Rate */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
+                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${stats.winRate >= 50 ? 'text-green-600' : 'text-red-600'}`}>
                     {stats.winRate.toFixed(1)}%
                   </div>
-                  <div className="text-sm text-white/80">
-                    ✅ {stats.winningTrades} / ❌ {stats.losingTrades}
-                  </div>
-                </div>
-              </div>
-              <div className="text-lg font-semibold">Win Rate</div>
-              <div className="absolute -top-4 -right-4 w-16 h-16 bg-white/20 rounded-full animate-ping"></div>
-            </div>
+                  <p className="text-xs text-muted-foreground">
+                    {stats.winningTrades} vincenti / {stats.losingTrades} perdenti
+                  </p>
+                </CardContent>
+              </Card>
 
-            {/* TRADING DAYS */}
-            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-400 to-pink-600 p-6 text-white shadow-xl hover:shadow-2xl transition-all hover:scale-105">
-              <div className="flex items-center justify-between mb-4">
-                <Calendar className="h-8 w-8 text-purple-100" />
-                <div className="text-right">
-                  <div className="text-2xl font-bold">
+              {/* Trading Days */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Trading Days</CardTitle>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-slate-700">
                     {rules?.tradingDays || 0}
                   </div>
-                  <div className="text-sm text-purple-100">
-                    📈 {stats.totalTrades} trades
-                  </div>
-                </div>
-              </div>
-              <div className="text-lg font-semibold">Trading Days</div>
-              <div className="absolute -top-4 -right-4 w-16 h-16 bg-white/20 rounded-full animate-pulse"></div>
+                  <p className="text-xs text-muted-foreground">
+                    di {rules?.minTradingDays || 5} minimi richiesti
+                  </p>
+                </CardContent>
+              </Card>
             </div>
           </div>
         )}
 
-        {/* 🎯 SPECTACULAR ACTION BUTTON */}
-        <div className="flex justify-center">
-          <Link href={`/account/${accountId}/trades`} className="group">
-            <Button className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 
-                           hover:from-blue-600 hover:via-purple-600 hover:to-pink-600
-                           text-white text-xl font-bold py-8 px-12 rounded-2xl
-                           shadow-xl hover:shadow-2xl transform hover:scale-105
-                           transition-all duration-300 group-hover:animate-pulse">
-              <Eye className="h-6 w-6 mr-3 group-hover:animate-bounce" />
-              🚀 Vedi Operazioni 
-              <ArrowRight className="h-6 w-6 ml-3 group-hover:translate-x-2 transition-transform" />
+        {/* Action Button */}
+        <div className="flex justify-center pt-6">
+          <Link href={`/account/${accountId}/trades`}>
+            <Button size="lg" className="bg-slate-800 hover:bg-slate-700 text-white px-8 py-3">
+              <Eye className="h-5 w-5 mr-2" />
+              Vedi Operazioni
+              <ArrowRight className="h-5 w-5 ml-2" />
             </Button>
           </Link>
         </div>
