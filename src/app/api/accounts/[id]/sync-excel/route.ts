@@ -128,7 +128,20 @@ export async function POST(
         })
 
       case 'import':
+        console.log(`📊 BEFORE IMPORT - About to import:`)
+        console.log(`   Closed Trades: ${parsedData.closedTrades.length}`)
+        console.log(`   Open Positions: ${parsedData.openPositions.length}`)
+        if (parsedData.closedTrades.length > 0) {
+          console.log(`   Sample trade:`, parsedData.closedTrades[0])
+        }
+        
         const importResult = await importDataToDatabase(accountId, parsedData, options.clearExisting)
+        
+        console.log(`📊 IMPORT COMPLETED:`)
+        console.log(`   Imported Closed: ${importResult.imported.closedTrades}`)
+        console.log(`   Imported Open: ${importResult.imported.openPositions}`)
+        console.log(`   Errors: ${importResult.errors.length}`)
+        
         return NextResponse.json({
           success: true,
           result: importResult
@@ -535,10 +548,25 @@ async function importDataToDatabase(accountId: string, parsedData: any, clearExi
     }
   }
 
-  // Import closed trades
-  for (const trade of parsedData.closedTrades) {
+  // Import closed trades with enhanced debugging
+  console.log(`💾 Starting database import of ${parsedData.closedTrades.length} trades...`)
+  
+  for (const [index, trade] of parsedData.closedTrades.entries()) {
     try {
-      await db.trade.create({
+      console.log(`💾 Importing trade ${index + 1}/${parsedData.closedTrades.length}: ${trade.ticketId} ${trade.symbol}`)
+      console.log(`   Data:`, {
+        ticketId: trade.ticketId,
+        symbol: trade.symbol,
+        side: trade.side,
+        volume: trade.volume,
+        openPrice: trade.openPrice,
+        closePrice: trade.closePrice,
+        openTime: trade.openTime,
+        closeTime: trade.closeTime,
+        pnlGross: trade.pnlGross
+      })
+      
+      const createdTrade = await db.trade.create({
         data: {
           accountId,
           ticketId: trade.ticketId,
@@ -555,11 +583,16 @@ async function importDataToDatabase(accountId: string, parsedData: any, clearExi
           comment: trade.comment || ''
         }
       })
+      
+      console.log(`✅ Successfully created trade ID: ${createdTrade.id}`)
       results.imported.closedTrades++
     } catch (error: any) {
+      console.error(`❌ Failed to import trade ${trade.ticketId}:`, error)
       results.errors.push(`Failed to import trade ${trade.ticketId}: ${error.message}`)
     }
   }
+  
+  console.log(`💾 Database import completed: ${results.imported.closedTrades} successful, ${results.errors.length} errors`)
 
   // Import open positions
   for (const position of parsedData.openPositions) {
