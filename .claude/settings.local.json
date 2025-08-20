@@ -14,7 +14,9 @@
       "Bash(curl:*)",
       "Bash(git count-objects:*)",
       "Bash(git fsck:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run dev:*)"
     ],
     "deny": [],
     "ask": [],
