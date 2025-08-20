@@ -71,8 +71,8 @@ export default function AccountTrades() {
   
   // Filtering and search
   const [searchQuery, setSearchQuery] = useState('')
-  const [sideFilter, setSideFilter] = useState<string>('')
-  const [symbolFilter, setSymbolFilter] = useState<string>('')
+  const [sideFilter, setSideFilter] = useState<string>('all')
+  const [symbolFilter, setSymbolFilter] = useState<string>('all')
   const [dateFilter, setDateFilter] = useState<string>('')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(50)
@@ -143,8 +143,8 @@ export default function AccountTrades() {
       trade.ticketId.includes(searchQuery) ||
       trade.comment?.toLowerCase().includes(searchQuery.toLowerCase())
     
-    const matchesSide = sideFilter === '' || trade.side === sideFilter
-    const matchesSymbol = symbolFilter === '' || trade.symbol === symbolFilter
+    const matchesSide = sideFilter === '' || sideFilter === 'all' || trade.side === sideFilter
+    const matchesSymbol = symbolFilter === '' || symbolFilter === 'all' || trade.symbol === symbolFilter
     
     let matchesDate = true
     if (dateFilter) {
@@ -324,7 +324,7 @@ export default function AccountTrades() {
                     <SelectValue placeholder="Tutti" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Tutti</SelectItem>
+                    <SelectItem value="all">Tutti</SelectItem>
                     <SelectItem value="BUY">Compra</SelectItem>
                     <SelectItem value="SELL">Vendi</SelectItem>
                   </SelectContent>
@@ -338,7 +338,7 @@ export default function AccountTrades() {
                     <SelectValue placeholder="Tutti" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Tutti</SelectItem>
+                    <SelectItem value="all">Tutti</SelectItem>
                     {uniqueSymbols.map(symbol => (
                       <SelectItem key={symbol} value={symbol}>{symbol}</SelectItem>
                     ))}
@@ -361,8 +361,8 @@ export default function AccountTrades() {
                   variant="outline"
                   onClick={() => {
                     setSearchQuery('')
-                    setSideFilter('')
-                    setSymbolFilter('')
+                    setSideFilter('all')
+                    setSymbolFilter('all')
                     setDateFilter('')
                     setCurrentPage(1)
                   }}

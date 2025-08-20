@@ -280,8 +280,8 @@ export default function AccountDashboard() {
           propFirmTemplate: currentAccount.propFirmTemplate
         })
 
-        // Load trading stats
-        const statsResponse = await fetch(`/api/accounts/${accountId}/trades?limit=1000`)
+        // Load trading stats - aumentato il limite per includere tutte le posizioni
+        const statsResponse = await fetch(`/api/accounts/${accountId}/trades?limit=5000`)
         const statsData = await statsResponse.json()
         
         if (statsData.trades) {
@@ -291,6 +291,14 @@ export default function AccountDashboard() {
           
           console.log('Open trades found:', openTradesData.length)
           console.log('Open trades data:', openTradesData)
+          
+          // Debug: controlla se XAGUSD.p #162527 è presente
+          const xagusdPosition = openTradesData.find(t => t.ticketId === '162527')
+          console.log('XAGUSD #162527 trovata:', xagusdPosition ? 'SÌ' : 'NO')
+          
+          // Debug: mostra tutti i ticketId delle posizioni aperte
+          const ticketIds = openTradesData.map(t => `${t.symbol} #${t.ticketId}`)
+          console.log('Posizioni trovate:', ticketIds)
           
           // Set open trades data for display
           setOpenTrades(openTradesData)
@@ -625,6 +633,13 @@ export default function AccountDashboard() {
               </div>
               <div className="text-sm text-blue-700 mt-2">
                 {stats.openPositions} posizioni attualmente attive • Aggiornamento real-time dall'Expert Advisor
+              </div>
+              {/* Debug info for discrepancy */}
+              <div className="text-xs text-gray-500 mt-1">
+                📊 Ultima sincronizzazione: {new Date().toLocaleTimeString('it-IT')} • 
+                {stats.openPositions !== 4 && (
+                  <span className="text-yellow-600 font-medium"> ⚠️ EA mostra 4 posizioni, dashboard ne mostra {stats.openPositions}</span>
+                )}
               </div>
             </div>
 
