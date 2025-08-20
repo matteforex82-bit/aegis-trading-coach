@@ -423,8 +423,8 @@ export default function AccountDashboard() {
           </div>
         </div>
 
-        {/* Core PropFirm KPIs */}
-        {account.propFirmTemplate && rules && (
+        {/* Core PropFirm KPIs - ALWAYS SHOW FOR DEBUG */}
+        {(
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-semibold text-slate-800 mb-4">PropFirm Rules Monitoring</h2>
@@ -433,34 +433,34 @@ export default function AccountDashboard() {
                 {/* PROFIT TARGET */}
                 <FintechKPIBar
                   title="PROFIT TARGET"
-                  requirement={`${account.currentPhase === 'PHASE_1' ? '5%' : '8%'} del conto (${account.propFirmTemplate.propFirm.name})`}
-                  current={rules.profitTarget.current}
-                  target={rules.profitTarget.target}
-                  percentage={rules.profitTarget.percentage}
+                  requirement={`${account?.currentPhase === 'PHASE_1' ? '5%' : '8%'} del conto`}
+                  current={rules?.profitTarget?.current || stats?.totalPnL || 0}
+                  target={rules?.profitTarget?.target || 2500}
+                  percentage={rules?.profitTarget?.percentage || 0}
                   type="profit"
-                  currency={account.currency}
+                  currency={account?.currency || 'USD'}
                 />
 
                 {/* DAILY DRAWDOWN (resets at midnight) */}
                 <FintechKPIBar
                   title="DAILY DRAWDOWN"
                   requirement="Max 5% al giorno (si azzera a mezzanotte)"
-                  current={rules.maxDailyDrawdown.current}
-                  target={rules.maxDailyDrawdown.limit}
-                  percentage={rules.maxDailyDrawdown.percentage}
+                  current={rules?.maxDailyDrawdown?.current || 0}
+                  target={rules?.maxDailyDrawdown?.limit || 2500}
+                  percentage={rules?.maxDailyDrawdown?.percentage || 0}
                   type="daily_risk"
-                  currency={account.currency}
+                  currency={account?.currency || 'USD'}
                 />
 
                 {/* TOTAL DRAWDOWN (never resets) */}
                 <FintechKPIBar
                   title="TOTAL DRAWDOWN"
                   requirement="Max 10% totale (mai azzerato)"
-                  current={rules.maxOverallDrawdown.current}
-                  target={rules.maxOverallDrawdown.limit}
-                  percentage={rules.maxOverallDrawdown.percentage}
+                  current={rules?.maxOverallDrawdown?.current || 0}
+                  target={rules?.maxOverallDrawdown?.limit || 5000}
+                  percentage={rules?.maxOverallDrawdown?.percentage || 0}
                   type="total_risk"
-                  currency={account.currency}
+                  currency={account?.currency || 'USD'}
                 />
               </div>
             </div>
