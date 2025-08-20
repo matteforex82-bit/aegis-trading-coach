@@ -730,6 +730,23 @@ void SendLiveMetrics()
     
     string payload = "{\"account\":" + accountData + ",\"metrics\":" + metricsJson + ",\"openPositions\":[" + openPositionsJson + "]}";
     
+    if(ENABLE_DETAILED_LOGGING)
+    {
+        Print("🚀 Invio payload completo al server:");
+        Print("📤 Account data: ", accountData);
+        Print("📊 Open positions: [", openPositionsJson, "]");
+        
+        // Conta le posizioni nel payload
+        int commaCount = 0;
+        for(int k = 0; k < StringLen(openPositionsJson); k++)
+        {
+            if(StringGetCharacter(openPositionsJson, k) == ',')
+                commaCount++;
+        }
+        int positionsInPayload = (openPositionsJson == "") ? 0 : commaCount + 1;
+        Print("📈 Posizioni nel payload: ", positionsInPayload);
+    }
+    
     SendHTTPRequest(payload);
     g_LastSyncTime = TimeCurrent();
 }
@@ -750,9 +767,22 @@ string BuildCurrentOpenPositionsJSON()
     for(int i = 0; i < totalPositions; i++)
     {
         ulong positionTicket = PositionGetTicket(i);
-        if(positionTicket <= 0) continue;
+        if(positionTicket <= 0) 
+        {
+            Print("⚠️ Posizione ", i, " - PositionGetTicket fallito");
+            continue;
+        }
         
-        if(!PositionSelectByTicket(positionTicket)) continue;
+        if(ENABLE_DETAILED_LOGGING)
+        {
+            Print("🔍 Processo posizione ", i, " - Ticket: ", positionTicket);
+        }
+        
+        if(!PositionSelectByTicket(positionTicket)) 
+        {
+            Print("❌ Posizione ", positionTicket, " - PositionSelectByTicket fallito!");
+            continue;
+        }
         
         string symbol = PositionGetString(POSITION_SYMBOL);
         long positionType = PositionGetInteger(POSITION_TYPE);
@@ -787,6 +817,39 @@ string BuildCurrentOpenPositionsJSON()
         positionsJson += "\"magic\":" + IntegerToString(magic) + ",";
         positionsJson += "\"phase\":\"" + CleanJsonString(ACCOUNT_PHASE) + "\"";
         positionsJson += "}";
+    }
+    
+    // Debug finale - mostra riassunto
+    if(ENABLE_DETAILED_LOGGING)
+    {
+        Print("✅ JSON costruito per ", totalPositions, " posizioni aperte");
+        Print("📋 Payload openPositions: [", positionsJson, "]");
+        
+        // Verifica specifica per XAGUSD #162527
+        if(StringFind(positionsJson, "162527") >= 0)
+        {
+            Print("✅ XAGUSD #162527 INCLUSA nel payload");
+        }
+        else 
+        {
+            Print("❌ XAGUSD #162527 NON TROVATA nel payload!");
+            
+            // Double check - verifica se posizione esiste ancora
+            for(int j = 0; j < totalPositions; j++)
+            {
+                ulong ticket = PositionGetTicket(j);
+                if(ticket == 162527)
+                {
+                    Print("🔍 XAGUSD #162527 esiste in MT5 ma non è stata aggiunta al JSON!");
+                    if(PositionSelectByTicket(ticket))
+                    {
+                        string debugSymbol = PositionGetString(POSITION_SYMBOL);
+                        double debugProfit = PositionGetDouble(POSITION_PROFIT);
+                        Print("📊 Debug XAGUSD: ", debugSymbol, " P&L=", debugProfit);
+                    }
+                }
+            }
+        }
     }
     
     return positionsJson;
