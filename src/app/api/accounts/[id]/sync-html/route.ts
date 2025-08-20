@@ -39,10 +39,10 @@ interface SyncOptions {
 //+------------------------------------------------------------------+
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: accountId } = params
+    const { id: accountId } = await params
     const formData = await request.formData()
     const htmlFile = formData.get('htmlFile') as File
     const options = JSON.parse(formData.get('options') as string) as SyncOptions
@@ -66,7 +66,7 @@ export async function POST(
     console.log('📄 Parsing MT5 HTML report...')
 
     const $ = cheerio.load(htmlContent)
-    const parsedData = parseHtmlReport($)
+    const parsedData = parseHtmlReport($ as any) // Type assertion for cheerio compatibility
 
     // Validate parsed data with detailed error info
     if (!parsedData.accountLogin) {
@@ -369,6 +369,8 @@ async function importDataToDatabase(accountId: string, parsedData: any, clearExi
         data: {
           accountId,
           ticketId: trade.ticketId,
+          positionId: trade.ticketId, // Use ticketId as positionId for MT5 compatibility
+          orderId: trade.ticketId,    // Use ticketId as orderId for MT5 compatibility
           symbol: trade.symbol,
           side: trade.side,
           volume: trade.volume,
@@ -395,6 +397,8 @@ async function importDataToDatabase(accountId: string, parsedData: any, clearExi
         data: {
           accountId,
           ticketId: position.ticketId,
+          positionId: position.ticketId, // Use ticketId as positionId for MT5 compatibility
+          orderId: position.ticketId,    // Use ticketId as orderId for MT5 compatibility
           symbol: position.symbol,
           side: position.side,
           volume: position.volume,

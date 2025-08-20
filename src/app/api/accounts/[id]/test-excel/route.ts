@@ -3,10 +3,10 @@ import * as XLSX from 'xlsx'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: accountId } = params
+    const { id: accountId } = await params
     const formData = await request.formData()
     const excelFile = formData.get('excelFile') as File
 
@@ -75,7 +75,7 @@ export async function POST(
           if (possibleTicket.match(/^\d+$/)) {
             tradeRowsFound.push({
               rowIndex: i,
-              data: row
+              data: row.slice(0, 10) // Limit data to prevent type issues
             })
           }
         }

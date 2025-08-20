@@ -38,10 +38,10 @@ interface SyncOptions {
 //| POST /api/accounts/[id]/sync-excel - Sync MT5 Excel Report     |\n//+------------------------------------------------------------------+
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: accountId } = params
+    const { id: accountId } = await params
     const formData = await request.formData()
     const excelFile = formData.get('excelFile') as File
     const options = JSON.parse(formData.get('options') as string) as SyncOptions
@@ -258,7 +258,7 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
   // Parse closed trades from the main sheet
   const closedTrades: ParsedTrade[] = []
   
-  // Find the "Positions" section header
+  // Use EXACT SAME logic as test-excel that successfully found 18 trades
   let positionsHeaderIndex = -1
   for (let i = 0; i < mainData.length; i++) {
     const row = mainData[i] || []
@@ -273,122 +273,78 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
   
   console.log(`🔍 Positions header index: ${positionsHeaderIndex}`)
   
+  // EXACT LOGIC FROM test-excel.ts that found 18 trades
   if (positionsHeaderIndex >= 0) {
-    // Find the actual header row (next row with column names)
-    let headerRowIndex = -1
-    for (let i = positionsHeaderIndex + 1; i < Math.min(positionsHeaderIndex + 5, mainData.length); i++) {
-      const row = mainData[i] || []
-      const rowStr = row.join('').toLowerCase()
-      if (rowStr.includes('time') && (rowStr.includes('position') || rowStr.includes('symbol'))) {
-        headerRowIndex = i
-        console.log(`✅ Found header row at ${i}`)
-        break
-      }
-    }
+    console.log(`🔍 Looking for trade data after position row ${positionsHeaderIndex}`)
     
-    if (headerRowIndex >= 0) {
-      const headers = mainData[headerRowIndex].map((h: any) => String(h || '').toLowerCase().trim())
-      console.log('📋 Trade headers:', headers)
+    // Look for data rows after positions header (EXACT same range as test-excel)
+    for (let i = positionsHeaderIndex + 1; i < Math.min(positionsHeaderIndex + 20, mainData.length); i++) {
+      const row = mainData[i] || []
       
-      // Map column indices based on MT5 standard columns
-      const openTimeCol = 0  // Time column is usually first
-      const ticketCol = 1    // Position column is usually second
-      const symbolCol = 2    // Symbol column is usually third
-      const sideCol = 3      // Type column is usually fourth
-      const volumeCol = 4    // Volume column
-      const openPriceCol = 5 // Price column
-      const slCol = 6        // S/L column
-      const tpCol = 7        // T/P column
-      const closeTimeCol = 8 // Close Time column
-      const closePriceCol = 9 // Close Price column
-      const commissionCol = 10 // Commission column
-      const swapCol = 11     // Swap column
-      const pnlCol = 12      // Profit column
+      console.log(`🔍 Checking potential trade row ${i}:`, row.slice(0, 8))
       
-      console.log(`📋 Column mapping: Time(${openTimeCol}), Ticket(${ticketCol}), Symbol(${symbolCol}), Type(${sideCol})`)
-      
-      // Parse trade rows after header - use the same logic as test-excel
-      for (let i = headerRowIndex + 1; i < mainData.length; i++) {
-        const row = mainData[i] || []
+      // EXACT same validation as test-excel: look for rows that might be trades
+      if (row.length > 5) {
+        const possibleTicket = String(row[1] || '') // Column 1 should have ticket
+        console.log(`🔍 Row ${i} - Column 1 (ticket): "${possibleTicket}"`)
         
-        console.log(`🔍 Processing trade row ${i}:`, row.slice(0, 8))
-        
-        // Stop if we reach Orders section or empty rows
-        if (row.length === 0 || String(row[0] || '').toLowerCase().includes('orders')) {
-          console.log(`📋 Stopping at row ${i} - reached Orders section or empty row`)
-          break
-        }
-        
-        // Use same validation as test-excel: look for numeric ticket in column 1
-        const ticketId = String(row[ticketCol] || '')
-        const symbol = String(row[symbolCol] || '')
-        
-        console.log(`🔍 Trade data - Ticket: "${ticketId}", Symbol: "${symbol}"`)
-        
-        // More lenient validation - just check if ticket looks like a number and we have data
-        const isValidTicket = ticketId && ticketId.match(/^\d+$/) && row.length > 5
-        
-        if (!isValidTicket) {
-          console.log(`⏭️ Skipping row ${i} - ticket "${ticketId}" not numeric or insufficient data`)
-          continue
-        }
-        
-        const side = String(row[sideCol] || '').toLowerCase().includes('sell') ? 'sell' : 'buy'
-        const volume = parseFloat(String(row[volumeCol] || '0').replace(',', '.')) || 0
-        const openPrice = parseFloat(String(row[openPriceCol] || '0').replace(',', '.')) || 0
-        const closePrice = parseFloat(String(row[closePriceCol] || '0').replace(',', '.')) || 0
-        const openTime = convertExcelDate(row[openTimeCol])
-        const closeTime = convertExcelDate(row[closeTimeCol])
-        const pnlGross = parseFloat(String(row[pnlCol] || '0').replace(',', '.')) || 0
-        const swap = parseFloat(String(row[swapCol] || '0').replace(',', '.')) || 0
-        const commission = parseFloat(String(row[commissionCol] || '0').replace(',', '.')) || 0
-        
-        console.log(`🔍 Trade parsed - Side: ${side}, Volume: ${volume}, OpenPrice: ${openPrice}, ClosePrice: ${closePrice}`)
-        console.log(`🔍 Raw times - Open: "${row[openTimeCol]}", Close: "${row[closeTimeCol]}"`)
-        console.log(`🔍 Converted times - Open: ${openTime}, Close: ${closeTime}`)
-        console.log(`🔍 P&L - Gross: ${pnlGross}, Swap: ${swap}, Commission: ${commission}`)
-        
-        // FIXED: Check if we have close price and close time data, or if row has enough columns indicating closed trade
-        const hasCloseTime = row[closeTimeCol] && String(row[closeTimeCol]).trim() !== ''
-        const hasClosePrice = closePrice && closePrice > 0
-        
-        console.log(`🔍 Close validation - hasCloseTime: ${hasCloseTime}, hasClosePrice: ${hasClosePrice}`)
-        
-        // FIXED: For historical MT5 reports, all trades in Positions section are closed trades
-        // Accept any trade that has a valid ticket and symbol (all trades in history are closed)
-        if (isValidTicket && symbol) {
-          // For MT5 historical data, ensure we have a closeTime
-          let finalCloseTime = closeTime
-          if (!finalCloseTime || finalCloseTime === openTime) {
-            // Add 1 minute to openTime as fallback closeTime for historical trades
-            const openDate = new Date(openTime)
-            openDate.setMinutes(openDate.getMinutes() + 1)
-            finalCloseTime = openDate.toISOString()
-            console.log(`🔧 Generated closeTime from openTime: ${finalCloseTime}`)
-          }
+        if (possibleTicket.match(/^\d+$/)) {
+          console.log(`✅ Found potential trade row ${i} with ticket: ${possibleTicket}`)
           
-          closedTrades.push({
-            ticketId,
-            symbol,
-            side,
-            volume,
-            openPrice,
-            closePrice: closePrice || openPrice, // Use openPrice if no closePrice
-            openTime,
-            closeTime: finalCloseTime,
-            pnlGross: pnlGross - swap - commission,
-            swap,
-            commission,
-            comment: ''
-          })
-          console.log(`✅ Added closed trade: ${ticketId} ${symbol} ${side} ${volume}`)
-          console.log(`   OpenTime: ${openTime} -> CloseTime: ${finalCloseTime}`)
+          // Extract trade data using EXACT same column positions as test-excel
+          const ticketId = possibleTicket
+          const symbol = String(row[2] || '')    // Column 2 should have symbol
+          const side = String(row[3] || '').toLowerCase().includes('sell') ? 'sell' : 'buy'
+          const volume = parseFloat(String(row[4] || '0').replace(',', '.')) || 0
+          const openPrice = parseFloat(String(row[5] || '0').replace(',', '.')) || 0
+          const closePrice = parseFloat(String(row[9] || '0').replace(',', '.')) || 0
+          const openTime = convertExcelDate(row[0])  // Column 0 should have open time
+          const closeTime = convertExcelDate(row[8]) // Column 8 should have close time
+          const commission = parseFloat(String(row[10] || '0').replace(',', '.')) || 0
+          const swap = parseFloat(String(row[11] || '0').replace(',', '.')) || 0
+          const pnlGross = parseFloat(String(row[12] || '0').replace(',', '.')) || 0
+          
+          console.log(`🔍 Extracted trade data:`)
+          console.log(`   Ticket: "${ticketId}", Symbol: "${symbol}"`)
+          console.log(`   Side: ${side}, Volume: ${volume}`)
+          console.log(`   OpenPrice: ${openPrice}, ClosePrice: ${closePrice}`)
+          console.log(`   OpenTime: ${openTime}, CloseTime: ${closeTime}`)
           console.log(`   P&L: ${pnlGross}, Commission: ${commission}, Swap: ${swap}`)
-        } else {
-          console.log(`❌ Rejected trade - Ticket: "${ticketId}", Symbol: "${symbol}", ClosePrice: ${closePrice}`)
+          
+          // EXACT same validation as test-excel: just check minimum required data
+          if (ticketId && symbol && volume > 0) {
+            // Generate closeTime if missing (for historical trades)
+            let finalCloseTime = closeTime
+            if (!finalCloseTime || finalCloseTime === openTime) {
+              const openDate = new Date(openTime)
+              openDate.setMinutes(openDate.getMinutes() + 1)
+              finalCloseTime = openDate.toISOString()
+              console.log(`🔧 Generated closeTime: ${finalCloseTime}`)
+            }
+            
+            closedTrades.push({
+              ticketId,
+              symbol,
+              side,
+              volume,
+              openPrice,
+              closePrice: closePrice || openPrice,
+              openTime,
+              closeTime: finalCloseTime,
+              pnlGross: pnlGross - swap - commission,
+              swap,
+              commission,
+              comment: ''
+            })
+            console.log(`✅ Added trade ${closedTrades.length}: ${ticketId} ${symbol}`)
+          } else {
+            console.log(`❌ Rejected trade - missing data: ticket="${ticketId}", symbol="${symbol}", volume=${volume}`)
+          }
         }
       }
     }
+  } else {
+    console.log(`❌ No Positions section found!`)
   }
   
   // Parse open positions - for now, skip since MT5 typically doesn't include open positions in historical reports
@@ -570,6 +526,8 @@ async function importDataToDatabase(accountId: string, parsedData: any, clearExi
         data: {
           accountId,
           ticketId: trade.ticketId,
+          positionId: trade.ticketId, // Use ticketId as positionId for MT5 compatibility
+          orderId: trade.ticketId,    // Use ticketId as orderId for MT5 compatibility  
           symbol: trade.symbol,
           side: trade.side,
           volume: trade.volume,
@@ -601,6 +559,8 @@ async function importDataToDatabase(accountId: string, parsedData: any, clearExi
         data: {
           accountId,
           ticketId: position.ticketId,
+          positionId: position.ticketId, // Use ticketId as positionId for MT5 compatibility
+          orderId: position.ticketId,    // Use ticketId as orderId for MT5 compatibility
           symbol: position.symbol,
           side: position.side,
           volume: position.volume,
