@@ -505,73 +505,129 @@ async function createTradeSafe(trade: any, accountId: string) {
 }
 
 //+------------------------------------------------------------------+
-//| Sync Open Positions - SAFE VERSION                             |
+//| Sync Open Positions - SAFE UPSERT VERSION                      |
 //+------------------------------------------------------------------+
 async function syncOpenPositionsSafe(account: any, openPositions: any[]) {
   try {
-    console.log('🔴 Starting open positions sync...')
-    console.log('🔍 OpenPositions payload:', JSON.stringify(openPositions, null, 2))
+    console.log('🔴 Starting SMART open positions sync...')
+    console.log('🔍 Received', openPositions.length, 'positions from EA')
+    
+    // VALIDATION: Prevent empty payload sync
+    if (!openPositions || openPositions.length === 0) {
+      console.log('⚠️ EMPTY PAYLOAD DETECTED - Skipping sync to prevent position loss')
+      return
+    }
+    
+    // Log specific positions for debugging
+    const positionSummary = openPositions.map(p => `${p.symbol} #${p.ticket_id}`).join(', ')
+    console.log('📋 Positions in payload:', positionSummary)
     
     // Get account first
     const accountRecord = await createOrUpdateAccountSafe(account)
     console.log('✅ Account retrieved:', accountRecord.id)
     
-    // Clear old open positions for this account first
-    const deletedCount = await db.trade.deleteMany({
-      where: { 
-        accountId: accountRecord.id,
-        closeTime: null 
-      }
-    })
-    console.log('✅ Cleared', deletedCount.count, 'old open positions')
-    
-    let syncedPositions = 0
+    // UPSERT STRATEGY: Update existing positions instead of delete-all
+    let updatedPositions = 0
+    let createdPositions = 0
+    const processedTickets = new Set()
     
     for (const position of openPositions) {
       try {
-        await db.trade.create({
-          data: {
-            ticketId: String(position.ticket_id),
-            positionId: String(position.ticket_id), // Use ticket as position ID for open positions
-            orderId: String(position.ticket_id), // Use ticket as order ID for open positions
-            symbol: position.symbol,
-            side: position.side === 'buy' ? 'BUY' : 'SELL',
-            volume: Number(position.volume),
-            openPrice: Number(position.open_price),
-            closePrice: null, // Open position
-            openTime: new Date(position.open_time),
-            closeTime: null, // Open position
-            pnlGross: Number(position.pnl || 0),
-            swap: Number(position.swap || 0),
-            commission: Number(position.commission || 0),
-            comment: position.comment || null,
-            magic: position.magic ? Number(position.magic) : null,
+        const ticketId = String(position.ticket_id)
+        processedTickets.add(ticketId)
+        
+        // Check if position already exists
+        const existingPosition = await db.trade.findFirst({
+          where: {
+            ticketId: ticketId,
             accountId: accountRecord.id,
-            
-            // PropFirm fields
-            tradePhase: mapPhaseSafe(position.phase),
-            violatesRules: false, // Open positions don't violate rules yet
-            equityAtOpen: null,
-            equityAtClose: null,
-            drawdownAtOpen: null,
-            drawdownAtClose: null,
-            dailyPnLAtOpen: null,
-            dailyPnLAtClose: null,
-            isWeekendTrade: false,
-            newsTime: false,
-            holdingTime: null,
-            riskReward: null,
-            riskPercent: null
+            closeTime: null
           }
         })
-        syncedPositions++
-        console.log(`✅ Synced open position: ${position.ticket_id} ${position.symbol}`)
+        
+        const positionData = {
+          symbol: position.symbol,
+          side: position.side === 'buy' ? 'BUY' : 'SELL',
+          volume: Number(position.volume),
+          openPrice: Number(position.open_price),
+          pnlGross: Number(position.pnl || 0),
+          swap: Number(position.swap || 0),
+          commission: Number(position.commission || 0),
+          comment: position.comment || null,
+          magic: position.magic ? Number(position.magic) : null,
+          tradePhase: mapPhaseSafe(position.phase),
+          // Update timestamp for staleness detection
+          updatedAt: new Date()
+        }
+        
+        if (existingPosition) {
+          // UPDATE existing position
+          await db.trade.update({
+            where: { id: existingPosition.id },
+            data: positionData
+          })
+          updatedPositions++
+          console.log(`🔄 Updated position: ${position.ticket_id} ${position.symbol}`)
+        } else {
+          // CREATE new position
+          await db.trade.create({
+            data: {
+              ...positionData,
+              ticketId: ticketId,
+              positionId: ticketId, // Use ticket as position ID for open positions
+              orderId: ticketId, // Use ticket as order ID for open positions
+              closePrice: null, // Open position
+              openTime: new Date(position.open_time),
+              closeTime: null, // Open position
+              accountId: accountRecord.id,
+              
+              // PropFirm fields
+              violatesRules: false, // Open positions don't violate rules yet
+              equityAtOpen: null,
+              equityAtClose: null,
+              drawdownAtOpen: null,
+              drawdownAtClose: null,
+              dailyPnLAtOpen: null,
+              dailyPnLAtClose: null,
+              isWeekendTrade: false,
+              newsTime: false,
+              holdingTime: null,
+              riskReward: null,
+              riskPercent: null
+            }
+          })
+          createdPositions++
+          console.log(`➕ Created new position: ${position.ticket_id} ${position.symbol}`)
+        }
       } catch (error: any) {
         console.error(`❌ Error syncing position ${position.ticket_id}:`, error.message)
       }
     }
     
-    console.log(`🔴 Synced ${syncedPositions}/${openPositions.length} open positions`)
+    // CLEANUP: Remove stale positions (not updated in last 2 minutes)
+    const staleThreshold = new Date(Date.now() - 2 * 60 * 1000) // 2 minutes ago
+    const staleTrades = await db.trade.deleteMany({
+      where: {
+        accountId: accountRecord.id,
+        closeTime: null,
+        updatedAt: { lt: staleThreshold }
+      }
+    })
+    
+    console.log(`🔴 SMART SYNC COMPLETED:`)
+    console.log(`   ✅ Updated: ${updatedPositions} positions`)
+    console.log(`   ➕ Created: ${createdPositions} positions`) 
+    console.log(`   🗑️ Removed stale: ${staleTrades.count} positions`)
+    console.log(`   📊 Total processed: ${processedTickets.size} positions`)
+    
+    // Verify final count
+    const finalCount = await db.trade.count({
+      where: {
+        accountId: accountRecord.id,
+        closeTime: null
+      }
+    })
+    console.log(`🎯 Final position count in database: ${finalCount}`)
     
   } catch (error: any) {
     console.error('❌ Error in syncOpenPositionsSafe:', error.message)
