@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
+import { DashboardLayout } from '@/components/dashboard-layout'
 
 interface Trade {
   id: string
@@ -206,37 +207,39 @@ export default function AccountTrades() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Link href={`/account/${accountId}`}>
-              <Button variant="outline" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Dashboard Account
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Operazioni - {account.name}</h1>
-              <div className="text-sm text-gray-600 mt-1">
-                Account: {account.login} | {account.broker}
-              </div>
-            </div>
-          </div>
+    <DashboardLayout 
+      title={`Operazioni - ${account.name}`} 
+      subtitle={`Account: ${account.login} | ${account.broker}`}
+    >
+      <div className="p-6">
+        <div className="flex items-center justify-between mb-6">
+          <Link href={`/account/${accountId}`}>
+            <Button 
+              variant="outline" 
+              size="lg"
+              className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0
+                         hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl
+                         transform hover:scale-105 transition-all duration-300"
+            >
+              <ArrowLeft className="h-5 w-5 mr-2" />
+              🏠 Dashboard Account
+            </Button>
+          </Link>
           <Button
             onClick={handleRefresh}
             disabled={refreshing}
-            variant="outline"
-            size="sm"
+            className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white
+                       hover:from-emerald-600 hover:to-teal-700 shadow-lg hover:shadow-xl
+                       transform hover:scale-105 transition-all duration-300"
+            size="lg"
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
+            <RefreshCw className={`h-5 w-5 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            🔄 Refresh
           </Button>
         </div>
-      </header>
 
-      <div className="p-6 space-y-6">
+        {/* Content continues */}
+        <div className="space-y-6">
         {/* Stats Summary */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -486,7 +489,8 @@ export default function AccountTrades() {
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
-    </div>
+    </DashboardLayout>
   )
 }

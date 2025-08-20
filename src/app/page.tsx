@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { RefreshCw, BarChart3, Users, ArrowRight } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { AccountList } from '@/components/account-list'
+import { DashboardLayout } from '@/components/dashboard-layout'
 import Link from 'next/link'
 
 interface Account {
@@ -57,92 +58,71 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">PROP CONTROL</h1>
-            <p className="text-gray-600 mt-1">Seleziona un account per visualizzare la dashboard</p>
-          </div>
-        </div>
-      </header>
-
-      <div className="flex">
-        {/* Sidebar */}
-        <aside className="w-64 bg-white border-r border-gray-200 min-h-screen sticky top-0">
-          <div className="p-4">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Account</h2>
-            <div className="mb-6">
-              <AccountList />
-            </div>
-
-            <div className="border-t pt-4">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">Navigazione</h3>
-              <Navigation />
-            </div>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 p-6">
-          <div className="max-w-4xl mx-auto">
-            <Card className="text-center py-12">
-              <CardContent>
-                <div className="mx-auto flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-                  <Users className="h-8 w-8 text-blue-600" />
+    <DashboardLayout subtitle="Seleziona un account per visualizzare la dashboard">
+      <div className="p-6">
+        <div className="max-w-4xl mx-auto">
+          <Card className="text-center py-12 bg-gradient-to-br from-white to-blue-50 border-blue-200 shadow-xl">
+            <CardContent>
+              <div className="mx-auto flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-full mb-6 shadow-lg">
+                <Users className="h-10 w-10 text-white" />
+              </div>
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-4">
+                🚀 Seleziona un Account
+              </h2>
+              <p className="text-gray-600 mb-8 max-w-md mx-auto text-lg">
+                Scegli un account dalla sidebar per accedere alla dashboard spettacolare con KPI, regole PropFirm e operazioni.
+              </p>
+              
+              {accounts.length === 0 ? (
+                <div className="bg-gradient-to-br from-yellow-50 to-orange-100 border-2 border-yellow-300 rounded-xl p-6 mb-6 shadow-lg">
+                  <p className="text-yellow-800 font-bold text-lg">⚠️ Nessun account configurato</p>
+                  <p className="text-yellow-700 mt-2">
+                    Vai nelle impostazioni per aggiungere il tuo primo account MT5 e iniziare!
+                  </p>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  Seleziona un Account
-                </h2>
-                <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                  Scegli un account dalla sidebar per accedere alla dashboard dedicata con KPI, regole PropFirm e operazioni.
-                </p>
-                
-                {accounts.length === 0 ? (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                    <p className="text-yellow-800 font-medium">Nessun account configurato</p>
-                    <p className="text-yellow-600 text-sm mt-1">
-                      Vai nelle impostazioni per aggiungere il tuo primo account MT5.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    {accounts.slice(0, 4).map((account) => (
-                      <Link
-                        key={account.id}
-                        href={`/account/${account.id}`}
-                        className="group p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-all"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="text-left">
-                            <div className="font-semibold text-gray-900 group-hover:text-blue-700">
-                              {account.name || account.broker}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {account.login}
-                            </div>
-                            <div className="text-xs text-gray-400 mt-1">
-                              {account._count?.trades || 0} operazioni
-                            </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                  {accounts.slice(0, 4).map((account) => (
+                    <Link
+                      key={account.id}
+                      href={`/account/${account.id}`}
+                      className="group relative overflow-hidden p-6 border-2 border-blue-200 rounded-xl 
+                               bg-gradient-to-br from-white to-blue-50 
+                               hover:from-blue-50 hover:to-indigo-100 
+                               hover:border-blue-400 shadow-lg hover:shadow-xl
+                               transform hover:scale-105 transition-all duration-300"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="text-left">
+                          <div className="font-bold text-xl text-gray-900 group-hover:text-blue-700 mb-1">
+                            📈 {account.name || account.broker}
                           </div>
-                          <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-blue-600" />
+                          <div className="text-sm text-blue-600 font-medium">
+                            🏦 {account.login}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-2 bg-gray-100 px-2 py-1 rounded-full inline-block">
+                            💼 {account._count?.trades || 0} operazioni
+                          </div>
                         </div>
-                      </Link>
-                    ))}
-                  </div>
-                )}
+                        <ArrowRight className="h-6 w-6 text-blue-400 group-hover:text-blue-600 group-hover:translate-x-2 transition-all" />
+                      </div>
+                      <div className="absolute -top-2 -right-2 w-8 h-8 bg-blue-300/20 rounded-full group-hover:animate-ping"></div>
+                    </Link>
+                  ))}
+                </div>
+              )}
 
-                <Link href="/settings">
-                  <Button variant="outline" className="mr-3">
-                    Impostazioni
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          </div>
-        </main>
+              <Link href="/settings">
+                <Button className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 
+                                 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl
+                                 transform hover:scale-105 transition-all duration-300">
+                  ⚙️ Impostazioni
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
+    </DashboardLayout>
   )
 }
