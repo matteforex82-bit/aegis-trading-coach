@@ -434,9 +434,9 @@ export default function AccountDashboard() {
                 <FintechKPIBar
                   title="PROFIT TARGET"
                   requirement={`${account?.currentPhase === 'PHASE_1' ? '5%' : '8%'} del conto`}
-                  current={rules?.profitTarget?.current || stats?.totalPnL || 0}
-                  target={rules?.profitTarget?.target || 2500}
-                  percentage={rules?.profitTarget?.percentage || 0}
+                  current={stats?.totalPnL || 0}
+                  target={2500} // 5% di 50k account
+                  percentage={stats?.totalPnL ? (stats.totalPnL / 2500) * 100 : 0}
                   type="profit"
                   currency={account?.currency || 'USD'}
                 />
