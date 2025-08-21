@@ -580,14 +580,16 @@ export default function AccountDashboard() {
               
               {account.propFirmTemplate && (
                 <div className="flex items-center gap-2">
-                  {/* PropFirm Name Badge */}
-                  <Badge 
-                    variant="secondary" 
-                    className="px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200"
-                  >
-                    <Award className="h-3 w-3 mr-1" />
-                    {account.propFirmTemplate.propFirm.name}
-                  </Badge>
+                  {/* PropFirm Name Badge - only show if propFirm relation exists */}
+                  {account.propFirmTemplate.propFirm && (
+                    <Badge 
+                      variant="secondary" 
+                      className="px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200"
+                    >
+                      <Award className="h-3 w-3 mr-1" />
+                      {account.propFirmTemplate.propFirm.name}
+                    </Badge>
+                  )}
                   
                   {/* Template Name Badge */}
                   <Badge 

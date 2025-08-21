@@ -14,7 +14,11 @@ export async function GET(request: NextRequest) {
           _count: {
             select: { trades: true }
           },
-          propFirmTemplate: true
+          propFirmTemplate: {
+            include: {
+              propFirm: true
+            }
+          }
         },
         orderBy: { createdAt: 'desc' }
       })
@@ -29,7 +33,11 @@ export async function GET(request: NextRequest) {
           user: {
             select: { name: true, email: true }
           },
-          propFirmTemplate: true
+          propFirmTemplate: {
+            include: {
+              propFirm: true
+            }
+          }
         },
         orderBy: { createdAt: 'desc' }
       })
