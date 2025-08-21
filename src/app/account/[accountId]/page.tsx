@@ -646,31 +646,93 @@ export default function AccountDashboard() {
                 {/* PROFIT TARGET - REAL CALCULATION */}
                 <FintechKPIBar
                   title="PROFIT TARGET"
-                  requirement={`${account?.currentPhase === 'PHASE_1' ? '5%' : '8%'} del conto`}
-                  current={50000 + (stats?.totalPnL || 0)} // Real current balance
-                  target={50000 + (account?.currentPhase === 'PHASE_1' ? 2500 : 4000)} // Real target
-                  percentage={((stats?.totalPnL || 0) / (account?.currentPhase === 'PHASE_1' ? 2500 : 4000)) * 100}
+                  requirement={`${account?.currentPhase === 'PHASE_1' ? '8%' : account?.currentPhase === 'PHASE_2' ? '5%' : 'No target'} del conto`}
+                  current={(account?.currentBalance || account?.initialBalance || 0) + (stats?.totalPnL || 0)} 
+                  target={() => {
+                    const baseBalance = account?.initialBalance || account?.currentBalance || 50000;
+                    if (account?.propFirmTemplate?.rulesJson?.profitTargets) {
+                      const phaseTarget = account.propFirmTemplate.rulesJson.profitTargets[account.currentPhase];
+                      return baseBalance + (phaseTarget?.amount || 0);
+                    }
+                    // Fallback for FUTURA FUNDING rules
+                    if (account?.currentPhase === 'PHASE_1') {
+                      return baseBalance + (baseBalance * 0.08); // 8% for Phase 1
+                    } else if (account?.currentPhase === 'PHASE_2') {
+                      return baseBalance + (baseBalance * 0.05); // 5% for Phase 2
+                    }
+                    return baseBalance;
+                  }()}
+                  percentage={() => {
+                    const baseBalance = account?.initialBalance || account?.currentBalance || 50000;
+                    let targetAmount = 0;
+                    if (account?.propFirmTemplate?.rulesJson?.profitTargets) {
+                      const phaseTarget = account.propFirmTemplate.rulesJson.profitTargets[account.currentPhase];
+                      targetAmount = phaseTarget?.amount || 0;
+                    } else {
+                      // Fallback calculation
+                      targetAmount = account?.currentPhase === 'PHASE_1' ? (baseBalance * 0.08) : (baseBalance * 0.05);
+                    }
+                    return targetAmount > 0 ? ((stats?.totalPnL || 0) / targetAmount) * 100 : 0;
+                  }()}
                   type="profit"
                   currency="USD"
                 />
 
-                {/* DAILY LOSS - FIXED LOGIC */}
+                {/* DAILY LOSS - DYNAMIC FROM TEMPLATE */}
                 <FintechKPIBar
                   title="DAILY LOSS"
-                  requirement="Balance must stay above $47,500 (5% daily limit)"
-                  current={50000 + (stats?.totalPnL || 0)} // Current balance
-                  target={47500} // Daily loss limit
+                  requirement={() => {
+                    const baseBalance = account?.initialBalance || account?.currentBalance || 50000;
+                    let dailyLimit = 0;
+                    if (account?.propFirmTemplate?.rulesJson?.maxDailyLoss) {
+                      dailyLimit = account.propFirmTemplate.rulesJson.maxDailyLoss.amount || 0;
+                    } else {
+                      dailyLimit = baseBalance * 0.05; // 5% fallback
+                    }
+                    const limitBalance = baseBalance - dailyLimit;
+                    return `Balance must stay above $${limitBalance.toLocaleString()} (5% daily limit)`;
+                  }()}
+                  current={(account?.currentBalance || account?.initialBalance || 0) + (stats?.totalPnL || 0)}
+                  target={() => {
+                    const baseBalance = account?.initialBalance || account?.currentBalance || 50000;
+                    let dailyLimit = 0;
+                    if (account?.propFirmTemplate?.rulesJson?.maxDailyLoss) {
+                      dailyLimit = account.propFirmTemplate.rulesJson.maxDailyLoss.amount || 0;
+                    } else {
+                      dailyLimit = baseBalance * 0.05; // 5% fallback
+                    }
+                    return baseBalance - dailyLimit;
+                  }()}
                   percentage={0} // With profit, you're safe (0% risk used)
                   type="daily_risk"
                   currency="USD"
                 />
 
-                {/* MAXIMUM TOTAL LOSS - FIXED LOGIC */}
+                {/* MAXIMUM TOTAL LOSS - DYNAMIC FROM TEMPLATE */}
                 <FintechKPIBar
                   title="MAXIMUM TOTAL LOSS"
-                  requirement="Balance must stay above $45,000 (10% total limit)"
-                  current={50000 + (stats?.totalPnL || 0)} // Current balance
-                  target={45000} // Total loss limit
+                  requirement={() => {
+                    const baseBalance = account?.initialBalance || account?.currentBalance || 50000;
+                    let totalLimit = 0;
+                    if (account?.propFirmTemplate?.rulesJson?.maxTotalLoss) {
+                      totalLimit = account.propFirmTemplate.rulesJson.maxTotalLoss.amount || 0;
+                    } else {
+                      totalLimit = baseBalance * 0.10; // 10% fallback
+                    }
+                    const limitBalance = baseBalance - totalLimit;
+                    return `Balance must stay above $${limitBalance.toLocaleString()} (10% total limit)`;
+                  }()}
+                  current={(account?.currentBalance || account?.initialBalance || 0) + (stats?.totalPnL || 0)}
+                  target={() => {
+                    const baseBalance = account?.initialBalance || account?.currentBalance || 50000;
+                    let totalLimit = 0;
+                    if (account?.propFirmTemplate?.rulesJson?.maxTotalLoss) {
+                      totalLimit = account.propFirmTemplate.rulesJson.maxTotalLoss.amount || 0;
+                    } else {
+                      totalLimit = baseBalance * 0.10; // 10% fallback
+                    }
+                    return baseBalance - totalLimit;
+                  }()}
                   percentage={0} // With profit, you're safe (0% risk used)
                   type="total_risk"
                   currency="USD"
