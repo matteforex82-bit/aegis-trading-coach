@@ -418,7 +418,7 @@ export default function AccountDashboard() {
           const tradeProtectionRequired = tradeProtectionProjectionRequired
           
           // Calculate daily drawdown (resets at midnight)
-          const today = new Date().toISOString().split('T')[0]
+          // Use existing today variable declared above
           const todayTrades = trades.filter(t => {
             const tradeDate = new Date(t.openTime).toISOString().split('T')[0]
             return tradeDate === today
