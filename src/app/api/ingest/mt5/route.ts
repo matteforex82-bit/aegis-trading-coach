@@ -2,9 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
-  console.log('🔧 MT5 endpoint hit (REBUILT VERSION)')
+  const requestId = Math.random().toString(36).substr(2, 8)
+  console.log(`🔧 MT5 endpoint hit [${requestId}] (REBUILT VERSION)`)
   
   try {
+    // 🚨 HEALTH CHECK: Return fast 200 for EA ping
+    const userAgent = request.headers.get('user-agent') || ''
+    if (userAgent.includes('health') || request.headers.get('x-health-check')) {
+      console.log(`💊 Health check request [${requestId}]`)
+      return NextResponse.json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        requestId: requestId,
+        message: '✅ MT5 endpoint ready'
+      }, { status: 200 })
+    }
     // Parse JSON with detailed error handling
     let body: any
     try {
@@ -12,9 +24,14 @@ export async function POST(request: NextRequest) {
       console.log('✅ JSON parsed successfully')
       console.log('📊 Body keys:', Object.keys(body))
     } catch (parseError: any) {
-      console.error('❌ JSON parsing error:', parseError)
+      console.error(`❌ JSON parsing error [${requestId}]:`, parseError)
       return NextResponse.json(
-        { error: 'Invalid JSON format', details: parseError.message },
+        { 
+          error: 'Invalid JSON format', 
+          details: parseError.message,
+          requestId: requestId,
+          help: 'Verify JSON payload structure'
+        },
         { status: 400 }
       )
     }
@@ -158,6 +175,7 @@ async function handleTradeSyncSafe(account: any, trades: any[]) {
       processedTrades: processedTrades,
       skippedTrades: skippedTrades,
       accountLogin: account.login,
+      requestId: requestId,
       mode: 'full',
       dashboardUrl: process.env.NEXTAUTH_URL || 'https://new2dash.vercel.app'
     })
