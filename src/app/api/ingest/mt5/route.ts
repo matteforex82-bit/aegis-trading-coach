@@ -99,23 +99,55 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error: any) {
-    console.error('❌ Fatal error in MT5 ingest:', error)
+    console.error(`❌ Fatal error in MT5 ingest [${requestId}]:`, error)
     console.error('❌ Error name:', error.name)
     console.error('❌ Error message:', error.message)
     console.error('❌ Error stack:', error.stack)
     
-    // Always include detailed error info to help EA debugging
-    return NextResponse.json(
-      { 
-        error: 'Internal server error', 
-        type: error.name,
-        details: error.message,
+    // 🚨 CRITICAL: Handle Prisma plan limit errors for EA
+    if (error?.code === 'P5000' && error?.message?.includes('planLimitReached')) {
+      console.error('🚨 PRISMA PLAN LIMIT REACHED - EA will retry automatically!')
+      return NextResponse.json({
+        error: 'Database service temporarily unavailable',
+        code: 'PRISMA_PLAN_LIMIT',
+        message: 'Database plan limit reached. EA will retry automatically.',
+        suggestion: 'Upgrade Prisma plan at https://cloud.prisma.io/',
+        requestId: requestId,
         account_login: request.body?.account?.login || 'unknown',
-        help: 'Check if account exists or can be recreated',
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-      },
-      { status: 500 }
-    )
+        timestamp: new Date().toISOString(),
+        ea_action: 'RETRY_LATER'
+      }, { 
+        status: 503,  // Service Unavailable - EA will retry
+        headers: {
+          'Retry-After': '1800'  // Suggest retry in 30 minutes
+        }
+      })
+    }
+    
+    // Handle other database errors
+    if (error?.code?.startsWith('P')) {
+      console.error('🔍 Prisma database error:', error.code, error.message)
+      return NextResponse.json({
+        error: 'Database operation failed',
+        code: error.code,
+        requestId: requestId,
+        account_login: request.body?.account?.login || 'unknown',
+        ea_action: 'RETRY_LATER',
+        timestamp: new Date().toISOString()
+      }, { status: 503 })
+    }
+    
+    // Always include detailed error info to help EA debugging
+    return NextResponse.json({
+      error: 'Internal server error', 
+      type: error.name,
+      details: error.message,
+      requestId: requestId,
+      account_login: request.body?.account?.login || 'unknown',
+      help: 'Check if account exists or can be recreated',
+      timestamp: new Date().toISOString(),
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    }, { status: 500 })
   }
 }
 
