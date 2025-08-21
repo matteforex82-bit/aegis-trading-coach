@@ -6,6 +6,27 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle, Shield, ShieldAlert, TrendingUp, X, Settings } from 'lucide-react'
 
+interface WorstCaseScenario {
+  totalPotentialLoss: number
+  totalPotentialLossPercent: number
+  breakdown: {
+    tradesWithSL: {
+      count: number
+      potentialLoss: number
+    }
+    tradesWithoutSL: {
+      count: number
+      estimatedLoss: number
+    }
+    tradesInProfit: {
+      count: number
+      protectedProfit: number
+    }
+  }
+  wouldViolateDailyLimit: boolean
+  marginToViolation: number
+}
+
 interface RiskMetrics {
   totalExposurePercent: number
   totalExposureUSD: number
@@ -17,6 +38,7 @@ interface RiskMetrics {
     trades: any[]
   }[]
   riskLevel: 'SAFE' | 'CAUTION' | 'DANGER'
+  worstCaseScenario: WorstCaseScenario
   alerts: {
     severity: 'CRITICAL' | 'WARNING' | 'INFO'
     message: string
@@ -179,7 +201,7 @@ export default function RiskExposureScanner({
         </CardHeader>
         
         <CardContent className="space-y-4">
-          {/* Exposure Bar */}
+          {/* Current Exposure Bar */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium">
@@ -210,6 +232,112 @@ export default function RiskExposureScanner({
               <span>4%</span>
               <span>5%</span>
             </div>
+          </div>
+
+          {/* Worst Case Scenario */}
+          <div className={`p-4 rounded-lg border-2 ${
+            riskMetrics.worstCaseScenario.wouldViolateDailyLimit 
+              ? 'bg-red-50 border-red-300' 
+              : riskMetrics.worstCaseScenario.totalPotentialLossPercent > 4
+              ? 'bg-yellow-50 border-yellow-300'
+              : 'bg-blue-50 border-blue-300'
+          }`}>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+                ⚠️ Worst Case Scenario
+                {riskMetrics.worstCaseScenario.wouldViolateDailyLimit && (
+                  <Badge className="bg-red-600 text-white">DANGER</Badge>
+                )}
+              </h4>
+            </div>
+
+            {/* Worst Case Progress Bar */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">
+                  If all SL hit: -{riskMetrics.worstCaseScenario.totalPotentialLossPercent.toFixed(1)}% / {maxDailyLimit}% Daily Limit
+                </span>
+                <span className="text-sm font-semibold text-red-600">
+                  -${Math.abs(riskMetrics.worstCaseScenario.totalPotentialLoss).toFixed(0)} / ${(balance * 0.05).toFixed(0)}
+                </span>
+              </div>
+              
+              {/* Worst Case Visual Progress Bar */}
+              <div className="w-full bg-gray-200 rounded-full h-4 relative overflow-hidden">
+                <div 
+                  className={`h-full transition-all duration-500 ${
+                    riskMetrics.worstCaseScenario.wouldViolateDailyLimit 
+                      ? 'bg-red-600' 
+                      : riskMetrics.worstCaseScenario.totalPotentialLossPercent > 4
+                      ? 'bg-yellow-500'
+                      : 'bg-blue-500'
+                  }`}
+                  style={{ width: `${Math.min(riskMetrics.worstCaseScenario.totalPotentialLossPercent / maxDailyLimit * 100, 100)}%` }}
+                ></div>
+                
+                {/* Markers */}
+                <div className="absolute top-0 left-0 h-full w-full">
+                  <div className="absolute top-0 h-full bg-yellow-300 w-0.5" style={{ left: '40%' }}></div>
+                  <div className="absolute top-0 h-full bg-red-300 w-0.5" style={{ left: '80%' }}></div>
+                </div>
+              </div>
+              
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>0%</span>
+                <span>2%</span>
+                <span>4%</span>
+                <span>5%</span>
+              </div>
+            </div>
+
+            {/* Breakdown */}
+            <div className="mt-4 space-y-2">
+              {riskMetrics.worstCaseScenario.breakdown.tradesWithoutSL.count > 0 && (
+                <div className="flex items-center justify-between p-2 bg-red-100 rounded border border-red-200">
+                  <span className="text-sm flex items-center gap-1">
+                    🔴 <strong>{riskMetrics.worstCaseScenario.breakdown.tradesWithoutSL.count}</strong> trades without SL
+                  </span>
+                  <span className="text-sm font-semibold text-red-700">
+                    Est: -${riskMetrics.worstCaseScenario.breakdown.tradesWithoutSL.estimatedLoss.toFixed(0)}
+                  </span>
+                </div>
+              )}
+
+              {riskMetrics.worstCaseScenario.breakdown.tradesWithSL.count > 0 && (
+                <div className="flex items-center justify-between p-2 bg-yellow-100 rounded border border-yellow-200">
+                  <span className="text-sm flex items-center gap-1">
+                    📊 <strong>{riskMetrics.worstCaseScenario.breakdown.tradesWithSL.count}</strong> trades with SL
+                  </span>
+                  <span className="text-sm font-semibold text-yellow-700">
+                    Risk: -${riskMetrics.worstCaseScenario.breakdown.tradesWithSL.potentialLoss.toFixed(0)}
+                  </span>
+                </div>
+              )}
+
+              {riskMetrics.worstCaseScenario.breakdown.tradesInProfit.count > 0 && (
+                <div className="flex items-center justify-between p-2 bg-green-100 rounded border border-green-200">
+                  <span className="text-sm flex items-center gap-1">
+                    ✅ <strong>{riskMetrics.worstCaseScenario.breakdown.tradesInProfit.count}</strong> protected trades
+                  </span>
+                  <span className="text-sm font-semibold text-green-700">
+                    Profit: +${riskMetrics.worstCaseScenario.breakdown.tradesInProfit.protectedProfit.toFixed(0)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Violation Warning */}
+            {riskMetrics.worstCaseScenario.wouldViolateDailyLimit && (
+              <div className="mt-3 p-3 bg-red-100 border border-red-300 rounded-lg">
+                <div className="flex items-center gap-2 text-red-800">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span className="font-semibold">DANGER: Would violate 5% daily limit!</span>
+                </div>
+                <p className="text-sm text-red-700 mt-1">
+                  Margin: only ${riskMetrics.worstCaseScenario.marginToViolation.toFixed(0)} away from violation
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Available Risk */}

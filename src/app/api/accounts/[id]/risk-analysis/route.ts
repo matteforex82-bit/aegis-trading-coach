@@ -2,6 +2,27 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
 // Risk calculation types
+interface WorstCaseScenario {
+  totalPotentialLoss: number      // Somma di tutte le perdite possibili
+  totalPotentialLossPercent: number // In percentuale del balance
+  breakdown: {
+    tradesWithSL: {
+      count: number
+      potentialLoss: number      // Distanza da current price a SL in $
+    }
+    tradesWithoutSL: {
+      count: number
+      estimatedLoss: number      // Stima basata su ATR o 100 pips default
+    }
+    tradesInProfit: {
+      count: number
+      protectedProfit: number    // Trades con SL in profit (guadagno garantito)
+    }
+  }
+  wouldViolateDailyLimit: boolean
+  marginToViolation: number       // Quanto manca per violare il 5%
+}
+
 interface RiskMetrics {
   totalExposurePercent: number
   totalExposureUSD: number
@@ -13,6 +34,7 @@ interface RiskMetrics {
     trades: any[]
   }[]
   riskLevel: 'SAFE' | 'CAUTION' | 'DANGER'
+  worstCaseScenario: WorstCaseScenario
   alerts: {
     severity: 'CRITICAL' | 'WARNING' | 'INFO'
     message: string
@@ -53,14 +75,14 @@ export async function GET(
     const currentBalance = account.initialBalance || 50000
     
     // Calculate risk metrics
-    const riskMetrics = await calculateRiskMetrics(openTrades, currentBalance, params.id)
+    const riskMetrics = await calculateRiskMetrics(openTrades, currentBalance, id)
     
     console.log('⚡ Risk Level:', riskMetrics.riskLevel)
     console.log('📈 Current Exposure:', riskMetrics.totalExposurePercent.toFixed(2) + '%')
     
     return NextResponse.json({
       success: true,
-      accountId: params.id,
+      accountId: id,
       balance: currentBalance,
       riskMetrics,
       timestamp: new Date().toISOString()
@@ -221,6 +243,34 @@ async function calculateRiskMetrics(
     })
   })
 
+  // 7. Calculate Worst Case Scenario
+  const worstCaseScenario = calculateWorstCaseScenario(openTrades, currentBalance)
+  
+  // Update alerts based on worst case scenario
+  if (worstCaseScenario.wouldViolateDailyLimit) {
+    alerts.unshift({
+      severity: 'CRITICAL',
+      message: `🔴 WORST CASE: Would violate 5% limit (-${worstCaseScenario.totalPotentialLossPercent.toFixed(1)}%)`,
+      action: 'Reduce positions NOW or add protective stops'
+    })
+  } else if (worstCaseScenario.totalPotentialLossPercent > 4) {
+    alerts.unshift({
+      severity: 'WARNING',
+      message: `⚠️ WORST CASE: One bad move from violation (-${worstCaseScenario.totalPotentialLossPercent.toFixed(1)}%)`,
+      action: 'Limited room for new positions'
+    })
+  } else if (worstCaseScenario.totalPotentialLossPercent > 3) {
+    alerts.unshift({
+      severity: 'INFO',
+      message: `📊 WORST CASE: Limited room for expansion (-${worstCaseScenario.totalPotentialLossPercent.toFixed(1)}%)`,
+      action: 'Consider tighter stops for new trades'
+    })
+  }
+
+  console.log('💥 Worst Case Total Loss:', worstCaseScenario.totalPotentialLoss.toFixed(2))
+  console.log('💥 Worst Case Percentage:', worstCaseScenario.totalPotentialLossPercent.toFixed(2) + '%')
+  console.log('💥 Would Violate Daily Limit:', worstCaseScenario.wouldViolateDailyLimit)
+
   // Save critical alerts to database
   if (alerts.some(alert => alert.severity === 'CRITICAL')) {
     try {
@@ -237,6 +287,7 @@ async function calculateRiskMetrics(
     tradesWithoutSL,
     correlatedPairs,
     riskLevel,
+    worstCaseScenario,
     alerts
   }
 }
@@ -267,5 +318,127 @@ async function saveCriticalAlerts(accountId: string, criticalAlerts: any[]) {
         }
       })
     }
+  }
+}
+
+//+------------------------------------------------------------------+
+//| Calculate Worst Case Scenario - CRITICAL RISK ASSESSMENT        |
+//+------------------------------------------------------------------+
+function calculateWorstCaseScenario(openTrades: any[], currentBalance: number): WorstCaseScenario {
+  console.log('💥 Calculating Worst Case Scenario for', openTrades.length, 'trades...')
+  
+  let totalPotentialLoss = 0
+  let tradesWithSLCount = 0
+  let tradesWithSLLoss = 0
+  let tradesWithoutSLCount = 0
+  let tradesWithoutSLLoss = 0
+  let tradesInProfitCount = 0
+  let protectedProfit = 0
+  
+  openTrades.forEach(trade => {
+    const tradePnL = (trade.pnlGross || 0) + (trade.commission || 0) + (trade.swap || 0)
+    const currentPrice = trade.openPrice // Fallback if no current price available
+    const volume = trade.volume || 0
+    
+    console.log(`💥 Analyzing ${trade.symbol} #${trade.ticketId}:`)
+    
+    if (trade.sl && trade.sl !== 0) {
+      // HAS STOP LOSS: Calculate exact potential loss
+      const stopLoss = trade.sl
+      let potentialLoss = 0
+      
+      // Calculate price difference to SL
+      let priceDifference = 0
+      if (trade.side === 'BUY') {
+        priceDifference = Math.max(0, currentPrice - stopLoss)
+      } else {
+        priceDifference = Math.max(0, stopLoss - currentPrice)
+      }
+      
+      // Convert to USD loss
+      if (trade.symbol && trade.symbol.includes('USD')) {
+        potentialLoss = priceDifference * volume * 100000 // Standard lot
+      } else {
+        potentialLoss = priceDifference * volume * 50000 // Conservative estimate
+      }
+      
+      // Check if SL is in profit (protective stop)
+      const isProtectiveStop = (trade.side === 'BUY' && stopLoss > trade.openPrice) || 
+                               (trade.side === 'SELL' && stopLoss < trade.openPrice)
+      
+      if (isProtectiveStop) {
+        // Protective stop - count as locked profit instead of loss
+        tradesInProfitCount++
+        protectedProfit += Math.abs(tradePnL) // Current profit is protected
+        console.log(`   ✅ PROTECTIVE STOP: +$${Math.abs(tradePnL).toFixed(2)} profit locked`)
+      } else {
+        // Normal stop loss - potential loss
+        tradesWithSLCount++
+        tradesWithSLLoss += potentialLoss
+        totalPotentialLoss += potentialLoss
+        console.log(`   📊 SL RISK: -$${potentialLoss.toFixed(2)} if SL hit`)
+      }
+      
+    } else {
+      // NO STOP LOSS: Use worst case estimate
+      tradesWithoutSLCount++
+      
+      let estimatedLoss = 0
+      
+      if (trade.symbol && trade.symbol.includes('USD')) {
+        // Forex major pairs: 100 pips worst case
+        estimatedLoss = volume * 100000 * 0.0100 // 100 pips
+      } else if (trade.symbol && (trade.symbol.includes('XAU') || trade.symbol.includes('XAG'))) {
+        // Gold/Silver: 1% worst case
+        estimatedLoss = currentPrice * volume * 0.01
+      } else if (trade.symbol && (trade.symbol.includes('NAS') || trade.symbol.includes('SPX'))) {
+        // Indices: 2% worst case
+        estimatedLoss = Math.abs(tradePnL) * 3 // 3x current P&L as worst case
+      } else {
+        // Other instruments: Conservative 1.5%
+        estimatedLoss = Math.abs(tradePnL) * 2.5
+      }
+      
+      // Cap at 3% of balance per trade to avoid unrealistic numbers
+      estimatedLoss = Math.min(estimatedLoss, currentBalance * 0.03)
+      
+      tradesWithoutSLLoss += estimatedLoss
+      totalPotentialLoss += estimatedLoss
+      console.log(`   🚨 NO SL: Estimated worst case -$${estimatedLoss.toFixed(2)}`)
+    }
+  })
+  
+  const totalPotentialLossPercent = (totalPotentialLoss / currentBalance) * 100
+  const dailyLimitUSD = currentBalance * 0.05 // 5% daily limit
+  const wouldViolateDailyLimit = totalPotentialLoss > dailyLimitUSD
+  const marginToViolation = Math.max(0, dailyLimitUSD - totalPotentialLoss)
+  
+  console.log('💥 WORST CASE BREAKDOWN:')
+  console.log(`   📊 Trades with SL: ${tradesWithSLCount} (risk: -$${tradesWithSLLoss.toFixed(2)})`)
+  console.log(`   🚨 Trades without SL: ${tradesWithoutSLCount} (risk: -$${tradesWithoutSLLoss.toFixed(2)})`)
+  console.log(`   ✅ Protected trades: ${tradesInProfitCount} (profit: +$${protectedProfit.toFixed(2)})`)
+  console.log(`   💥 TOTAL RISK: -$${totalPotentialLoss.toFixed(2)} (${totalPotentialLossPercent.toFixed(1)}%)`)
+  console.log(`   ⚖️ Would violate 5% limit: ${wouldViolateDailyLimit ? 'YES' : 'NO'}`)
+  console.log(`   📈 Margin to violation: $${marginToViolation.toFixed(2)}`)
+  
+  return {
+    totalPotentialLoss,
+    totalPotentialLossPercent,
+    breakdown: {
+      tradesWithSL: {
+        count: tradesWithSLCount,
+        potentialLoss: tradesWithSLLoss
+      },
+      tradesWithoutSL: {
+        count: tradesWithoutSLCount,
+        estimatedLoss: tradesWithoutSLLoss
+      },
+      tradesInProfit: {
+        count: tradesInProfitCount,
+        protectedProfit: protectedProfit
+      }
+    },
+    wouldViolateDailyLimit,
+    marginToViolation
   }
 }
