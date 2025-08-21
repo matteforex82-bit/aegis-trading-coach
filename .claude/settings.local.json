@@ -16,7 +16,9 @@
       "Bash(git fsck:*)",
       "Bash(git commit:*)",
       "Bash(npx tsc:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(npx prisma:*)",
+      "Bash(mv:*)"
     ],
     "deny": [],
     "ask": [],

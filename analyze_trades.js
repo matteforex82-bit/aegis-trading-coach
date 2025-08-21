@@ -1,52 +1,44 @@
-const fs = require('fs');
-const data = JSON.parse(fs.readFileSync('trades_full.json', 'utf8'));
-const trades = data.trades;
+const data = require('./trades_response.json');
 
-// Separa posizioni aperte e chiuse
-const openTrades = trades.filter(t => !t.closeTime);
-const closedTrades = trades.filter(t => t.closeTime);
+console.log('=== ANALISI POSIZIONI ===');
 
-console.log('=== ANALISI TRADES ===');
-console.log('Totale trades:', trades.length);
-console.log('Posizioni aperte:', openTrades.length);
-console.log('Posizioni chiuse:', closedTrades.length);
-console.log('');
-
-// Calcola P&L solo trades chiusi
-let totalPnL = 0;
-let totalSwap = 0;
-let totalCommission = 0;
-let totalGross = 0;
-
-closedTrades.forEach(t => {
-  const gross = t.pnlGross || 0;
-  const swap = t.swap || 0;
-  const commission = t.commission || 0;
-  const netPnL = gross + swap + commission;
-  
-  totalGross += gross;
-  totalSwap += swap;
-  totalCommission += commission;
-  totalPnL += netPnL;
-});
-
-console.log('=== P&L SOLO POSIZIONI CHIUSE ===');
-console.log('P&L Gross:', totalGross.toFixed(2));
-console.log('Total Swap:', totalSwap.toFixed(2));
-console.log('Total Commission:', totalCommission.toFixed(2));
-console.log('P&L NETTO TOTALE:', totalPnL.toFixed(2));
-console.log('');
-
-// Posizioni aperte details
-console.log('=== POSIZIONI APERTE ===');
+// Posizioni aperte
+const openTrades = data.trades.filter(t => !t.closeTime);
+console.log('\n📈 POSIZIONI APERTE:');
 openTrades.forEach(t => {
-  console.log(`Ticket: ${t.ticketId}, Symbol: ${t.symbol}, Side: ${t.side}, Volume: ${t.volume}, P&L: ${t.pnlGross || 0}`);
+  const pnl = t.pnlGross + (t.commission || 0) + (t.swap || 0);
+  console.log(`${t.symbol} #${t.ticketId}: P&L=${pnl.toFixed(2)}`);
 });
 
-console.log('');
-console.log('=== VERIFICA DATI ===');
-console.log('Primi 5 trades chiusi con dettagli:');
-closedTrades.slice(0, 5).forEach(t => {
-  const netPnL = (t.pnlGross || 0) + (t.swap || 0) + (t.commission || 0);
-  console.log(`${t.ticketId}: Gross=${t.pnlGross}, Swap=${t.swap}, Comm=${t.commission}, Net=${netPnL.toFixed(2)}`);
-});
+// Posizioni chiuse
+const closedTrades = data.trades.filter(t => t.closeTime);
+console.log('\n💰 POSIZIONI CHIUSE:');
+const totalClosedPnL = closedTrades.reduce((sum, t) => {
+  return sum + t.pnlGross + (t.commission || 0) + (t.swap || 0);
+}, 0);
+console.log(`Totale operazioni chiuse: ${closedTrades.length}`);
+console.log(`P&L totale chiuse: ${totalClosedPnL.toFixed(2)}`);
+
+// Cerca XAGUSD #162527
+const xagTrade = data.trades.find(t => t.ticketId === '162527');
+console.log('\n🔍 XAGUSD #162527:');
+if (xagTrade) {
+  console.log('Status:', xagTrade.closeTime ? 'CLOSED' : 'OPEN');
+  console.log('P&L:', (xagTrade.pnlGross + (xagTrade.commission || 0) + (xagTrade.swap || 0)).toFixed(2));
+  console.log('Open Time:', xagTrade.openTime);
+  if (xagTrade.closeTime) console.log('Close Time:', xagTrade.closeTime);
+} else {
+  console.log('❌ NON TROVATA NEL DATABASE');
+}
+
+// Calcolo Balance ed Equity
+const startingBalance = 50000;
+const balance = startingBalance + totalClosedPnL;
+const openPnL = openTrades.reduce((sum, t) => sum + t.pnlGross + (t.commission || 0) + (t.swap || 0), 0);
+const equity = balance + openPnL;
+
+console.log('\n💳 CALCOLI CORRETTI:');
+console.log(`Starting Balance: $${startingBalance.toFixed(2)}`);
+console.log(`Balance (Starting + Closed P&L): $${balance.toFixed(2)}`);
+console.log(`Open P&L: $${openPnL.toFixed(2)}`);
+console.log(`Equity (Balance + Open P&L): $${equity.toFixed(2)}`);

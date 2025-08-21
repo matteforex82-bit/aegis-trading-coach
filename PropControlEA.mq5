@@ -21,7 +21,7 @@ input bool     ENABLE_SSL = true;                                          // Ab
 
 // Sync Configuration  
 input group "=== SYNC CONFIGURATION ==="
-input bool     SYNC_HISTORICAL = true;                                     // Sincronizza storico al primo avvio
+input bool     SYNC_HISTORICAL = false;                                    // DISABILITATO: Storico caricato da Excel
 input int      SYNC_INTERVAL = 30;                                         // Intervallo sync live (secondi)
 input int      MAX_TRADES_PER_REQUEST = 10;                                // Max trades per richiesta
 input bool     SYNC_ON_TRADE_CLOSE = true;                                 // Sync immediato alla chiusura trade
@@ -110,11 +110,15 @@ int OnInit()
         return INIT_FAILED;
     }
     
-    // Sincronizzazione storico al primo avvio
+    // Sincronizzazione storico DISABILITATA - Usa Excel import
     if(SYNC_HISTORICAL && g_FirstRun)
     {
-        Print("📊 Avvio sincronizzazione storico...");
-        SyncHistoricalData();
+        Print("📊 [DISABILITATO] Storico caricato da Excel - Skip sync");
+        // SyncHistoricalData(); // COMMENTATO - Usa Excel invece
+    }
+    else 
+    {
+        Print("📋 EA in modalità LIVE ONLY - Storico da Excel");
     }
     
     // Imposta timer per sync periodico
