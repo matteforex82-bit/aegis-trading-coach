@@ -132,13 +132,8 @@ async function calculateRiskMetrics(
         priceDifference = Math.max(0, stopLoss - currentPrice)
       }
       
-      // Estimate risk in USD (simplified calculation)
-      if (trade.symbol && trade.symbol.includes('USD')) {
-        tradeExposure = priceDifference * volume * 100000 // Standard lot size
-      } else {
-        // For non-USD pairs, use a more conservative approach
-        tradeExposure = priceDifference * volume * 50000
-      }
+      // Calculate precise risk in USD based on instrument type
+      tradeExposure = calculatePreciseRiskExposure(trade.symbol, priceDifference, volume, currentPrice)
       
       // If SL is in profit (protective stop), risk is minimal
       if (trade.side === 'BUY' && stopLoss > trade.openPrice) {
@@ -355,12 +350,8 @@ function calculateWorstCaseScenario(openTrades: any[], currentBalance: number): 
         priceDifference = Math.max(0, stopLoss - currentPrice)
       }
       
-      // Convert to USD loss
-      if (trade.symbol && trade.symbol.includes('USD')) {
-        potentialLoss = priceDifference * volume * 100000 // Standard lot
-      } else {
-        potentialLoss = priceDifference * volume * 50000 // Conservative estimate
-      }
+      // Calculate precise potential loss in USD
+      potentialLoss = calculatePreciseRiskExposure(trade.symbol, priceDifference, volume, currentPrice)
       
       // Check if SL is in profit (protective stop)
       const isProtectiveStop = (trade.side === 'BUY' && stopLoss > trade.openPrice) || 
@@ -383,24 +374,8 @@ function calculateWorstCaseScenario(openTrades: any[], currentBalance: number): 
       // NO STOP LOSS: Use worst case estimate
       tradesWithoutSLCount++
       
-      let estimatedLoss = 0
-      
-      if (trade.symbol && trade.symbol.includes('USD')) {
-        // Forex major pairs: 100 pips worst case
-        estimatedLoss = volume * 100000 * 0.0100 // 100 pips
-      } else if (trade.symbol && (trade.symbol.includes('XAU') || trade.symbol.includes('XAG'))) {
-        // Gold/Silver: 1% worst case
-        estimatedLoss = currentPrice * volume * 0.01
-      } else if (trade.symbol && (trade.symbol.includes('NAS') || trade.symbol.includes('SPX'))) {
-        // Indices: 2% worst case
-        estimatedLoss = Math.abs(tradePnL) * 3 // 3x current P&L as worst case
-      } else {
-        // Other instruments: Conservative 1.5%
-        estimatedLoss = Math.abs(tradePnL) * 2.5
-      }
-      
-      // Cap at 3% of balance per trade to avoid unrealistic numbers
-      estimatedLoss = Math.min(estimatedLoss, currentBalance * 0.03)
+      // Calculate worst case loss estimate based on instrument type and typical volatility
+      let estimatedLoss = calculateWorstCaseEstimate(trade.symbol, volume, currentPrice, tradePnL, currentBalance)
       
       tradesWithoutSLLoss += estimatedLoss
       totalPotentialLoss += estimatedLoss
@@ -441,4 +416,144 @@ function calculateWorstCaseScenario(openTrades: any[], currentBalance: number): 
     wouldViolateDailyLimit,
     marginToViolation
   }
+}
+
+//+------------------------------------------------------------------+
+//| Calculate Precise Risk Exposure in USD - ACCURATE PIP VALUES    |
+//+------------------------------------------------------------------+
+function calculatePreciseRiskExposure(symbol: string, priceDifference: number, volume: number, currentPrice: number): number {
+  if (!symbol || priceDifference === 0 || volume === 0) {
+    return 0
+  }
+
+  // Clean symbol name
+  const cleanSymbol = symbol.replace('.p', '').replace('.', '').toUpperCase()
+  
+  console.log(`🔧 Calculating precise risk for ${cleanSymbol}: price diff=${priceDifference}, volume=${volume}, current=${currentPrice}`)
+
+  // Standard lot size
+  const standardLot = 100000
+  const contractSize = volume * standardLot
+
+  let riskInUSD = 0
+
+  if (cleanSymbol.includes('XAU') || cleanSymbol.includes('GOLD')) {
+    // GOLD (XAUUSD): Price difference is directly in USD per ounce
+    // Each lot = 100 ounces, so risk = priceDifference * volume * 100
+    riskInUSD = priceDifference * volume * 100
+    console.log(`   🥇 GOLD calculation: ${priceDifference} * ${volume} * 100 = $${riskInUSD.toFixed(2)}`)
+    
+  } else if (cleanSymbol.includes('XAG') || cleanSymbol.includes('SILVER')) {
+    // SILVER (XAGUSD): Price difference is directly in USD per ounce  
+    // Each lot = 5000 ounces, so risk = priceDifference * volume * 5000
+    riskInUSD = priceDifference * volume * 5000
+    console.log(`   🥈 SILVER calculation: ${priceDifference} * ${volume} * 5000 = $${riskInUSD.toFixed(2)}`)
+    
+  } else if (cleanSymbol.startsWith('USD')) {
+    // USD is base currency (e.g., USDCAD, USDCHF, USDJPY)
+    // Risk = (priceDifference / current price) * contract size
+    if (currentPrice > 0) {
+      riskInUSD = (priceDifference / currentPrice) * contractSize
+      console.log(`   💱 USD base: (${priceDifference} / ${currentPrice}) * ${contractSize} = $${riskInUSD.toFixed(2)}`)
+    } else {
+      // Fallback if no current price
+      riskInUSD = priceDifference * contractSize * 0.01
+      console.log(`   💱 USD base (fallback): ${priceDifference} * ${contractSize} * 0.01 = $${riskInUSD.toFixed(2)}`)
+    }
+    
+  } else if (cleanSymbol.endsWith('USD')) {
+    // USD is quote currency (e.g., EURUSD, GBPUSD, AUDUSD)
+    // Risk = priceDifference * contract size (direct USD calculation)
+    riskInUSD = priceDifference * contractSize
+    console.log(`   💱 USD quote: ${priceDifference} * ${contractSize} = $${riskInUSD.toFixed(2)}`)
+    
+  } else if (cleanSymbol.includes('JPY')) {
+    // Japanese Yen pairs (e.g., EURJPY, GBPJPY)
+    // JPY pip value is different, need to convert to USD
+    // Approximate conversion: assume USDJPY ≈ 150 for rough calculation
+    const usdJpyRate = 150 // This should ideally be fetched from current rates
+    riskInUSD = (priceDifference * contractSize) / usdJpyRate
+    console.log(`   🇯🇵 JPY pair: (${priceDifference} * ${contractSize}) / ${usdJpyRate} = $${riskInUSD.toFixed(2)}`)
+    
+  } else {
+    // Cross pairs (e.g., EURGBP, AUDCAD, etc.)
+    // Use conservative estimate: assume average pip value of $10 per standard lot
+    const conservativePipValue = 10
+    const pips = priceDifference * 10000 // Convert price difference to pips
+    riskInUSD = pips * volume * conservativePipValue
+    console.log(`   ⚖️ Cross pair: ${pips} pips * ${volume} lots * $${conservativePipValue} = $${riskInUSD.toFixed(2)}`)
+  }
+
+  // Apply reasonable limits to prevent unrealistic calculations
+  const maxRiskPerTrade = 5000 // Max $5000 risk per trade calculation
+  riskInUSD = Math.min(Math.abs(riskInUSD), maxRiskPerTrade)
+  
+  console.log(`   ✅ Final calculated risk: $${riskInUSD.toFixed(2)}`)
+  
+  return riskInUSD
+}
+
+//+------------------------------------------------------------------+
+//| Calculate Worst Case Estimate for Trades WITHOUT Stop Loss      |
+//+------------------------------------------------------------------+
+function calculateWorstCaseEstimate(symbol: string, volume: number, currentPrice: number, currentPnL: number, accountBalance: number): number {
+  if (!symbol || volume === 0) {
+    return 0
+  }
+
+  const cleanSymbol = symbol.replace('.p', '').replace('.', '').toUpperCase()
+  console.log(`💀 Calculating worst case estimate for ${cleanSymbol} (NO SL): volume=${volume}, price=${currentPrice}`)
+
+  let worstCaseDistance = 0
+  let estimatedLoss = 0
+
+  if (cleanSymbol.includes('XAU') || cleanSymbol.includes('GOLD')) {
+    // GOLD: Can move $50-100 in extreme conditions
+    worstCaseDistance = 50 // $50 per ounce worst case
+    estimatedLoss = worstCaseDistance * volume * 100 // 100 ounces per lot
+    console.log(`   🥇 GOLD worst case: $${worstCaseDistance} * ${volume} * 100 = $${estimatedLoss.toFixed(2)}`)
+    
+  } else if (cleanSymbol.includes('XAG') || cleanSymbol.includes('SILVER')) {
+    // SILVER: Can move $2-5 in extreme conditions  
+    worstCaseDistance = 3 // $3 per ounce worst case
+    estimatedLoss = worstCaseDistance * volume * 5000 // 5000 ounces per lot
+    console.log(`   🥈 SILVER worst case: $${worstCaseDistance} * ${volume} * 5000 = $${estimatedLoss.toFixed(2)}`)
+    
+  } else if (cleanSymbol.includes('USD')) {
+    // FOREX pairs: 100-200 pips worst case depending on pair volatility
+    let worstCasePips = 150 // Default 150 pips
+    
+    // Adjust based on pair volatility
+    if (cleanSymbol.includes('GBP')) {
+      worstCasePips = 200 // GBP pairs more volatile
+    } else if (cleanSymbol.includes('JPY')) {
+      worstCasePips = 300 // JPY pairs can move more pips (but smaller pip value)
+    } else if (cleanSymbol.includes('CHF')) {
+      worstCasePips = 100 // CHF pairs more stable
+    }
+    
+    // Convert pips to price difference
+    let pipValue = 0.0001 // Standard pip for most pairs
+    if (cleanSymbol.includes('JPY')) {
+      pipValue = 0.01 // JPY pip is 2 decimal places
+    }
+    
+    worstCaseDistance = worstCasePips * pipValue
+    estimatedLoss = calculatePreciseRiskExposure(symbol, worstCaseDistance, volume, currentPrice)
+    console.log(`   💱 FOREX worst case: ${worstCasePips} pips (${worstCaseDistance}) = $${estimatedLoss.toFixed(2)}`)
+    
+  } else {
+    // Cross pairs or other instruments: Use conservative percentage
+    const conservativePercentage = 0.02 // 2% worst case
+    estimatedLoss = Math.abs(currentPnL) * 5 // 5x current P&L as extreme scenario
+    console.log(`   ⚖️ Other instrument worst case: ${Math.abs(currentPnL)} * 5 = $${estimatedLoss.toFixed(2)}`)
+  }
+
+  // Apply caps to prevent unrealistic numbers
+  const maxWorstCasePerTrade = accountBalance * 0.05 // Max 5% of account per trade
+  estimatedLoss = Math.min(Math.abs(estimatedLoss), maxWorstCasePerTrade)
+  
+  console.log(`   💀 Final worst case estimate: $${estimatedLoss.toFixed(2)}`)
+  
+  return estimatedLoss
 }
