@@ -505,6 +505,56 @@ async function createTradeSafe(trade: any, accountId: string) {
 }
 
 //+------------------------------------------------------------------+
+//| Handle Partial Closure Conflicts - LIVE FIRST PRIORITY         |
+//+------------------------------------------------------------------+
+async function handlePartialClosureConflict(ticketId: string, incomingPosition: any, existingPositions: any[]) {
+  try {
+    if (existingPositions.length === 0) {
+      return false // No conflict
+    }
+    
+    // Check if there's a closed position with same ticketId
+    const closedPosition = existingPositions.find(p => p.closeTime !== null)
+    const openPosition = existingPositions.find(p => p.closeTime === null)
+    
+    if (closedPosition && !openPosition) {
+      // PARTIAL CLOSURE SCENARIO: Closed position exists, live position incoming
+      const oldCloseTime = new Date(closedPosition.closeTime).getTime()
+      const newHistoricalId = `${ticketId}_hist_${oldCloseTime}`
+      
+      console.log(`🔄 PARTIAL CLOSURE DETECTED: Renaming closed position`)
+      console.log(`   Original: ${ticketId} (closed ${closedPosition.closeTime})`)
+      console.log(`   New ID: ${newHistoricalId}`)
+      console.log(`   Incoming: ${ticketId} (live position with ${incomingPosition.volume} lots)`)
+      
+      // Rename the closed position to avoid conflict
+      await db.trade.update({
+        where: { id: closedPosition.id },
+        data: { 
+          ticketId: newHistoricalId,
+          comment: `${closedPosition.comment || ''} [Partial closure - renamed for live position]`.trim()
+        }
+      })
+      
+      console.log(`✅ Conflict resolved: Live position ${ticketId} can now be created`)
+      return true
+    }
+    
+    if (existingPositions.length > 1) {
+      console.log(`⚠️ Multiple positions found for ticket ${ticketId}:`)
+      existingPositions.forEach((p, i) => {
+        console.log(`   ${i + 1}. ${p.closeTime ? 'CLOSED' : 'OPEN'} - Volume: ${p.volume} - Created: ${p.createdAt}`)
+      })
+    }
+    
+    return false
+  } catch (error: any) {
+    console.error(`❌ Error handling partial closure conflict for ${ticketId}:`, error.message)
+    return false
+  }
+}
+
+//+------------------------------------------------------------------+
 //| Sync Open Positions - SAFE UPSERT VERSION                      |
 //+------------------------------------------------------------------+
 async function syncOpenPositionsSafe(account: any, openPositions: any[]) {
@@ -536,7 +586,23 @@ async function syncOpenPositionsSafe(account: any, openPositions: any[]) {
         const ticketId = String(position.ticket_id)
         processedTickets.add(ticketId)
         
-        // Check if position already exists
+        // Check if position already exists (any state)
+        const allExistingPositions = await db.trade.findMany({
+          where: {
+            ticketId: ticketId,
+            accountId: accountRecord.id
+          },
+          orderBy: { createdAt: 'desc' }
+        })
+        
+        // Handle partial closure conflicts
+        const conflictResolved = await handlePartialClosureConflict(
+          ticketId, 
+          position, // incoming live position
+          allExistingPositions
+        )
+        
+        // Get the current open position (if any) after conflict resolution
         const existingPosition = await db.trade.findFirst({
           where: {
             ticketId: ticketId,

@@ -83,7 +83,7 @@ async function testSync() {
   try {
     console.log('🧪 Testing EA sync with 4 positions (including XAGUSD #162527)...')
     
-    const response = await fetch('http://localhost:3008/api/ingest/mt5', {
+    const response = await fetch('http://localhost:3009/api/ingest/mt5', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
