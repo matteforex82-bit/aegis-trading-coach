@@ -350,9 +350,7 @@ export default function AccountDashboard() {
           const profitTargetAmount = accountSize * (profitTargetPercent / 100)
 
           // 🚀 ENHANCED PROTECTION RULES CALCULATION
-          // Separate closed trades from open trades for accurate calculations
-          const closedTrades = trades.filter(t => t.closeTime !== null)
-          const openTrades = trades.filter(t => t.closeTime === null)
+          // Use existing closedTrades and openTradesData variables for accurate calculations
           
           // Calculate ACTIVE protection (closed trades only)
           const dailyProfitsActive: { [date: string]: number } = {}
@@ -381,7 +379,7 @@ export default function AccountDashboard() {
 
           // Add today's open positions to projection
           let todayOpenPnL = 0
-          openTrades.forEach(trade => {
+          openTradesData.forEach(trade => {
             const tradeProfit = trade.pnlGross + trade.commission + trade.swap
             todayOpenPnL += tradeProfit
             
