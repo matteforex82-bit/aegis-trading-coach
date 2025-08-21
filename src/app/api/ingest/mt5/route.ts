@@ -583,7 +583,8 @@ async function syncOpenPositionsSafe(account: any, openPositions: any[]) {
     
     for (const position of openPositions) {
       try {
-        const ticketId = String(position.ticket_id)
+        // Support both old and new EA formats
+        const ticketId = String(position.ticket_id || position.ticket)
         processedTickets.add(ticketId)
         
         // Check if position already exists (any state)
@@ -611,16 +612,20 @@ async function syncOpenPositionsSafe(account: any, openPositions: any[]) {
           }
         })
         
+        // Enhanced position data mapping for new EA format
         const positionData = {
           symbol: position.symbol,
-          side: position.side === 'buy' ? 'BUY' : 'SELL',
+          side: (position.side || position.type) === 'buy' ? 'BUY' : 'SELL',
           volume: Number(position.volume),
-          openPrice: Number(position.open_price),
-          pnlGross: Number(position.pnl || 0),
+          openPrice: Number(position.open_price || position.price_open),
+          pnlGross: Number(position.pnl || position.profit || 0),
           swap: Number(position.swap || 0),
           commission: Number(position.commission || 0),
           comment: position.comment || null,
           magic: position.magic ? Number(position.magic) : null,
+          // NEW: Support for SL/TP from enhanced EA
+          sl: position.stop_loss ? Number(position.stop_loss) : null,
+          tp: position.take_profit ? Number(position.take_profit) : null,
           tradePhase: mapPhaseSafe(position.phase),
           // Update timestamp for staleness detection
           updatedAt: new Date()
@@ -633,7 +638,7 @@ async function syncOpenPositionsSafe(account: any, openPositions: any[]) {
             data: positionData
           })
           updatedPositions++
-          console.log(`🔄 Updated position: ${position.ticket_id} ${position.symbol}`)
+          console.log(`🔄 Updated position: ${ticketId} ${position.symbol}`)
         } else {
           // CREATE new position
           await db.trade.create({
@@ -643,7 +648,7 @@ async function syncOpenPositionsSafe(account: any, openPositions: any[]) {
               positionId: ticketId, // Use ticket as position ID for open positions
               orderId: ticketId, // Use ticket as order ID for open positions
               closePrice: null, // Open position
-              openTime: new Date(position.open_time),
+              openTime: new Date(position.open_time || position.time),
               closeTime: null, // Open position
               accountId: accountRecord.id,
               
@@ -663,10 +668,10 @@ async function syncOpenPositionsSafe(account: any, openPositions: any[]) {
             }
           })
           createdPositions++
-          console.log(`➕ Created new position: ${position.ticket_id} ${position.symbol}`)
+          console.log(`➕ Created new position: ${ticketId} ${position.symbol}`)
         }
       } catch (error: any) {
-        console.error(`❌ Error syncing position ${position.ticket_id}:`, error.message)
+        console.error(`❌ Error syncing position ${ticketId}:`, error.message)
         console.error(`❌ Full error details:`, error)
         console.error(`❌ Position data:`, JSON.stringify(position, null, 2))
       }

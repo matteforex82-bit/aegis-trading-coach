@@ -39,25 +39,34 @@ int g_LastKnownDealsCount = 0;
 //+------------------------------------------------------------------+
 int OnInit()
 {
-    Print("🚀 PROP CONTROL EA LIGHT v3.0 - Inizializzazione...");
-    Print("📡 API URL: ", API_URL);
-    Print("⏱️ Sync interval: ", SYNC_INTERVAL, " secondi");
+    Print("PROP CONTROL EA LIGHT v3.0 - Inizializzazione...");
+    Print("API URL: ", API_URL);
+    Print("Sync interval: ", SYNC_INTERVAL, " secondi");
+    Print("MODALITA: Solo nuove operazioni chiuse + Live sync ogni ", SYNC_INTERVAL, "s");
     
     // Test connessione API
     if(!TestAPIConnection())
     {
-        Print("❌ ERRORE: Impossibile connettersi all'API");
+        Print("ERRORE: Impossibile connettersi all'API");
         return INIT_FAILED;
     }
     
-    // Inizializza conteggio deals per rilevare nuove chiusure
+    // Inizializza conteggio deals per rilevare SOLO nuove chiusure da questo momento
+    if(!HistorySelect(0, TimeCurrent()))
+    {
+        Print("ERRORE: Impossibile selezionare lo storico");
+        return INIT_FAILED;
+    }
+    
     g_LastKnownDealsCount = HistoryDealsTotal();
+    Print("Punto di partenza: ", g_LastKnownDealsCount, " deals nello storico (ignorati)");
     
     // Avvia timer per sync live
     EventSetTimer(SYNC_INTERVAL);
     
-    Print("✅ PROP CONTROL EA LIGHT pronto!");
-    Print("📋 Modalità: LIVE ONLY - Storico da Excel");
+    Print("PROP CONTROL EA LIGHT pronto!");
+    Print("STORICO: Ignorato - Solo nuove operazioni da adesso");
+    Print("LIVE SYNC: Ogni ", SYNC_INTERVAL, " secondi");
     
     return INIT_SUCCEEDED;
 }
@@ -68,7 +77,7 @@ int OnInit()
 void OnDeinit(const int reason)
 {
     EventKillTimer();
-    Print("🛑 PROP CONTROL EA LIGHT terminato - Motivo: ", reason);
+    Print("PROP CONTROL EA LIGHT terminato - Motivo: ", reason);
 }
 
 //+------------------------------------------------------------------+
@@ -86,7 +95,7 @@ void OnTick()
 void OnTimer()
 {
     if(ENABLE_DETAILED_LOGGING)
-        Print("⏰ Timer sync - Invio posizioni aperte...");
+        Print("LIVE SYNC: Invio posizioni aperte ogni ", SYNC_INTERVAL, "s");
     
     SendLivePositions();
 }
@@ -110,12 +119,12 @@ bool TestAPIConnection()
     
     if(res == 200 || res == 201 || res == 400) // 400 può essere OK se endpoint esiste
     {
-        Print("✅ API connessione OK - Codice: ", res);
+        Print("API connessione OK - Codice: ", res);
         return true;
     }
     else
     {
-        Print("❌ API connessione fallita - Codice: ", res);
+        Print("API connessione fallita - Codice: ", res);
         return false;
     }
 }
@@ -128,7 +137,7 @@ void CheckForNewClosedTrades()
     // Aggiorna lo storico per essere sicuri di avere tutti i deals
     if(!HistorySelect(0, TimeCurrent()))
     {
-        Print("⚠️ Errore nel selezionare lo storico");
+        Print("Errore nel selezionare lo storico");
         return;
     }
     
@@ -139,10 +148,10 @@ void CheckForNewClosedTrades()
     {
         if(ENABLE_DETAILED_LOGGING)
         {
-            Print("🔍 Rilevati ", (currentDealsCount - g_LastKnownDealsCount), " nuovi deals");
+            Print("NUOVI DEALS: ", (currentDealsCount - g_LastKnownDealsCount), " rilevati da ultimo check");
         }
         
-        // Esamina i deals più recenti per trovare chiusure
+        // Esamina SOLO i deals più recenti (dal punto di avvio EA)
         for(int i = g_LastKnownDealsCount; i < currentDealsCount; i++)
         {
             ulong dealTicket = HistoryDealGetTicket(i);
@@ -151,9 +160,16 @@ void CheckForNewClosedTrades()
             // Controlla se è una chiusura (DEAL_TYPE_SELL per long, DEAL_TYPE_BUY per short)
             long dealType = HistoryDealGetInteger(dealTicket, DEAL_TYPE);
             long dealEntry = HistoryDealGetInteger(dealTicket, DEAL_ENTRY);
+            ulong positionId = HistoryDealGetInteger(dealTicket, DEAL_POSITION_ID);
             
             if(dealEntry == DEAL_ENTRY_OUT) // È una chiusura
             {
+                if(ENABLE_DETAILED_LOGGING)
+                {
+                    string symbol = HistoryDealGetString(dealTicket, DEAL_SYMBOL);
+                    ulong positionId = HistoryDealGetInteger(dealTicket, DEAL_POSITION_ID);
+                    Print("NUOVA CHIUSURA: ", symbol, " #", positionId, " (dal momento avvio EA)");
+                }
                 SendClosedTrade(dealTicket);
             }
         }
@@ -180,7 +196,7 @@ void SendClosedTrade(ulong dealTicket)
     // Trova il deal di apertura corrispondente per avere tutti i dati
     if(!HistorySelectByPosition(positionId))
     {
-        Print("⚠️ Non riesco a trovare lo storico per posizione: ", positionId);
+        Print("Non riesco a trovare lo storico per posizione: ", positionId);
         return;
     }
     
@@ -209,11 +225,11 @@ void SendClosedTrade(ulong dealTicket)
     
     if(openTime == 0)
     {
-        Print("❌ Non riesco a trovare il deal di apertura per posizione: ", positionId);
+        Print("Non riesco a trovare il deal di apertura per posizione: ", positionId);
         return;
     }
     
-    Print("📤 Invio operazione chiusa: ", symbol, " #", positionId, " P&L: ", profit);
+    Print("INVIO CHIUSURA: ", symbol, " #", positionId, " P&L: ", profit);
     
     // Costruisci payload per singola operazione chiusa
     string accountData = BuildAccountJSON();
@@ -223,7 +239,7 @@ void SendClosedTrade(ulong dealTicket)
     
     if(ENABLE_DETAILED_LOGGING)
     {
-        Print("🚀 Payload operazione chiusa: ", payload);
+        Print("Payload operazione chiusa: ", payload);
     }
     
     SendHTTPRequest(payload);
@@ -308,7 +324,7 @@ string BuildCurrentOpenPositionsJSON()
     
     if(ENABLE_DETAILED_LOGGING)
     {
-        Print("🔍 Trovate ", totalPositions, " posizioni aperte correnti");
+        Print("Trovate ", totalPositions, " posizioni aperte correnti");
     }
     
     for(int i = 0; i < totalPositions; i++)
@@ -316,21 +332,22 @@ string BuildCurrentOpenPositionsJSON()
         ulong positionTicket = PositionGetTicket(i);
         if(positionTicket <= 0) 
         {
-            Print("⚠️ Posizione ", i, " - PositionGetTicket fallito");
+            Print("Posizione ", i, " - PositionGetTicket fallito");
             continue;
         }
         
         if(ENABLE_DETAILED_LOGGING)
         {
-            Print("🔍 Processo posizione ", i, " - Ticket: ", positionTicket);
+            Print("Processo posizione ", i, " - Ticket: ", positionTicket);
         }
         
         if(!PositionSelectByTicket(positionTicket)) 
         {
-            Print("❌ Posizione ", positionTicket, " - PositionSelectByTicket fallito!");
+            Print("Posizione ", positionTicket, " - PositionSelectByTicket fallito!");
             continue;
         }
         
+        // Recupera TUTTE le informazioni della posizione
         string symbol = PositionGetString(POSITION_SYMBOL);
         long positionType = PositionGetInteger(POSITION_TYPE);
         double volume = PositionGetDouble(POSITION_VOLUME);
@@ -341,27 +358,53 @@ string BuildCurrentOpenPositionsJSON()
         string comment = PositionGetString(POSITION_COMMENT);
         long magic = PositionGetInteger(POSITION_MAGIC);
         
+        // Nuove informazioni complete
+        double stopLoss = PositionGetDouble(POSITION_SL);
+        double takeProfit = PositionGetDouble(POSITION_TP);
+        double currentPrice = PositionGetDouble(POSITION_PRICE_CURRENT);
+        
+        // Calcola il valore della posizione (volume * contract size * current price)
+        double contractSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_CONTRACT_SIZE);
+        double positionValue = volume * contractSize * currentPrice;
+        
+        // Calcola la percentuale di cambio
+        double changePercent = 0.0;
+        if(openPrice != 0)
+        {
+            if(positionType == POSITION_TYPE_BUY)
+                changePercent = ((currentPrice - openPrice) / openPrice) * 100;
+            else
+                changePercent = ((openPrice - currentPrice) / openPrice) * 100;
+        }
+        
         string side = (positionType == POSITION_TYPE_BUY) ? "buy" : "sell";
+        string type = (positionType == POSITION_TYPE_BUY) ? "buy" : "sell";
         
         if(ENABLE_DETAILED_LOGGING)
         {
-            Print("📊 Posizione: ", positionTicket, " ", symbol, " ", side, " ", volume, " lots, P&L: ", currentProfit);
+            Print("Posizione COMPLETA: ", positionTicket, " ", symbol, " ", side, " ", volume, " lots");
+            Print("  Open: ", openPrice, " Current: ", currentPrice, " SL: ", stopLoss, " TP: ", takeProfit);
+            Print("  P&L: ", currentProfit, " Swap: ", swap, " Value: ", positionValue, " Change%: ", NormalizeDouble(changePercent, 2));
         }
         
         if(positionsJson != "") positionsJson += ",";
         
         positionsJson += "{";
-        positionsJson += "\"ticket_id\":\"" + IntegerToString(positionTicket) + "\",";
         positionsJson += "\"symbol\":\"" + CleanJsonString(symbol) + "\",";
-        positionsJson += "\"side\":\"" + side + "\",";
+        positionsJson += "\"ticket\":\"" + IntegerToString(positionTicket) + "\",";
+        positionsJson += "\"time\":\"" + TimeToString(openTime, TIME_DATE|TIME_SECONDS) + "\",";
+        positionsJson += "\"type\":\"" + type + "\",";
         positionsJson += "\"volume\":" + DoubleToString(volume, 2) + ",";
-        positionsJson += "\"open_price\":" + DoubleToString(openPrice, 5) + ",";
-        positionsJson += "\"open_time\":\"" + TimeToString(openTime, TIME_DATE|TIME_SECONDS) + "\",";
-        positionsJson += "\"pnl\":" + DoubleToString(currentProfit, 2) + ",";
+        positionsJson += "\"price_open\":" + DoubleToString(openPrice, 5) + ",";
+        positionsJson += "\"stop_loss\":" + DoubleToString(stopLoss, 5) + ",";
+        positionsJson += "\"take_profit\":" + DoubleToString(takeProfit, 5) + ",";
+        positionsJson += "\"price_current\":" + DoubleToString(currentPrice, 5) + ",";
+        positionsJson += "\"value\":" + DoubleToString(positionValue, 2) + ",";
         positionsJson += "\"swap\":" + DoubleToString(swap, 2) + ",";
-        positionsJson += "\"commission\":0.0,";
-        positionsJson += "\"comment\":\"" + CleanJsonString(comment) + "\",";
+        positionsJson += "\"profit\":" + DoubleToString(currentProfit, 2) + ",";
+        positionsJson += "\"change_percent\":" + DoubleToString(changePercent, 2) + ",";
         positionsJson += "\"magic\":" + IntegerToString(magic) + ",";
+        positionsJson += "\"comment\":\"" + CleanJsonString(comment) + "\",";
         positionsJson += "\"phase\":\"" + CleanJsonString(ACCOUNT_PHASE) + "\"";
         positionsJson += "}";
     }
@@ -369,17 +412,7 @@ string BuildCurrentOpenPositionsJSON()
     // Debug finale
     if(ENABLE_DETAILED_LOGGING)
     {
-        Print("✅ JSON costruito per ", totalPositions, " posizioni aperte");
-        
-        // Verifica specifica per XAGUSD #162527
-        if(StringFind(positionsJson, "162527") >= 0)
-        {
-            Print("✅ XAGUSD #162527 INCLUSA nel payload");
-        }
-        else 
-        {
-            Print("⚠️ XAGUSD #162527 non trovata nel payload corrente");
-        }
+        Print("JSON COMPLETO costruito per ", totalPositions, " posizioni aperte");
     }
     
     return positionsJson;
@@ -405,13 +438,13 @@ bool SendHTTPRequest(string payload)
     if(res == 200 || res == 201)
     {
         if(ENABLE_DETAILED_LOGGING)
-            Print("✅ Dati inviati con successo - Codice: ", res);
+            Print("Dati inviati con successo - Codice: ", res);
         return true;
     }
     else
     {
-        Print("❌ Errore invio dati - Codice: ", res);
-        Print("📤 Payload che ha fallito: ", payload);
+        Print("Errore invio dati - Codice: ", res);
+        Print("Payload che ha fallito: ", payload);
         return false;
     }
 }
@@ -419,25 +452,26 @@ bool SendHTTPRequest(string payload)
 //+------------------------------------------------------------------+
 //| Clean JSON String                                              |
 //+------------------------------------------------------------------+
-string CleanJsonString(string input)
+string CleanJsonString(string inputString)
 {
-    // Semplice pulizia per JSON - sostituisce caratteri problematici con spazi
-    string result = input;
+    string cleanString = inputString;
     
-    // Sostituisce virgolette con underscore per evitare problemi JSON
-    int len = StringLen(result);
-    for(int i = 0; i < len; i++)
+    // Rimuovi caratteri problematici per JSON
+    for(int i = 0; i < StringLen(cleanString); i++)
     {
-        ushort char_code = StringGetCharacter(result, i);
-        if(char_code == 34) // virgolette "
+        ushort ch = StringGetCharacter(cleanString, i);
+        
+        // Sostituisci virgolette doppie con underscore
+        if(ch == 34)  // "
         {
-            StringSetCharacter(result, i, 95); // underscore _
+            StringSetCharacter(cleanString, i, 95); // _
         }
-        else if(char_code < 32) // caratteri di controllo (tab, newline, etc.)
+        // Sostituisci caratteri di controllo con spazi
+        else if(ch < 32)
         {
-            StringSetCharacter(result, i, 32); // spazio
+            StringSetCharacter(cleanString, i, 32); // spazio
         }
     }
     
-    return result;
+    return cleanString;
 }

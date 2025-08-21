@@ -5,7 +5,7 @@ const testRiskAnalysis = async () => {
     
     // Use the existing account ID
     const accountId = 'cmej2fx5s0001wf3gkmbktejc'
-    const response = await fetch(`http://localhost:3012/api/accounts/${accountId}/risk-analysis`)
+    const response = await fetch(`http://localhost:3013/api/accounts/${accountId}/risk-analysis`)
     
     if (response.ok) {
       const result = await response.json()
