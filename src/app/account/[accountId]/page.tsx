@@ -89,7 +89,27 @@ interface RuleMetrics {
   tradingDays: number
   minTradingDays: number
   isCompliant: boolean
-  // Protection rules
+  
+  // Enhanced Protection Rules System
+  // Daily Protection
+  bestDayActive: number           // Best day from closed trades only
+  bestDayProjection: number       // Best day including open positions
+  dailyProtectionActiveRequired: number     // Protection based on closed trades
+  dailyProtectionProjectionRequired: number // Protection including projections
+  dailyProtectionActivePassing: boolean
+  dailyProtectionProjectionPassing: boolean
+  dailyOptimalExit: number        // Max profit to close today without worsening protection
+  
+  // Trade Protection  
+  bestTradeActive: number         // Best single trade from closed trades only
+  bestTradeProjection: number     // Best single trade including open positions
+  tradeProtectionActiveRequired: number     // Protection based on closed trades
+  tradeProtectionProjectionRequired: number // Protection including projections  
+  tradeProtectionActivePassing: boolean
+  tradeProtectionProjectionPassing: boolean
+  tradeOptimalExit: number        // Max profit to close single trade without worsening protection
+  
+  // Legacy compatibility (projection values)
   bestDay: number
   bestSingleTrade: number
   dailyProtectionRequired: number
@@ -329,27 +349,75 @@ export default function AccountDashboard() {
           const profitTargetPercent = currentAccount.currentPhase === 'PHASE_1' ? 5 : 8
           const profitTargetAmount = accountSize * (profitTargetPercent / 100)
 
-          // Calculate best day and best trade for protection rules
-          const dailyProfits: { [date: string]: number } = {}
-          let bestSingleTrade = 0
+          // 🚀 ENHANCED PROTECTION RULES CALCULATION
+          // Separate closed trades from open trades for accurate calculations
+          const closedTrades = trades.filter(t => t.closeTime !== null)
+          const openTrades = trades.filter(t => t.closeTime === null)
+          
+          // Calculate ACTIVE protection (closed trades only)
+          const dailyProfitsActive: { [date: string]: number } = {}
+          let bestTradeActive = 0
 
-          trades.forEach(trade => {
+          closedTrades.forEach(trade => {
             const date = new Date(trade.openTime).toISOString().split('T')[0]
             const tradeProfit = trade.pnlGross + trade.commission + trade.swap
             
-            // Track daily profits
-            if (!dailyProfits[date]) dailyProfits[date] = 0
-            dailyProfits[date] += tradeProfit
+            // Track daily profits (closed only)
+            if (!dailyProfitsActive[date]) dailyProfitsActive[date] = 0
+            dailyProfitsActive[date] += tradeProfit
             
-            // Track best single trade
-            if (tradeProfit > bestSingleTrade) {
-              bestSingleTrade = tradeProfit
+            // Track best single trade (closed only)
+            if (tradeProfit > bestTradeActive) {
+              bestTradeActive = tradeProfit
             }
           })
 
-          const bestDay = Math.max(...Object.values(dailyProfits), 0)
-          const dailyProtectionRequired = bestDay * 2
-          const tradeProtectionRequired = bestSingleTrade * 2
+          const bestDayActive = Math.max(...Object.values(dailyProfitsActive), 0)
+          
+          // Calculate PROJECTION protection (including open trades)
+          const dailyProfitsProjection: { [date: string]: number } = { ...dailyProfitsActive }
+          let bestTradeProjection = bestTradeActive
+          const today = new Date().toISOString().split('T')[0]
+
+          // Add today's open positions to projection
+          let todayOpenPnL = 0
+          openTrades.forEach(trade => {
+            const tradeProfit = trade.pnlGross + trade.commission + trade.swap
+            todayOpenPnL += tradeProfit
+            
+            // Track best single trade including open positions
+            if (tradeProfit > bestTradeProjection) {
+              bestTradeProjection = tradeProfit
+            }
+          })
+          
+          // Add today's open P&L to daily projection
+          if (todayOpenPnL !== 0) {
+            if (!dailyProfitsProjection[today]) dailyProfitsProjection[today] = 0
+            dailyProfitsProjection[today] += todayOpenPnL
+          }
+
+          const bestDayProjection = Math.max(...Object.values(dailyProfitsProjection), 0)
+          
+          // Calculate protection requirements
+          const dailyProtectionActiveRequired = bestDayActive * 2
+          const dailyProtectionProjectionRequired = bestDayProjection * 2
+          const tradeProtectionActiveRequired = bestTradeActive * 2
+          const tradeProtectionProjectionRequired = bestTradeProjection * 2
+          
+          // Calculate optimal exits (max profit without worsening protection)
+          // For daily: how much profit can we make today without exceeding best closed day
+          const todayClosedPnL = dailyProfitsActive[today] || 0
+          const dailyOptimalExit = Math.max(0, bestDayActive - todayClosedPnL - 0.01)
+          
+          // For trade: what's the max single trade profit without exceeding best closed trade
+          const tradeOptimalExit = Math.max(0, bestTradeActive - 0.01)
+          
+          // Legacy compatibility
+          const bestDay = bestDayProjection
+          const bestSingleTrade = bestTradeProjection
+          const dailyProtectionRequired = dailyProtectionProjectionRequired
+          const tradeProtectionRequired = tradeProtectionProjectionRequired
           
           // Calculate daily drawdown (resets at midnight)
           const today = new Date().toISOString().split('T')[0]
@@ -408,7 +476,24 @@ export default function AccountDashboard() {
             isCompliant: totalPnL >= profitTargetAmount && 
                          Math.abs(dailyDrawdownAmount) <= dailyDrawdownLimit && 
                          maxDrawdownAmount <= totalDrawdownLimit,
-            // Protection rules data
+            // Enhanced Protection Rules Data
+            bestDayActive,
+            bestDayProjection,
+            dailyProtectionActiveRequired,
+            dailyProtectionProjectionRequired,
+            dailyProtectionActivePassing: totalPnL >= dailyProtectionActiveRequired,
+            dailyProtectionProjectionPassing: totalPnL >= dailyProtectionProjectionRequired,
+            dailyOptimalExit,
+            
+            bestTradeActive,
+            bestTradeProjection,
+            tradeProtectionActiveRequired,
+            tradeProtectionProjectionRequired,
+            tradeProtectionActivePassing: totalPnL >= tradeProtectionActiveRequired,
+            tradeProtectionProjectionPassing: totalPnL >= tradeProtectionProjectionRequired,
+            tradeOptimalExit,
+            
+            // Legacy compatibility (projection values)
             bestDay,
             bestSingleTrade,
             dailyProtectionRequired,
@@ -537,70 +622,120 @@ export default function AccountDashboard() {
                 />
               </div>
 
-              {/* Protection Rules - Phase 2 Requirements */}
+              {/* 🚀 ENHANCED PROTECTION RULES - PHASE 2 */}
               <div className="mt-8">
-                <h3 className="text-md font-semibold text-slate-700 mb-4">Protection Rules (Phase 2)</h3>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  
-                  {/* Simple 50% Daily Protection - CORRECT FORMULA */}
-                  <div className={`border rounded-lg p-4 ${
-                    rules?.dailyProtectionPassing 
-                      ? 'bg-green-50 border-green-200' 
-                      : 'bg-yellow-50 border-yellow-200'
-                  }`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className={`font-medium ${
-                        rules?.dailyProtectionPassing 
-                          ? 'text-green-800' 
-                          : 'text-yellow-800'
-                      }`}>Simple 50% Daily Protection</h4>
-                      <Badge className={
-                        rules?.dailyProtectionPassing 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-yellow-100 text-yellow-800'
-                      }>
-                        {rules?.dailyProtectionPassing ? 'PASSING' : 'PENDING'}
-                      </Badge>
-                    </div>
-                    <div className={`text-sm ${
-                      rules?.dailyProtectionPassing 
-                        ? 'text-green-700' 
-                        : 'text-yellow-700'
+                <h3 className="text-md font-semibold text-slate-700 mb-4">🛡️ Advanced Protection Rules (Phase 2)</h3>
+                
+                {/* Simple 50% Daily Protection */}
+                <div className="mb-8">
+                  <h4 className="text-sm font-semibold text-slate-600 mb-4">Simple 50% Daily Protection</h4>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    
+                    {/* ACTIVE (Closed Trades) */}
+                    <div className={`border rounded-lg p-4 ${
+                      rules?.dailyProtectionActivePassing 
+                        ? 'bg-green-50 border-green-200' 
+                        : 'bg-blue-50 border-blue-200'
                     }`}>
-                      <div>Best Day Profit: ${(rules?.bestDay || 0).toFixed(2)}</div>
-                      <div>Required Protection: ${(rules?.dailyProtectionRequired || 0).toFixed(2)} (Best Day × 2)</div>
-                      <div>Current Total Profit: ${(stats?.totalPnL || 0).toFixed(2)} {rules?.dailyProtectionPassing ? '✓' : ''}</div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="font-medium text-blue-800">ACTIVE (Confirmed)</h5>
+                        <Badge className="bg-blue-100 text-blue-800">
+                          {rules?.dailyProtectionActivePassing ? 'PASSING' : 'ACTIVE'}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-blue-700 space-y-1">
+                        <div>Best Day (Closed): <span className="font-semibold">${(rules?.bestDayActive || 0).toFixed(2)}</span></div>
+                        <div>Protection Required: <span className="font-semibold">${(rules?.dailyProtectionActiveRequired || 0).toFixed(2)}</span></div>
+                        <div>Current Total: <span className="font-semibold">${(stats?.totalPnL || 0).toFixed(2)}</span> {rules?.dailyProtectionActivePassing ? '✅' : '⏳'}</div>
+                        <div className="pt-2 border-t border-blue-200">
+                          <div className="text-xs text-blue-600">💡 Optimal Exit Today: <span className="font-semibold">${rules?.dailyOptimalExit?.toFixed(2)}</span></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* PROJECTION (Including Open Trades) */}
+                    <div className={`border rounded-lg p-4 ${
+                      rules?.dailyProtectionProjectionPassing 
+                        ? 'bg-green-50 border-green-200' 
+                        : 'bg-yellow-50 border-yellow-200'
+                    }`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="font-medium text-yellow-800">PROJECTION (Live Positions)</h5>
+                        <Badge className={
+                          rules?.dailyProtectionProjectionPassing 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }>
+                          {rules?.dailyProtectionProjectionPassing ? 'PASSING' : 'PROJECTED'}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-yellow-700 space-y-1">
+                        <div>Best Day (Projected): <span className="font-semibold">${(rules?.bestDayProjection || 0).toFixed(2)}</span></div>
+                        <div>Protection Required: <span className="font-semibold">${(rules?.dailyProtectionProjectionRequired || 0).toFixed(2)}</span></div>
+                        <div>Current Total: <span className="font-semibold">${(stats?.totalPnL || 0).toFixed(2)}</span> {rules?.dailyProtectionProjectionPassing ? '✅' : '⚠️'}</div>
+                        {(rules?.bestDayProjection || 0) > (rules?.bestDayActive || 0) && (
+                          <div className="pt-2 border-t border-yellow-200">
+                            <div className="text-xs text-orange-600">⚠️ Today's positions may worsen protection!</div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
+                </div>
 
-                  {/* Simple 50% Trade Protection - CORRECT FORMULA */}
-                  <div className={`border rounded-lg p-4 ${
-                    rules?.tradeProtectionPassing 
-                      ? 'bg-green-50 border-green-200' 
-                      : 'bg-yellow-50 border-yellow-200'
-                  }`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className={`font-medium ${
-                        rules?.tradeProtectionPassing 
-                          ? 'text-green-800' 
-                          : 'text-yellow-800'
-                      }`}>Simple 50% Trade Protection</h4>
-                      <Badge className={
-                        rules?.tradeProtectionPassing 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-yellow-100 text-yellow-800'
-                      }>
-                        {rules?.tradeProtectionPassing ? 'PASSING' : 'PENDING'}
-                      </Badge>
-                    </div>
-                    <div className={`text-sm ${
-                      rules?.tradeProtectionPassing 
-                        ? 'text-green-700' 
-                        : 'text-yellow-700'
+                {/* Simple 50% Trade Protection */}
+                <div className="mb-6">
+                  <h4 className="text-sm font-semibold text-slate-600 mb-4">Simple 50% Trade Protection</h4>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    
+                    {/* ACTIVE (Closed Trades) */}
+                    <div className={`border rounded-lg p-4 ${
+                      rules?.tradeProtectionActivePassing 
+                        ? 'bg-green-50 border-green-200' 
+                        : 'bg-blue-50 border-blue-200'
                     }`}>
-                      <div>Best Single Trade: ${(rules?.bestSingleTrade || 0).toFixed(2)}</div>
-                      <div>Required Protection: ${(rules?.tradeProtectionRequired || 0).toFixed(2)} (Best Trade × 2)</div>
-                      <div>Current Total Profit: ${(stats?.totalPnL || 0).toFixed(2)} {rules?.tradeProtectionPassing ? '✓' : ''}</div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="font-medium text-blue-800">ACTIVE (Confirmed)</h5>
+                        <Badge className="bg-blue-100 text-blue-800">
+                          {rules?.tradeProtectionActivePassing ? 'PASSING' : 'ACTIVE'}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-blue-700 space-y-1">
+                        <div>Best Trade (Closed): <span className="font-semibold">${(rules?.bestTradeActive || 0).toFixed(2)}</span></div>
+                        <div>Protection Required: <span className="font-semibold">${(rules?.tradeProtectionActiveRequired || 0).toFixed(2)}</span></div>
+                        <div>Current Total: <span className="font-semibold">${(stats?.totalPnL || 0).toFixed(2)}</span> {rules?.tradeProtectionActivePassing ? '✅' : '⏳'}</div>
+                        <div className="pt-2 border-t border-blue-200">
+                          <div className="text-xs text-blue-600">💡 Optimal Exit Per Trade: <span className="font-semibold">${rules?.tradeOptimalExit?.toFixed(2)}</span></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* PROJECTION (Including Open Trades) */}
+                    <div className={`border rounded-lg p-4 ${
+                      rules?.tradeProtectionProjectionPassing 
+                        ? 'bg-green-50 border-green-200' 
+                        : 'bg-yellow-50 border-yellow-200'
+                    }`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="font-medium text-yellow-800">PROJECTION (Live Positions)</h5>
+                        <Badge className={
+                          rules?.tradeProtectionProjectionPassing 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }>
+                          {rules?.tradeProtectionProjectionPassing ? 'PASSING' : 'PROJECTED'}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-yellow-700 space-y-1">
+                        <div>Best Trade (Projected): <span className="font-semibold">${(rules?.bestTradeProjection || 0).toFixed(2)}</span></div>
+                        <div>Protection Required: <span className="font-semibold">${(rules?.tradeProtectionProjectionRequired || 0).toFixed(2)}</span></div>
+                        <div>Current Total: <span className="font-semibold">${(stats?.totalPnL || 0).toFixed(2)}</span> {rules?.tradeProtectionProjectionPassing ? '✅' : '⚠️'}</div>
+                        {(rules?.bestTradeProjection || 0) > (rules?.bestTradeActive || 0) && (
+                          <div className="pt-2 border-t border-yellow-200">
+                            <div className="text-xs text-orange-600">⚠️ Open position may worsen protection!</div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
