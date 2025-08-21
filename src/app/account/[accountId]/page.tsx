@@ -553,7 +553,10 @@ export default function AccountDashboard() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
               <h1 className="text-2xl font-bold text-slate-800">{account.name}</h1>
-              <ConnectionStatus />
+              {/* Safely render ConnectionStatus */}
+              <div className="flex items-center">
+                <ConnectionStatus />
+              </div>
             </div>
             <Button
               onClick={handleRefresh}

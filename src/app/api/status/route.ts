@@ -13,23 +13,32 @@ export async function GET() {
     // Get last successful sync from most recent trade or metric
     let lastSync = null
     try {
-      const lastTrade = await db.trade.findFirst({
-        orderBy: { updatedAt: 'desc' },
-        select: { updatedAt: true }
-      })
-      
-      const lastMetric = await db.metric.findFirst({
-        orderBy: { updatedAt: 'desc' },
-        select: { updatedAt: true }
-      })
-      
-      // Use the most recent between trade and metric
-      if (lastTrade && lastMetric) {
-        lastSync = lastTrade.updatedAt > lastMetric.updatedAt ? lastTrade.updatedAt : lastMetric.updatedAt
-      } else if (lastTrade) {
-        lastSync = lastTrade.updatedAt
-      } else if (lastMetric) {
-        lastSync = lastMetric.updatedAt
+      // Try to get last trade first
+      try {
+        const lastTrade = await db.trade.findFirst({
+          orderBy: { updatedAt: 'desc' },
+          select: { updatedAt: true }
+        })
+        if (lastTrade) {
+          lastSync = lastTrade.updatedAt
+        }
+      } catch (tradeError) {
+        console.warn('Could not query trades table:', tradeError)
+      }
+
+      // If no trade found, try metrics
+      if (!lastSync) {
+        try {
+          const lastMetric = await db.metric.findFirst({
+            orderBy: { updatedAt: 'desc' },
+            select: { updatedAt: true }
+          })
+          if (lastMetric) {
+            lastSync = lastMetric.updatedAt
+          }
+        } catch (metricError) {
+          console.warn('Could not query metrics table:', metricError)
+        }
       }
     } catch (syncError) {
       console.warn('Could not determine last sync time:', syncError)

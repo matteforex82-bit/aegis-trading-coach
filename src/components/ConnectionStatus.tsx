@@ -16,8 +16,15 @@ interface StatusData {
 export default function ConnectionStatus() {
   const [status, setStatus] = useState<StatusData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const checkStatus = async () => {
+    if (!mounted) return
+    
     try {
       setStatus(prev => prev ? { ...prev, status: 'connecting' } : null)
       
@@ -49,6 +56,7 @@ export default function ConnectionStatus() {
       }
     } catch (error) {
       console.error('Status check failed:', error)
+      // Gracefully handle errors without breaking the UI
       setStatus({
         status: 'offline',
         lastSync: null,
@@ -56,18 +64,19 @@ export default function ConnectionStatus() {
         error: 'NETWORK_ERROR',
         message: 'Unable to reach server'
       })
-    } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
+    if (!mounted) return
+    
     checkStatus() // Initial check
     
     const interval = setInterval(checkStatus, 30000) // Check every 30 seconds
     
     return () => clearInterval(interval)
-  }, [])
+  }, [mounted])
 
   const getStatusColor = () => {
     if (loading || status?.status === 'connecting') return 'bg-yellow-500'
@@ -111,6 +120,21 @@ export default function ConnectionStatus() {
     } else {
       return lastSync.toLocaleDateString()
     }
+  }
+
+  // Don't render anything on server-side to prevent hydration mismatch
+  if (!mounted) {
+    return (
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-gray-300" />
+          <Badge variant="secondary" className="text-xs px-2 py-1">
+            <Clock className="h-3 w-3 mr-1" />
+            Loading...
+          </Badge>
+        </div>
+      </div>
+    )
   }
 
   return (
