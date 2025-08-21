@@ -665,21 +665,37 @@ function calculateTrueSafeCapacity(
     let slLoss = 0
     
     if (trade.sl && trade.sl !== 0) {
-      // Calculate potential loss if SL is hit
-      const currentPrice = trade.openPrice // Fallback to open price
+      // 🚨 CRITICAL FIX: Proper Stop Loss vs Stop Profit detection
+      const openPrice = trade.openPrice
       const stopLoss = trade.sl
-      const priceDifference = Math.abs(currentPrice - stopLoss)
+      const isBuy = (trade.side === 'BUY' || trade.side === 'buy')
       
-      // Use the precise risk calculation
-      slLoss = -calculatePreciseRiskExposure(trade.symbol, priceDifference, trade.volume || 0, currentPrice)
+      console.log(`🔍 DEBUGGING ${trade.symbol}: Open=${openPrice}, SL=${stopLoss}, Side=${trade.side}, P&L=$${tradePnL.toFixed(2)}`)
       
-      // Adjust for current P&L: if trade is in profit, SL loss = SL distance - current profit
-      if (tradePnL > 0) {
-        // Trade in profit: actual loss = SL loss - current profit
-        slLoss = Math.min(slLoss, slLoss - tradePnL)
+      // Determine if this is a PROTECTIVE STOP (stop profit) or RISK STOP (stop loss)
+      const isStopProfit = isBuy ? (stopLoss > openPrice) : (stopLoss < openPrice)
+      
+      console.log(`🔍 Is Stop Profit? ${isStopProfit} (Buy: ${isBuy}, SL > Open: ${stopLoss > openPrice}, SL < Open: ${stopLoss < openPrice})`)
+      
+      if (isStopProfit && tradePnL > 0) {
+        // ✅ PROTECTIVE STOP: SL protects profits - use current P&L as protected profit
+        slLoss = tradePnL // Simply use current profit as the protected amount
+        
+        console.log(`✅ PROTECTIVE STOP confirmed for ${trade.symbol}: +$${slLoss.toFixed(2)} profit protected`)
       } else {
-        // Trade in loss: total loss = current loss + additional SL loss  
-        slLoss = slLoss + tradePnL // tradePnL is already negative
+        // 🚨 RISK STOP: Real stop loss - calculate potential loss from current price to SL
+        const priceDifference = Math.abs(openPrice - stopLoss)
+        const potentialRisk = -calculatePreciseRiskExposure(trade.symbol, priceDifference, trade.volume || 0, openPrice)
+        
+        if (tradePnL > 0) {
+          // Trade in profit but SL would cause loss: net effect = SL loss - current profit
+          slLoss = potentialRisk + tradePnL // tradePnL is positive, potentialRisk is negative
+        } else {
+          // Trade already in loss: total loss = current loss + additional SL loss  
+          slLoss = potentialRisk + tradePnL // both negative = bigger loss
+        }
+        
+        console.log(`🚨 RISK STOP confirmed for ${trade.symbol}: ${slLoss.toFixed(2)} potential loss`)
       }
     } else {
       // No SL: use worst case estimate as potential loss
@@ -695,8 +711,14 @@ function calculateTrueSafeCapacity(
     }
   })
   
-  // Sort trades by potential loss (worst first)
-  const sortedTrades = [...tradesWithLossPotential].sort((a, b) => a.potentialSLLoss - b.potentialSLLoss)
+  // Sort trades: RISK STOPS first (worst losses), then PROTECTIVE STOPS 
+  const sortedTrades = [...tradesWithLossPotential].sort((a, b) => {
+    // Negative values (losses) come first, then positive values (profits)
+    if (a.potentialSLLoss < 0 && b.potentialSLLoss >= 0) return -1
+    if (a.potentialSLLoss >= 0 && b.potentialSLLoss < 0) return 1
+    // Within same category, sort by magnitude
+    return a.potentialSLLoss - b.potentialSLLoss
+  })
   
   console.log('🔄 Simulating sequential SL hits (worst first):')
   
@@ -710,26 +732,40 @@ function calculateTrueSafeCapacity(
   for (let i = 0; i < sortedTrades.length; i++) {
     const trade = sortedTrades[i]
     
-    // Remove current P&L and apply SL loss
-    runningEquity = runningEquity - trade.currentPnL + trade.potentialSLLoss
+    // 🚨 CRITICAL FIX: Proper handling of Stop Profit vs Stop Loss
+    if (trade.potentialSLLoss > 0) {
+      // PROTECTIVE STOP: SL would lock in profits - IMPROVE equity
+      runningEquity = runningEquity - trade.currentPnL + trade.potentialSLLoss
+      console.log(`   ${i + 1}. ${trade.symbol}: ✅ PROFIT PROTECTED +$${trade.potentialSLLoss.toFixed(2)} → Equity: $${runningEquity.toFixed(2)}`)
+    } else {
+      // RISK STOP: SL would cause loss - DECREASE equity  
+      runningEquity = runningEquity - trade.currentPnL + trade.potentialSLLoss
+      minEquityTouched = Math.min(minEquityTouched, runningEquity)
+      
+      const drawdownAtThisPoint = startingBalance - runningEquity
+      const violatesHere = drawdownAtThisPoint > dailyLimitUSD
+      
+      if (violatesHere && !violationFound) {
+        violationFound = true
+        violationAtStep = i
+      }
+      
+      console.log(`   ${i + 1}. ${trade.symbol}: 🚨 RISK LOSS ${trade.potentialSLLoss.toFixed(2)} → Equity: $${runningEquity.toFixed(2)} ${violatesHere ? '🚨 VIOLATION!' : ''}`)
+    }
+    
+    // Always track minimum equity (even with protective stops)
     minEquityTouched = Math.min(minEquityTouched, runningEquity)
     
     const drawdownAtThisPoint = startingBalance - runningEquity
     const violatesHere = drawdownAtThisPoint > dailyLimitUSD
     
-    if (violatesHere && !violationFound) {
-      violationFound = true
-      violationAtStep = i
-    }
-    
     sequence.push({
       trade: `${trade.symbol} #${trade.ticketId}`,
       slLoss: trade.potentialSLLoss,
       runningEquity: runningEquity,
-      violatesHere: violatesHere
+      violatesHere: violatesHere,
+      isProtectiveStop: trade.potentialSLLoss > 0
     })
-    
-    console.log(`   ${i + 1}. ${trade.symbol}: ${trade.potentialSLLoss.toFixed(2)} → Equity: $${runningEquity.toFixed(2)} ${violatesHere ? '🚨 VIOLATION!' : ''}`)
   }
   
   // Calculate TRUE safe capacity
