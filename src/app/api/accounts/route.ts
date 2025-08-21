@@ -13,7 +13,8 @@ export async function GET(request: NextRequest) {
         include: {
           _count: {
             select: { trades: true }
-          }
+          },
+          propFirmTemplate: true
         },
         orderBy: { createdAt: 'desc' }
       })
@@ -27,7 +28,8 @@ export async function GET(request: NextRequest) {
           },
           user: {
             select: { name: true, email: true }
-          }
+          },
+          propFirmTemplate: true
         },
         orderBy: { createdAt: 'desc' }
       })

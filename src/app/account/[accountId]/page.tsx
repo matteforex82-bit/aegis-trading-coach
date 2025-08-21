@@ -36,6 +36,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import { OpenPositionsSection } from '@/components/OpenPositionsSection'
+import ConnectionStatus from '@/components/ConnectionStatus'
 
 interface Account {
   id: string
@@ -548,25 +549,11 @@ export default function AccountDashboard() {
       <div className="p-6 space-y-6">
         {/* Professional Account Header */}
         <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-800 mb-2">{account.name}</h1>
-              <div className="text-sm text-gray-600">
-                Account: {account.login} | Broker: {account.broker} | Server: {account.server}
-              </div>
-              {account.propFirmTemplate && (
-                <div className="mt-2 flex items-center space-x-2">
-                  <Badge variant="outline" className="text-xs">
-                    {account.propFirmTemplate.propFirm.name}
-                  </Badge>
-                  <Badge variant="outline" className="text-xs">
-                    {account.propFirmTemplate.name}
-                  </Badge>
-                  <Badge variant={rules?.isCompliant ? "default" : "destructive"} className="text-xs">
-                    {rules?.isCompliant ? 'COMPLIANT' : 'VIOLATION'}
-                  </Badge>
-                </div>
-              )}
+          {/* First Row: Title and Connection Status */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <h1 className="text-2xl font-bold text-slate-800">{account.name}</h1>
+              <ConnectionStatus />
             </div>
             <Button
               onClick={handleRefresh}
@@ -577,6 +564,70 @@ export default function AccountDashboard() {
               <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
+          </div>
+
+          {/* Second Row: Account Details and PropFirm Template Badges */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <div className="text-sm text-gray-600">
+                Account: <span className="font-medium">{account.login}</span> | 
+                Broker: <span className="font-medium">{account.broker}</span> | 
+                Server: <span className="font-medium">{account.server}</span>
+              </div>
+              
+              {account.propFirmTemplate && (
+                <div className="flex items-center gap-2">
+                  {/* PropFirm Name Badge */}
+                  <Badge 
+                    variant="secondary" 
+                    className="px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 border-blue-200"
+                  >
+                    <Award className="h-3 w-3 mr-1" />
+                    {account.propFirmTemplate.propFirm.name}
+                  </Badge>
+                  
+                  {/* Template Name Badge */}
+                  <Badge 
+                    variant="outline" 
+                    className="px-3 py-1 text-xs font-medium border-gray-300 text-gray-700"
+                  >
+                    {account.propFirmTemplate.name}
+                  </Badge>
+                  
+                  {/* Phase Badge */}
+                  <Badge 
+                    variant={account.currentPhase === 'FUNDED' ? 'default' : 'secondary'}
+                    className={`px-3 py-1 text-xs font-medium ${
+                      account.currentPhase === 'FUNDED' 
+                        ? 'bg-green-100 text-green-800 border-green-200' 
+                        : account.currentPhase === 'PHASE_2'
+                        ? 'bg-orange-100 text-orange-800 border-orange-200'
+                        : 'bg-blue-100 text-blue-800 border-blue-200'
+                    }`}
+                  >
+                    <Star className="h-3 w-3 mr-1" />
+                    {account.currentPhase.replace('_', ' ')}
+                  </Badge>
+                  
+                  {/* Compliance Status Badge */}
+                  <Badge 
+                    variant={rules?.isCompliant ? "default" : "destructive"} 
+                    className={`px-3 py-1 text-xs font-medium ${
+                      rules?.isCompliant 
+                        ? 'bg-green-500 text-white animate-pulse' 
+                        : 'bg-red-500 text-white'
+                    }`}
+                  >
+                    {rules?.isCompliant ? (
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                    ) : (
+                      <AlertTriangle className="h-3 w-3 mr-1" />
+                    )}
+                    {rules?.isCompliant ? 'COMPLIANT' : 'VIOLATION'}
+                  </Badge>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
