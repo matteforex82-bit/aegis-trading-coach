@@ -23,10 +23,45 @@ interface WorstCaseScenario {
   marginToViolation: number       // Quanto manca per violare il 5%
 }
 
+// 🚨 CRITICAL: TRUE Safe Capacity (considering MINIMUM equity touched)
+interface TrueSafeCapacity {
+  // Il VERO spazio di manovra considerando il worst case sequenziale
+  trueSafeCapacity: number        // Quanto posso VERAMENTE perdere senza violare
+  theoreticalCapacity: number     // Il vecchio calcolo (INGANNEVOLE)
+  floatingPL: number              // P&L corrente flottante
+  startingBalance: number         // Balance di inizio giornata
+  currentEquity: number           // Equity attuale
+  dailyLimitUSD: number          // Limite giornaliero in USD (5%)
+  
+  // Scenari di simulazione sequenziale
+  scenarios: {
+    ifAllSLHit: {
+      minEquityTouched: number    // Il punto più basso che toccheresti
+      wouldViolate: boolean       // True se viola il 5%
+      marginToViolation: number   // Quanto manca alla violazione
+      sequence: {
+        trade: string
+        slLoss: number
+        runningEquity: number
+        violatesHere: boolean
+      }[]
+    }
+    ifWorstFirst: {
+      // Simula se i trades peggiori chiudono per primi
+      sequence: string[]          // Ordine dei trades (peggiore → migliore)
+      minEquityReached: number    // Punto più basso in questa sequenza
+      wouldViolate: boolean
+    }
+  }
+  
+  warning: string | null // Messaggio di warning critico se necessario
+  riskLevel: 'SAFE' | 'DANGER' | 'CRITICAL' // Basato sulla vera capacità
+}
+
 interface RiskMetrics {
   totalExposurePercent: number
   totalExposureUSD: number
-  maxAdditionalRisk: number
+  maxAdditionalRisk: number // ⚠️ DEPRECATED - USE trueSafeCapacity instead
   tradesWithoutSL: any[]
   correlatedPairs: {
     currency: string
@@ -35,6 +70,7 @@ interface RiskMetrics {
   }[]
   riskLevel: 'SAFE' | 'CAUTION' | 'DANGER'
   worstCaseScenario: WorstCaseScenario
+  trueSafeCapacity: TrueSafeCapacity // 🚨 CRITICAL: Real safe capacity calculation
   alerts: {
     severity: 'CRITICAL' | 'WARNING' | 'INFO'
     message: string
@@ -74,8 +110,19 @@ export async function GET(
     // Calculate account balance (starting balance + current P&L)
     const currentBalance = account.initialBalance || 50000
     
-    // Calculate risk metrics
-    const riskMetrics = await calculateRiskMetrics(openTrades, currentBalance, id)
+    // Calculate current equity (balance + floating P&L)
+    const floatingPL = openTrades.reduce((total, trade) => {
+      return total + ((trade.pnlGross || 0) + (trade.commission || 0) + (trade.swap || 0))
+    }, 0)
+    const currentEquity = currentBalance + floatingPL
+    
+    console.log('🏦 Account Status:')
+    console.log(`   Balance: $${currentBalance}`)
+    console.log(`   Floating P&L: $${floatingPL.toFixed(2)}`)
+    console.log(`   Current Equity: $${currentEquity.toFixed(2)}`)
+    
+    // Calculate risk metrics with complete account data
+    const riskMetrics = await calculateRiskMetrics(openTrades, currentBalance, currentEquity, floatingPL, id)
     
     console.log('⚡ Risk Level:', riskMetrics.riskLevel)
     console.log('📈 Current Exposure:', riskMetrics.totalExposurePercent.toFixed(2) + '%')
@@ -102,7 +149,9 @@ export async function GET(
 
 async function calculateRiskMetrics(
   openTrades: any[], 
-  currentBalance: number, 
+  currentBalance: number,
+  currentEquity: number,
+  floatingPL: number,
   accountId: string
 ): Promise<RiskMetrics> {
   
@@ -241,30 +290,61 @@ async function calculateRiskMetrics(
   // 7. Calculate Worst Case Scenario
   const worstCaseScenario = calculateWorstCaseScenario(openTrades, currentBalance)
   
-  // Update alerts based on worst case scenario
-  if (worstCaseScenario.wouldViolateDailyLimit) {
+  // 8. 🚨 CRITICAL: Calculate TRUE Safe Capacity (minimum equity based)
+  const trueSafeCapacity = calculateTrueSafeCapacity(openTrades, currentBalance, currentEquity, floatingPL, dailyLimitUSD)
+  
+  // 🚨 CRITICAL ALERTS based on TRUE Safe Capacity (overrides worst case alerts)
+  if (trueSafeCapacity.trueSafeCapacity === 0) {
     alerts.unshift({
       severity: 'CRITICAL',
-      message: `🔴 WORST CASE: Would violate 5% limit (-${worstCaseScenario.totalPotentialLossPercent.toFixed(1)}%)`,
-      action: 'Reduce positions NOW or add protective stops'
+      message: `🚨 STOP TRADING NOW! Any SL hit will violate daily limit!`,
+      action: 'Close positions immediately or risk PropFirm violation'
     })
-  } else if (worstCaseScenario.totalPotentialLossPercent > 4) {
+  } else if (trueSafeCapacity.scenarios.ifAllSLHit.wouldViolate) {
+    alerts.unshift({
+      severity: 'CRITICAL', 
+      message: `🔴 DANGER: Sequential SL hits would violate daily limit!`,
+      action: 'Reduce position sizes or tighten stops immediately'
+    })
+  } else if (trueSafeCapacity.trueSafeCapacity < 500) {
     alerts.unshift({
       severity: 'WARNING',
-      message: `⚠️ WORST CASE: One bad move from violation (-${worstCaseScenario.totalPotentialLossPercent.toFixed(1)}%)`,
-      action: 'Limited room for new positions'
+      message: `⚠️ CRITICAL: Only $${trueSafeCapacity.trueSafeCapacity.toFixed(0)} TRUE safe capacity left!`,
+      action: 'Extreme caution required - one bad trade could violate limit'
     })
-  } else if (worstCaseScenario.totalPotentialLossPercent > 3) {
+  }
+
+  // Add specific warning from trueSafeCapacity calculation
+  if (trueSafeCapacity.warning) {
     alerts.unshift({
-      severity: 'INFO',
-      message: `📊 WORST CASE: Limited room for expansion (-${worstCaseScenario.totalPotentialLossPercent.toFixed(1)}%)`,
-      action: 'Consider tighter stops for new trades'
+      severity: 'CRITICAL',
+      message: trueSafeCapacity.warning,
+      action: 'Review minimum equity scenario immediately'
+    })
+  }
+  
+  // Update alerts based on worst case scenario (secondary to TRUE safe capacity)
+  if (worstCaseScenario.wouldViolateDailyLimit && trueSafeCapacity.trueSafeCapacity > 0) {
+    alerts.push({
+      severity: 'WARNING',
+      message: `📊 THEORETICAL: Would violate 5% limit (-${worstCaseScenario.totalPotentialLossPercent.toFixed(1)}%)`,
+      action: 'Check TRUE Safe Capacity for real risk assessment'
     })
   }
 
   console.log('💥 Worst Case Total Loss:', worstCaseScenario.totalPotentialLoss.toFixed(2))
   console.log('💥 Worst Case Percentage:', worstCaseScenario.totalPotentialLossPercent.toFixed(2) + '%')
   console.log('💥 Would Violate Daily Limit:', worstCaseScenario.wouldViolateDailyLimit)
+  
+  console.log('🚨 TRUE SAFE CAPACITY ANALYSIS:')
+  console.log(`   TRUE Safe Capacity: $${trueSafeCapacity.trueSafeCapacity.toFixed(2)} (REAL limit)`)
+  console.log(`   Theoretical Capacity: $${trueSafeCapacity.theoreticalCapacity.toFixed(2)} (MISLEADING)`)
+  console.log(`   Min Equity if all SL hit: $${trueSafeCapacity.scenarios.ifAllSLHit.minEquityTouched.toFixed(2)}`)
+  console.log(`   Would violate on sequential losses: ${trueSafeCapacity.scenarios.ifAllSLHit.wouldViolate ? 'YES 🚨' : 'NO ✅'}`)
+  console.log(`   Risk Level: ${trueSafeCapacity.riskLevel}`)
+  if (trueSafeCapacity.warning) {
+    console.log(`   ⚠️ WARNING: ${trueSafeCapacity.warning}`)
+  }
 
   // Save critical alerts to database
   if (alerts.some(alert => alert.severity === 'CRITICAL')) {
@@ -278,11 +358,12 @@ async function calculateRiskMetrics(
   return {
     totalExposurePercent,
     totalExposureUSD,
-    maxAdditionalRisk,
+    maxAdditionalRisk, // ⚠️ DEPRECATED - keeping for backward compatibility
     tradesWithoutSL,
     correlatedPairs,
     riskLevel,
     worstCaseScenario,
+    trueSafeCapacity, // 🚨 CRITICAL: Use this instead of maxAdditionalRisk
     alerts
   }
 }
@@ -556,4 +637,154 @@ function calculateWorstCaseEstimate(symbol: string, volume: number, currentPrice
   console.log(`   💀 Final worst case estimate: $${estimatedLoss.toFixed(2)}`)
   
   return estimatedLoss
+}
+
+//+------------------------------------------------------------------+
+//| 🚨 CRITICAL: Calculate TRUE Safe Capacity (Sequential Risk)     |
+//+------------------------------------------------------------------+
+function calculateTrueSafeCapacity(
+  openTrades: any[], 
+  startingBalance: number, 
+  currentEquity: number, 
+  floatingPL: number,
+  dailyLimitUSD: number
+): TrueSafeCapacity {
+  
+  console.log('🚨 CRITICAL: Calculating TRUE Safe Capacity...')
+  console.log(`   Starting Balance: $${startingBalance}`)
+  console.log(`   Current Equity: $${currentEquity.toFixed(2)}`)
+  console.log(`   Floating P&L: $${floatingPL.toFixed(2)}`)
+  console.log(`   Daily Limit: $${dailyLimitUSD} (5%)`)
+  
+  // Calculate the old (misleading) theoretical capacity
+  const theoreticalCapacity = Math.max(0, dailyLimitUSD - Math.abs(floatingPL))
+  
+  // Prepare trades with their potential Stop Loss losses
+  const tradesWithLossPotential = openTrades.map(trade => {
+    const tradePnL = (trade.pnlGross || 0) + (trade.commission || 0) + (trade.swap || 0)
+    let slLoss = 0
+    
+    if (trade.sl && trade.sl !== 0) {
+      // Calculate potential loss if SL is hit
+      const currentPrice = trade.openPrice // Fallback to open price
+      const stopLoss = trade.sl
+      const priceDifference = Math.abs(currentPrice - stopLoss)
+      
+      // Use the precise risk calculation
+      slLoss = -calculatePreciseRiskExposure(trade.symbol, priceDifference, trade.volume || 0, currentPrice)
+      
+      // Adjust for current P&L: if trade is in profit, SL loss = SL distance - current profit
+      if (tradePnL > 0) {
+        // Trade in profit: actual loss = SL loss - current profit
+        slLoss = Math.min(slLoss, slLoss - tradePnL)
+      } else {
+        // Trade in loss: total loss = current loss + additional SL loss  
+        slLoss = slLoss + tradePnL // tradePnL is already negative
+      }
+    } else {
+      // No SL: use worst case estimate as potential loss
+      slLoss = -calculateWorstCaseEstimate(trade.symbol, trade.volume || 0, trade.openPrice, tradePnL, startingBalance)
+    }
+    
+    return {
+      ...trade,
+      potentialSLLoss: slLoss,
+      currentPnL: tradePnL,
+      symbol: trade.symbol,
+      ticketId: trade.ticketId || 'N/A'
+    }
+  })
+  
+  // Sort trades by potential loss (worst first)
+  const sortedTrades = [...tradesWithLossPotential].sort((a, b) => a.potentialSLLoss - b.potentialSLLoss)
+  
+  console.log('🔄 Simulating sequential SL hits (worst first):')
+  
+  // Simulate sequential closure starting from worst trades
+  let runningEquity = currentEquity
+  let minEquityTouched = currentEquity
+  const sequence: any[] = []
+  let violationFound = false
+  let violationAtStep = -1
+  
+  for (let i = 0; i < sortedTrades.length; i++) {
+    const trade = sortedTrades[i]
+    
+    // Remove current P&L and apply SL loss
+    runningEquity = runningEquity - trade.currentPnL + trade.potentialSLLoss
+    minEquityTouched = Math.min(minEquityTouched, runningEquity)
+    
+    const drawdownAtThisPoint = startingBalance - runningEquity
+    const violatesHere = drawdownAtThisPoint > dailyLimitUSD
+    
+    if (violatesHere && !violationFound) {
+      violationFound = true
+      violationAtStep = i
+    }
+    
+    sequence.push({
+      trade: `${trade.symbol} #${trade.ticketId}`,
+      slLoss: trade.potentialSLLoss,
+      runningEquity: runningEquity,
+      violatesHere: violatesHere
+    })
+    
+    console.log(`   ${i + 1}. ${trade.symbol}: ${trade.potentialSLLoss.toFixed(2)} → Equity: $${runningEquity.toFixed(2)} ${violatesHere ? '🚨 VIOLATION!' : ''}`)
+  }
+  
+  // Calculate TRUE safe capacity
+  const maxDrawdownAllowed = startingBalance - dailyLimitUSD // Minimum equity allowed
+  const currentDrawdownUsed = startingBalance - minEquityTouched
+  const trueSafeCapacity = Math.max(0, dailyLimitUSD - currentDrawdownUsed)
+  
+  // Determine risk level
+  let riskLevel: 'SAFE' | 'DANGER' | 'CRITICAL'
+  if (violationFound || trueSafeCapacity === 0) {
+    riskLevel = 'CRITICAL'
+  } else if (trueSafeCapacity < 500) {
+    riskLevel = 'DANGER' 
+  } else {
+    riskLevel = 'SAFE'
+  }
+  
+  // Generate warning message
+  let warning: string | null = null
+  if (violationFound) {
+    warning = `⚠️ DANGER: Sequential SL hits would violate daily limit at step ${violationAtStep + 1}!`
+  } else if (trueSafeCapacity === 0) {
+    warning = `⚠️ CRITICAL: Zero safe capacity - any loss will violate daily limit!`
+  } else if (trueSafeCapacity < 200) {
+    warning = `⚠️ WARNING: Only $${trueSafeCapacity.toFixed(2)} real capacity remaining!`
+  }
+  
+  console.log('🚨 TRUE SAFE CAPACITY RESULTS:')
+  console.log(`   Minimum Equity Touched: $${minEquityTouched.toFixed(2)}`)
+  console.log(`   TRUE Safe Capacity: $${trueSafeCapacity.toFixed(2)} (REAL)`)
+  console.log(`   Theoretical Capacity: $${theoreticalCapacity.toFixed(2)} (MISLEADING)`)
+  console.log(`   Sequential Violation Risk: ${violationFound ? 'YES 🚨' : 'NO ✅'}`)
+  console.log(`   Risk Level: ${riskLevel}`)
+  
+  return {
+    trueSafeCapacity,
+    theoreticalCapacity, 
+    floatingPL,
+    startingBalance,
+    currentEquity,
+    dailyLimitUSD,
+    scenarios: {
+      ifAllSLHit: {
+        minEquityTouched,
+        wouldViolate: violationFound,
+        marginToViolation: Math.max(0, dailyLimitUSD - (startingBalance - minEquityTouched)),
+        sequence
+      },
+      ifWorstFirst: {
+        sequence: sortedTrades.map(t => `${t.symbol}: ${t.potentialSLLoss.toFixed(2)}`),
+        minEquityReached: minEquityTouched,
+        wouldViolate: violationFound
+      }
+    },
+    warning,
+    riskLevel
+  }
 }

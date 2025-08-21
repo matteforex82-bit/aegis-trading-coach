@@ -18,7 +18,8 @@
       "Bash(npx tsc:*)",
       "Bash(npm run dev:*)",
       "Bash(npx prisma:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(timeout 10 tail -f package.json)"
     ],
     "deny": [],
     "ask": [],
