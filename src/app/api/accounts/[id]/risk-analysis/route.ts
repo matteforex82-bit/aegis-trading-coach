@@ -22,14 +22,15 @@ interface RiskMetrics {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log('🔍 Risk Analysis API called for account:', params.id)
+    const { id } = await params
+    console.log('🔍 Risk Analysis API called for account:', id)
 
     // Get account with open trades
     const account = await db.account.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         trades: {
           where: { closeTime: null }, // Only open positions
@@ -90,15 +91,61 @@ async function calculateRiskMetrics(
 
   openTrades.forEach(trade => {
     const tradePnL = (trade.pnlGross || 0) + (trade.commission || 0) + (trade.swap || 0)
-    
-    // Risk exposure is based on potential loss, not current P&L
-    // For now, we'll use absolute current P&L as a proxy for exposure
-    const tradeExposure = Math.abs(tradePnL)
-    totalExposureUSD += tradeExposure
+    let tradeExposure = 0
 
-    // Check for missing stop loss
-    if (!trade.sl || trade.sl === 0) {
+    // 🎯 CORRECT RISK CALCULATION
+    if (trade.sl && trade.sl !== 0) {
+      // HAS STOP LOSS: Risk = potential loss from current price to SL
+      const currentPrice = trade.openPrice // Fallback if no current price
+      const stopLoss = trade.sl
+      const volume = trade.volume || 0
+      
+      // Calculate risk based on price difference to SL
+      let priceDifference = 0
+      if (trade.side === 'BUY') {
+        // BUY: Risk if price goes down to SL
+        priceDifference = Math.max(0, currentPrice - stopLoss)
+      } else {
+        // SELL: Risk if price goes up to SL  
+        priceDifference = Math.max(0, stopLoss - currentPrice)
+      }
+      
+      // Estimate risk in USD (simplified calculation)
+      if (trade.symbol && trade.symbol.includes('USD')) {
+        tradeExposure = priceDifference * volume * 100000 // Standard lot size
+      } else {
+        // For non-USD pairs, use a more conservative approach
+        tradeExposure = priceDifference * volume * 50000
+      }
+      
+      // If SL is in profit (protective stop), risk is minimal
+      if (trade.side === 'BUY' && stopLoss > trade.openPrice) {
+        tradeExposure = Math.min(tradeExposure, Math.abs(tradePnL) * 0.1) // Very low risk
+      } else if (trade.side === 'SELL' && stopLoss < trade.openPrice) {
+        tradeExposure = Math.min(tradeExposure, Math.abs(tradePnL) * 0.1) // Very low risk
+      }
+      
+    } else {
+      // NO STOP LOSS: High risk - use current P&L as exposure
+      tradeExposure = Math.abs(tradePnL) * 2 // Double penalty for no SL
       tradesWithoutSL.push(trade)
+    }
+    
+    // Cap individual trade exposure to reasonable limits
+    tradeExposure = Math.min(tradeExposure, currentBalance * 0.02) // Max 2% per trade
+    totalExposureUSD += tradeExposure
+    
+    // Debug logging
+    console.log(`📊 Trade ${trade.ticketId || 'N/A'} ${trade.symbol}:`)
+    console.log(`   Side: ${trade.side}, Volume: ${trade.volume}`)
+    console.log(`   Current P&L: $${tradePnL.toFixed(2)}`)
+    console.log(`   Stop Loss: ${trade.sl || 'NONE'}`)
+    console.log(`   Calculated Risk Exposure: $${tradeExposure.toFixed(2)}`)
+    console.log(`   Has SL Protection: ${trade.sl && trade.sl !== 0 ? 'YES' : 'NO'}`)
+
+    // Check for missing stop loss (already handled above)
+    if (!trade.sl || trade.sl === 0) {
+      // Already added to tradesWithoutSL above
     }
 
     // Track currency exposure for correlation analysis
