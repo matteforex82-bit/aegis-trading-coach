@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import RiskExposureScanner from '@/components/RiskExposureScanner'
 import { 
   RefreshCw, 
   TrendingUp, 
@@ -740,6 +741,15 @@ export default function AccountDashboard() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* 🔥 PRIORITY: Risk Exposure Scanner */}
+        {openTrades.length > 0 && (
+          <RiskExposureScanner 
+            accountId={params.accountId}
+            balance={account?.initialBalance || 50000}
+            openTrades={openTrades}
+          />
         )}
 
         {/* NEW: Open Positions Section */}

@@ -129,6 +129,7 @@ model Account {
   propFirmTemplate   PropFirmTemplate? @relation(fields: [propFirmTemplateId], references: [id])
   trades             Trade[]
   metrics            Metric[]
+  riskAlerts         RiskAlert[]
   challenges         Challenge[]
   
   @@map("accounts")
@@ -264,4 +265,20 @@ model Metric {
   
   @@unique([accountId, date])
   @@map("metrics")
+}
+
+model RiskAlert {
+  id        String   @id @default(cuid())
+  accountId String
+  severity  String   // 'CRITICAL' | 'WARNING' | 'INFO'
+  type      String   // 'NO_SL' | 'OVEREXPOSED' | 'CORRELATION' | 'HIGH_RISK'
+  message   String
+  data      Json?    // Additional context data
+  createdAt DateTime @default(now())
+  resolved  Boolean  @default(false)
+  
+  // Relations
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
+  @@map("risk_alerts")
 }
