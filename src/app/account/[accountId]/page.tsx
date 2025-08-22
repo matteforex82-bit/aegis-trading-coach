@@ -915,18 +915,34 @@ export default function AccountDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-blue-900 mb-2">
-                  {new Intl.NumberFormat('en-US', {
-                    style: 'currency',
-                    currency: account.currency || 'USD',
-                    minimumFractionDigits: 2
-                  }).format(account.currentBalance || account.initialBalance || 0)}
+                  {(() => {
+                    // BALANCE CORRETTO = Starting Balance + P&L di tutte le posizioni CHIUSE
+                    const startingBalance = account.propFirmTemplate?.accountSize || account.initialBalance || 50000
+                    const closedTradesP_L = stats?.totalPnL || 0
+                    const currentBalance = startingBalance + closedTradesP_L
+                    
+                    return new Intl.NumberFormat('en-US', {
+                      style: 'currency',
+                      currency: account.currency || 'USD',
+                      minimumFractionDigits: 2
+                    }).format(currentBalance)
+                  })()}
                 </div>
                 <div className="text-sm text-blue-600">
-                  Account Size: {new Intl.NumberFormat('en-US', {
+                  Starting: {new Intl.NumberFormat('en-US', {
                     style: 'currency',
                     currency: account.currency || 'USD',
                     minimumFractionDigits: 0
                   }).format(account.propFirmTemplate?.accountSize || account.initialBalance || 50000)}
+                  {stats?.totalPnL && (
+                    <span className={`ml-2 ${stats.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      ({stats.totalPnL >= 0 ? '+' : ''}{new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: account.currency || 'USD',
+                        minimumFractionDigits: 0
+                      }).format(stats.totalPnL)})
+                    </span>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -941,8 +957,12 @@ export default function AccountDashboard() {
               <CardContent>
                 <div className="text-3xl font-bold text-green-900 mb-2">
                   {(() => {
-                    const balance = account.currentBalance || account.initialBalance || 0
-                    const equity = balance + (openPositionsTotal || 0)
+                    // EQUITY REAL-TIME = Balance corrente + P&L posizioni APERTE
+                    const startingBalance = account.propFirmTemplate?.accountSize || account.initialBalance || 50000
+                    const closedTradesP_L = stats?.totalPnL || 0
+                    const currentBalance = startingBalance + closedTradesP_L
+                    const equity = currentBalance + (openPositionsTotal || 0)
+                    
                     return new Intl.NumberFormat('en-US', {
                       style: 'currency',
                       currency: account.currency || 'USD',
@@ -951,7 +971,7 @@ export default function AccountDashboard() {
                   })()}
                 </div>
                 <div className="flex items-center gap-2 text-sm text-green-600">
-                  <span>P&L Aperte:</span>
+                  <span>P&L Live:</span>
                   <span className={`font-semibold ${openPositionsTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {openPositionsTotal >= 0 ? '+' : ''}{new Intl.NumberFormat('en-US', {
                       style: 'currency',
@@ -959,6 +979,9 @@ export default function AccountDashboard() {
                       minimumFractionDigits: 2
                     }).format(openPositionsTotal || 0)}
                   </span>
+                  <Badge variant="outline" className="text-xs text-green-700">
+                    Real-time
+                  </Badge>
                 </div>
               </CardContent>
             </Card>
