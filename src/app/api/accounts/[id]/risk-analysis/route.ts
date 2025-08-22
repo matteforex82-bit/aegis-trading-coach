@@ -829,8 +829,8 @@ function calculateTrueSafeCapacity(
     })
   }
   
-  // Calculate TRUE safe capacity using the most restrictive limit
-  const finalTrueSafeCapacity = Math.max(0, Math.min(realSafeCapacity, currentEquity - minEquityTouched))
+  // Use the REAL safe capacity calculated above (already considers most restrictive limit)
+  const finalTrueSafeCapacity = realSafeCapacity
   
   // Determine risk level
   let riskLevel: 'SAFE' | 'DANGER' | 'CRITICAL'
