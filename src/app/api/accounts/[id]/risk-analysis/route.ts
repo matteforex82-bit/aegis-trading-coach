@@ -680,8 +680,15 @@ function calculateTrueSafeCapacity(
     const dailyLossRules = rules.dailyLossLimits?.[phase] || rules.dailyLossLimits?.PHASE_1
     if (dailyLossRules?.percentage) {
       const propFirmDailyLossLimit = startingBalance * (dailyLossRules.percentage / 100)
-      effectiveDailyLossLimit = Math.min(effectiveDailyLossLimit, propFirmDailyLossLimit)
+      effectiveDailyLossLimit = propFirmDailyLossLimit  // USE PropFirm limit, not minimum!
       console.log(`📊 PropFirm Daily Loss Limit: ${dailyLossRules.percentage}% = $${propFirmDailyLossLimit} max loss`)
+    }
+    
+    // 🚨 SPECIAL CASE: Futura Funding has very low daily limits in early phases
+    if (account.propFirmTemplate.propFirm?.name?.includes('FUTURA') && phase === 'PHASE_1') {
+      // Futura Funding Phase 1: typically 1.5% daily limit
+      effectiveDailyLossLimit = Math.min(effectiveDailyLossLimit, startingBalance * 0.015)  // 1.5%
+      console.log(`🎯 FUTURA FUNDING Phase 1: Ultra-conservative $${effectiveDailyLossLimit} daily limit`)
     }
     
     // Get overall drawdown limit for current phase
@@ -700,23 +707,36 @@ function calculateTrueSafeCapacity(
   const overallMarginAvailable = Math.max(0, currentEquity - overallMinEquity)
   
   // DAILY MARGIN: How much we can lose TODAY considering:
-  // 1. Daily loss limit
-  // 2. Losses already made today (TODO: calculate from actual trades)  
-  // 3. Risk from current open positions
-  const dailyLossesToday = 0  // TODO: Calculate actual daily P&L from closed trades today
+  // 1. Daily loss limit from PropFirm rules
+  // 2. Current floating P&L (could become realized losses if trades close badly)
+  // 3. Maximum risk from SL hits
   
-  // Calculate risk from open positions (if they all hit SL)
-  const openPositionsRisk = openTrades.reduce((total, trade) => {
+  // Calculate REAL risk from open positions if ALL stop losses hit
+  const totalSLRisk = openTrades.reduce((total, trade) => {
     const tradePnL = (trade.pnlGross || 0) + (trade.commission || 0) + (trade.swap || 0)
     
-    // If position is currently losing, it could lose more
-    if (tradePnL < 0) {
-      return total + Math.abs(tradePnL) * 1.5  // Estimate additional risk
+    if (trade.sl && trade.sl !== 0) {
+      const isProtectiveStop = (trade.side === 'BUY' && trade.sl > trade.openPrice) || 
+                               (trade.side === 'SELL' && trade.sl < trade.openPrice)
+      
+      if (!isProtectiveStop) {
+        // Real stop loss - calculate potential loss from current price to SL
+        const priceDifference = Math.abs(trade.openPrice - trade.sl)
+        const potentialRisk = calculatePreciseRiskExposure(trade.symbol, priceDifference, trade.volume || 0, trade.openPrice)
+        return total + potentialRisk
+      }
+    } else if (tradePnL < 0) {
+      // No SL and losing trade - could lose much more
+      return total + Math.abs(tradePnL) * 3  // Triple the current loss as worst case
     }
     return total
   }, 0)
   
-  const dailyMarginAvailable = Math.max(0, effectiveDailyLossLimit - dailyLossesToday - openPositionsRisk)
+  // Current floating losses (negative P&L that could be realized today)
+  const currentFloatingLosses = Math.max(0, -floatingPL)  // Only count actual losses
+  
+  // Daily margin = daily limit - current floating losses - additional SL risk
+  const dailyMarginAvailable = Math.max(0, effectiveDailyLossLimit - currentFloatingLosses - totalSLRisk)
   
   // 🎯 INTELLIGENT DECISION: Which limit is more restrictive?
   let controllingLimit = 'DAILY'
@@ -732,10 +752,11 @@ function calculateTrueSafeCapacity(
   console.log(`   Current Equity: $${currentEquity.toFixed(2)}`)
   console.log(`   Overall Min Equity: $${overallMinEquity.toFixed(2)}`)
   console.log(`   Overall Margin Available: $${overallMarginAvailable.toFixed(2)}`)
-  console.log(`   Daily Loss Limit: $${effectiveDailyLossLimit}`)
-  console.log(`   Daily Losses Today: $${dailyLossesToday} (actual trades)`)
-  console.log(`   Open Positions Risk: $${openPositionsRisk.toFixed(2)}`)
-  console.log(`   Daily Margin Available: $${dailyMarginAvailable.toFixed(2)}`)
+  console.log(`   📊 DAILY RISK BREAKDOWN:`)
+  console.log(`   - Daily Loss Limit (PropFirm): $${effectiveDailyLossLimit}`)
+  console.log(`   - Current Floating Losses: $${currentFloatingLosses.toFixed(2)}`)
+  console.log(`   - Total SL Risk: $${totalSLRisk.toFixed(2)}`)
+  console.log(`   - Daily Margin Available: $${dailyMarginAvailable.toFixed(2)}`)
   console.log(`   🎯 CONTROLLING LIMIT: ${controllingLimit}`)
   console.log(`   📊 FINAL SAFE CAPACITY: $${finalSafeCapacity.toFixed(2)}`)
   
