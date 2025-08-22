@@ -105,7 +105,9 @@ export default function AccountTrades() {
         const tradesData = await tradesResponse.json()
         
         if (tradesData.trades) {
-          const closedTrades = tradesData.trades.filter((t: any) => t.closeTime)
+          const closedTrades = tradesData.trades
+            .filter((t: any) => t.closeTime)
+            .sort((a: any, b: any) => new Date(b.closeTime).getTime() - new Date(a.closeTime).getTime()) // Più recenti prima
           setTrades(closedTrades)
           
           // Calculate stats
@@ -379,8 +381,11 @@ export default function AccountTrades() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>
-                Operazioni ({filteredTrades.length} di {trades.length})
+              <CardTitle className="flex items-center gap-2">
+                <span>Operazioni ({filteredTrades.length} di {trades.length})</span>
+                <Badge variant="outline" className="text-xs">
+                  ⏰ Ordinate per chiusura (più recenti prima)
+                </Badge>
               </CardTitle>
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-gray-500">
@@ -448,29 +453,34 @@ export default function AccountTrades() {
                           </div>
                         </div>
 
-                        {/* P&L Breakdown */}
+                        {/* P&L Breakdown - ENHANCED */}
                         <div>
-                          <div className={`font-semibold ${isProfit ? 'text-green-600' : 'text-red-600'}`}>
+                          <div className={`font-bold text-lg ${isProfit ? 'text-green-600' : 'text-red-600'}`}>
                             {formatCurrency(totalPnL, account.currency)}
                           </div>
-                          <div className="text-xs text-gray-500">
-                            Gross: {formatCurrency(trade.pnlGross, account.currency)}
-                          </div>
-                          {(trade.commission !== 0 || trade.swap !== 0) && (
-                            <div className="text-xs text-gray-500">
-                              Comm: {formatCurrency(trade.commission, account.currency)} | 
-                              Swap: {formatCurrency(trade.swap, account.currency)}
+                          <div className="space-y-1">
+                            <div className="text-xs text-gray-600 font-medium">
+                              Gross: {formatCurrency(trade.pnlGross, account.currency)}
                             </div>
-                          )}
+                            <div className="text-xs text-gray-600 flex justify-between">
+                              <span>Comm: {formatCurrency(trade.commission || 0, account.currency)}</span>
+                              <span>Swap: {formatCurrency(trade.swap || 0, account.currency)}</span>
+                            </div>
+                          </div>
                         </div>
 
-                        {/* Timing */}
+                        {/* Timing - CLOSE TIME PROMINENT */}
                         <div className="text-sm text-gray-600">
                           <div className="flex items-center mb-1">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            {formatDateTime(trade.openTime)}
+                            <Calendar className="h-4 w-4 mr-1 text-blue-600" />
+                            <div>
+                              <div className="font-semibold text-slate-700">Chiuso:</div>
+                              <div className="text-xs">{formatDateTime(trade.closeTime)}</div>
+                            </div>
                           </div>
-                          <div>{formatDateTime(trade.closeTime)}</div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Aperto: {formatDateTime(trade.openTime)}
+                          </div>
                         </div>
 
                         {/* Comment */}

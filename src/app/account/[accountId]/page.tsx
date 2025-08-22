@@ -1013,14 +1013,23 @@ export default function AccountDashboard() {
                     </Badge>
                   </div>
                   {(() => {
-                    // DEBUG: Mostra se il calcolo è corretto
+                    // CALCOLO DETTAGLIATO P&L DAILY con breakdown
+                    const today = new Date().toISOString().split('T')[0]
                     const dailyPnL = rules?.dailyPnL || 0
-                    const expectedWithFees = dailyPnL - 145 - 8 // Esempio: dovrebbe essere circa -153 in meno
+                    
+                    // TODO: Qui dovrei accedere ai trades per calcolare breakdown reale
+                    // Per ora mostro info generale
                     return (
                       <div className="text-xs space-y-1">
-                        <div className="text-orange-500">Incluso: P&L lordo + commissioni + swap</div>
+                        <div className="text-orange-500">
+                          Formula: P&L lordo + commissioni + swap
+                        </div>
                         <div className="text-slate-400">
-                          Debug: Se manca -$153 (swap+comm.), controlla sync EA
+                          Valore attuale: {new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: account.currency || 'USD',
+                            minimumFractionDigits: 2
+                          }).format(dailyPnL)} (se mancano fee, controlla EA sync)
                         </div>
                       </div>
                     )
