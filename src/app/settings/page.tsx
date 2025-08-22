@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { ArrowLeft, Settings, CheckCircle, AlertCircle, DollarSign, Target, Shield, Trash2, Upload, FileText, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Settings, CheckCircle, AlertCircle, DollarSign, Target, Shield, Trash2, Upload, FileText, RotateCcw, Zap, Star, Award, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 
 interface PropFirmTemplate {
@@ -53,6 +53,9 @@ export default function SettingsPage() {
   const [propFirms, setPropFirms] = useState<PropFirm[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
+  
+  // 🚀 NEW: Smart template selection system
+  const [selectedPropFirm, setSelectedPropFirm] = useState<string>('')
   const [selectedTemplate, setSelectedTemplate] = useState<string>('')
   const [initialBalance, setInitialBalance] = useState<string>('')
   const [currentPhase, setCurrentPhase] = useState<string>('PHASE_1')
@@ -72,6 +75,16 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchData()
   }, [])
+
+  // 🚀 Auto-configure balance when template changes
+  useEffect(() => {
+    if (selectedTemplate) {
+      const template = getTemplateById(selectedTemplate)
+      if (template && !initialBalance) {
+        setInitialBalance(template.accountSize.toString())
+      }
+    }
+  }, [selectedTemplate])
 
   const fetchData = async () => {
     try {
@@ -123,18 +136,19 @@ export default function SettingsPage() {
       })
 
       if (response.ok) {
-        alert('Template assigned successfully!')
+        alert('✅ Template assegnato con successo!')
         await fetchData() // Refresh data
         setSelectedTemplate('')
+        setSelectedPropFirm('')
         setInitialBalance('')
         setCurrentPhase('PHASE_1')
       } else {
         const error = await response.json()
-        alert(`Error: ${error.error}`)
+        alert(`❌ Errore: ${error.error}`)
       }
     } catch (error) {
       console.error('Error assigning template:', error)
-      alert('Failed to assign template')
+      alert('❌ Errore durante l\'assegnazione del template')
     } finally {
       setAssigning(false)
     }
@@ -154,7 +168,7 @@ export default function SettingsPage() {
 
       if (response.ok) {
         const result = await response.json()
-        alert(`Account deleted successfully!\n\nDeleted data:\n• Account: ${result.deletedData.accountLogin}\n• Trades: ${result.deletedData.tradesDeleted}\n• Challenges: ${result.deletedData.challengesDeleted}\n• Metrics: ${result.deletedData.metricsDeleted}`)
+        alert(`✅ Account eliminato con successo!\n\n• Account: ${result.deletedData.accountLogin}\n• Trades: ${result.deletedData.tradesDeleted}\n• Challenges: ${result.deletedData.challengesDeleted}\n• Metrics: ${result.deletedData.metricsDeleted}`)
         
         // Refresh data and reset selection
         await fetchData()
@@ -162,17 +176,55 @@ export default function SettingsPage() {
         setShowDeleteConfirm(false)
       } else {
         const error = await response.json()
-        alert(`Error deleting account: ${error.error}`)
+        alert(`❌ Errore: ${error.error}`)
       }
     } catch (error) {
       console.error('Error deleting account:', error)
-      alert('Failed to delete account')
+      alert('❌ Errore durante l\'eliminazione')
     } finally {
       setDeleting(false)
     }
   }
 
-  // MT5 Sync functions
+  // 🚀 NEW: Helper functions for smart template selection
+  const getTemplateById = (templateId: string): PropFirmTemplate | null => {
+    for (const firm of propFirms) {
+      const template = firm.templates.find(t => t.id === templateId)
+      if (template) return template
+    }
+    return null
+  }
+
+  const getSelectedPropFirmData = (): PropFirm | null => {
+    return propFirms.find(f => f.id === selectedPropFirm) || null
+  }
+
+  const getSelectedTemplateData = (): { firm: PropFirm; template: PropFirmTemplate } | null => {
+    if (!selectedTemplate) return null
+    
+    for (const firm of propFirms) {
+      const template = firm.templates.find(t => t.id === selectedTemplate)
+      if (template) {
+        return { firm, template }
+      }
+    }
+    return null
+  }
+
+  // 🚀 NEW: Validation helpers
+  const isFormValid = (): boolean => {
+    return !!(selectedAccount && selectedTemplate && initialBalance && parseFloat(initialBalance) > 0)
+  }
+
+  const getValidationErrors = (): string[] => {
+    const errors: string[] = []
+    if (!selectedAccount) errors.push('Seleziona un account')
+    if (!selectedTemplate) errors.push('Seleziona un template PropFirm')
+    if (!initialBalance || parseFloat(initialBalance) <= 0) errors.push('Inserisci un saldo iniziale valido')
+    return errors
+  }
+
+  // MT5 Sync functions (unchanged from original)
   const handleFileUpload = (file: File) => {
     const isHtml = file.type === 'text/html' || file.name.endsWith('.html')
     const isExcel = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || file.name.endsWith('.xlsx')
@@ -255,31 +307,19 @@ Check console for detailed data structure`)
         setSyncResult(result)
         
         if (syncMode === 'import') {
-          alert('Sincronizzazione completata con successo!')
+          alert('✅ Sincronizzazione completata con successo!')
           await fetchData() // Refresh data
         }
       } else {
         const error = await response.json()
-        alert(`Errore: ${error.error}${error.debug ? '\n\nDebug: ' + JSON.stringify(error.debug, null, 2) : ''}`)
+        alert(`❌ Errore: ${error.error}${error.debug ? '\n\nDebug: ' + JSON.stringify(error.debug, null, 2) : ''}`)
       }
     } catch (error) {
       console.error('Error syncing report:', error)
-      alert('Errore durante la sincronizzazione')
+      alert('❌ Errore durante la sincronizzazione')
     } finally {
       setSyncing(false)
     }
-  }
-
-  const getSelectedTemplateInfo = () => {
-    if (!selectedTemplate) return null
-    
-    for (const firm of propFirms) {
-      const template = firm.templates.find(t => t.id === selectedTemplate)
-      if (template) {
-        return { firm, template }
-      }
-    }
-    return null
   }
 
   const formatCurrency = (amount: number, currency: string = 'USD') => {
@@ -299,45 +339,61 @@ Check console for detailed data structure`)
     )
   }
 
-  const templateInfo = getSelectedTemplateInfo()
+  const selectedTemplateData = getSelectedTemplateData()
+  const validationErrors = getValidationErrors()
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
+      {/* 🎨 Enhanced Header with Gradient */}
+      <header className="bg-white/80 backdrop-blur border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Link href="/">
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="hover:bg-blue-50">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Indietro
+                Dashboard
               </Button>
             </Link>
-            <div className="flex items-center space-x-2">
-              <Settings className="h-6 w-6 text-gray-600" />
-              <h1 className="text-2xl font-bold text-gray-900">Impostazioni PropFirm</h1>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg">
+                <Settings className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  PropFirm Settings
+                </h1>
+                <p className="text-sm text-gray-500">Configure templates e gestisci i tuoi account</p>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="p-6 max-w-6xl mx-auto">
+      <div className="p-6 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           
-          {/* Template Assignment Section */}
+          {/* 🚀 NEW: Smart Template Assignment Section */}
           <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>🔧 Assegna Template PropFirm</CardTitle>
-                <CardDescription>
-                  Configura il template delle regole per il tuo account di trading
+            <Card className="border-0 shadow-lg bg-white/90 backdrop-blur">
+              <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-t-lg">
+                <CardTitle className="flex items-center space-x-3">
+                  <div className="p-2 bg-white/20 rounded-lg">
+                    <Zap className="h-5 w-5" />
+                  </div>
+                  <span>🚀 Smart Template Assignment</span>
+                </CardTitle>
+                <CardDescription className="text-blue-100">
+                  Sistema intelligente per configurare il tuo account PropFirm
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="p-6 space-y-6">
                 
-                {/* Account Selection */}
-                <div className="space-y-2">
-                  <Label htmlFor="account">Account MT5</Label>
+                {/* Step 1: Account Selection */}
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">1</div>
+                    <Label className="text-lg font-semibold text-gray-800">Seleziona Account MT5</Label>
+                  </div>
                   <Select
                     value={selectedAccount?.id || ''}
                     onValueChange={(value) => {
@@ -345,112 +401,229 @@ Check console for detailed data structure`)
                       setSelectedAccount(account || null)
                     }}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleziona account" />
+                    <SelectTrigger className="h-12 text-lg border-2 hover:border-blue-300">
+                      <SelectValue placeholder="🎯 Seleziona il tuo account MT5" />
                     </SelectTrigger>
                     <SelectContent>
                       {accounts && accounts.length > 0 ? (
                         accounts.map(account => (
-                          <SelectItem key={account.id} value={account.id}>
-                            {account.name || account.login} - {account.login}
+                          <SelectItem key={account.id} value={account.id} className="text-lg p-3">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                <DollarSign className="h-4 w-4 text-blue-600" />
+                              </div>
+                              <div>
+                                <div className="font-medium">{account.name || account.login}</div>
+                                <div className="text-sm text-gray-500">Login: {account.login}</div>
+                              </div>
+                            </div>
                           </SelectItem>
                         ))
                       ) : (
                         <SelectItem value="" disabled>
-                          Caricando account...
+                          Nessun account trovato
                         </SelectItem>
                       )}
                     </SelectContent>
                   </Select>
                 </div>
 
-                {/* PropFirm Template Selection */}
-                <div className="space-y-2">
-                  <Label htmlFor="template">Template PropFirm</Label>
-                  <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleziona template" />
+                {/* Step 2: PropFirm Selection */}
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-6 h-6 bg-indigo-500 text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
+                    <Label className="text-lg font-semibold text-gray-800">Seleziona PropFirm</Label>
+                  </div>
+                  <Select 
+                    value={selectedPropFirm} 
+                    onValueChange={(value) => {
+                      setSelectedPropFirm(value)
+                      setSelectedTemplate('') // Reset template when propfirm changes
+                    }}
+                  >
+                    <SelectTrigger className="h-12 text-lg border-2 hover:border-indigo-300">
+                      <SelectValue placeholder="🏢 Scegli la tua PropFirm" />
                     </SelectTrigger>
                     <SelectContent>
                       {propFirms && propFirms.length > 0 ? (
-                        propFirms.flatMap(firm => 
-                          firm.templates && firm.templates.length > 0 
-                            ? firm.templates.map(template => (
-                                <SelectItem key={template.id} value={template.id}>
-                                  {firm.name} - {template.name} ({formatCurrency(template.accountSize, template.currency)})
-                                </SelectItem>
-                              ))
-                            : []
-                        )
+                        propFirms.map(firm => (
+                          <SelectItem key={firm.id} value={firm.id} className="text-lg p-3">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                                <Award className="h-4 w-4 text-indigo-600" />
+                              </div>
+                              <div>
+                                <div className="font-medium">{firm.name}</div>
+                                <div className="text-sm text-gray-500">{firm.templates?.length || 0} templates disponibili</div>
+                              </div>
+                            </div>
+                          </SelectItem>
+                        ))
                       ) : (
                         <SelectItem value="" disabled>
-                          {propFirms.length === 0 ? 'Nessun template disponibile' : 'Caricando template...'}
+                          Nessuna PropFirm trovata
                         </SelectItem>
                       )}
                     </SelectContent>
                   </Select>
                 </div>
 
-                {/* Initial Balance */}
-                <div className="space-y-2">
-                  <Label htmlFor="balance">Saldo Iniziale</Label>
-                  <Input
-                    id="balance"
-                    type="number"
-                    placeholder="50000"
-                    value={initialBalance}
-                    onChange={(e) => setInitialBalance(e.target.value)}
-                  />
-                  <p className="text-sm text-gray-500">
-                    Inserisci il saldo iniziale del tuo account challenge
-                  </p>
-                </div>
+                {/* Step 3: Template Selection (Only show if PropFirm selected) */}
+                {selectedPropFirm && (
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-bold">3</div>
+                      <Label className="text-lg font-semibold text-gray-800">Seleziona Account Size</Label>
+                    </div>
+                    <Select 
+                      value={selectedTemplate} 
+                      onValueChange={setSelectedTemplate}
+                    >
+                      <SelectTrigger className="h-12 text-lg border-2 hover:border-green-300">
+                        <SelectValue placeholder="💰 Scegli la size del tuo challenge" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getSelectedPropFirmData()?.templates.map(template => (
+                          <SelectItem key={template.id} value={template.id} className="text-lg p-3">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                <Target className="h-4 w-4 text-green-600" />
+                              </div>
+                              <div>
+                                <div className="font-medium">{formatCurrency(template.accountSize, template.currency)}</div>
+                                <div className="text-sm text-gray-500">{template.name}</div>
+                              </div>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
-                {/* Current Phase */}
-                <div className="space-y-2">
-                  <Label htmlFor="phase">Fase Corrente</Label>
-                  <Select value={currentPhase} onValueChange={setCurrentPhase}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PHASE_1">Fase 1 - Evaluation</SelectItem>
-                      <SelectItem value="PHASE_2">Fase 2 - Verification</SelectItem>
-                      <SelectItem value="FUNDED">Funded Account</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Step 4: Initial Balance (Auto-filled but editable) */}
+                {selectedTemplate && (
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-6 h-6 bg-amber-500 text-white rounded-full flex items-center justify-center text-sm font-bold">4</div>
+                      <Label className="text-lg font-semibold text-gray-800">Conferma Saldo Iniziale</Label>
+                    </div>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <Input
+                        type="number"
+                        placeholder="50000"
+                        value={initialBalance}
+                        onChange={(e) => setInitialBalance(e.target.value)}
+                        className="h-12 text-lg pl-10 border-2 hover:border-amber-300"
+                      />
+                    </div>
+                    <p className="text-sm text-gray-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                      💡 <strong>Auto-suggerito:</strong> Il saldo iniziale è stato pre-compilato con la size del template selezionato. Puoi modificarlo se necessario.
+                    </p>
+                  </div>
+                )}
 
-                <Separator />
+                {/* Step 5: Phase Selection */}
+                {selectedTemplate && (
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center text-sm font-bold">5</div>
+                      <Label className="text-lg font-semibold text-gray-800">Fase Challenge</Label>
+                    </div>
+                    <Select value={currentPhase} onValueChange={setCurrentPhase}>
+                      <SelectTrigger className="h-12 text-lg border-2 hover:border-purple-300">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="PHASE_1" className="text-lg p-3">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">1</div>
+                            <span>Phase 1 - Evaluation</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="PHASE_2" className="text-lg p-3">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-6 h-6 bg-indigo-500 rounded-full flex items-center justify-center text-white text-xs font-bold">2</div>
+                            <span>Phase 2 - Verification</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="FUNDED" className="text-lg p-3">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">✓</div>
+                            <span>Funded Account</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
+                <Separator className="my-6" />
+
+                {/* Validation Errors */}
+                {validationErrors.length > 0 && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <AlertCircle className="h-5 w-5 text-red-600" />
+                      <span className="font-medium text-red-800">Completa la configurazione:</span>
+                    </div>
+                    <ul className="space-y-1">
+                      {validationErrors.map((error, index) => (
+                        <li key={index} className="text-sm text-red-700 flex items-center space-x-2">
+                          <div className="w-1 h-1 bg-red-500 rounded-full"></div>
+                          <span>{error}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Success Button */}
                 <Button 
                   onClick={handleAssignTemplate}
-                  disabled={!selectedAccount || !selectedTemplate || !initialBalance || assigning}
-                  className="w-full"
+                  disabled={!isFormValid() || assigning}
+                  className={`w-full h-14 text-lg font-semibold transition-all duration-200 ${
+                    isFormValid() 
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5' 
+                      : 'bg-gray-300 cursor-not-allowed'
+                  }`}
                 >
-                  {assigning ? 'Assegnando...' : 'Assegna Template'}
+                  {assigning ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      <span>Assegnando Template...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle className="h-5 w-5" />
+                      <span>🚀 Assegna Template</span>
+                    </div>
+                  )}
                 </Button>
               </CardContent>
             </Card>
 
-            {/* MT5 HTML Sync Section */}
+            {/* MT5 Sync Section (Unchanged from original but with better styling) */}
             {selectedAccount && (
-              <Card className="border-blue-200 bg-blue-50">
-                <CardHeader>
-                  <CardTitle className="text-blue-700 flex items-center space-x-2">
-                    <RotateCcw className="h-5 w-5" />
+              <Card className="border-0 shadow-lg bg-white/90 backdrop-blur border-blue-200">
+                <CardHeader className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-t-lg">
+                  <CardTitle className="flex items-center space-x-3">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <RotateCcw className="h-5 w-5" />
+                    </div>
                     <span>📊 Sincronizzazione MT5</span>
                   </CardTitle>
-                  <CardDescription className="text-blue-600">
-                    Carica il report HTML o Excel di MT5 per sincronizzare i dati
+                  <CardDescription className="text-blue-100">
+                    Importa i dati di trading dai report MT5
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent className="p-6 space-y-6">
                   
                   {/* File Upload */}
                   <div className="space-y-2">
                     <Label>Report MT5 ({fileType === 'html' ? 'HTML' : 'Excel'})</Label>
-                    <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center">
+                    <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center bg-blue-50 hover:bg-blue-100 transition-colors">
                       <input
                         type="file"
                         accept=".html,.xlsx"
@@ -584,24 +757,26 @@ Check console for detailed data structure`)
               </Card>
             )}
 
-            {/* Delete Account Section */}
+            {/* Delete Account Section (unchanged but with better styling) */}
             {selectedAccount && (
-              <Card className="border-red-200 bg-red-50">
-                <CardHeader>
-                  <CardTitle className="text-red-700 flex items-center space-x-2">
-                    <Trash2 className="h-5 w-5" />
+              <Card className="border-0 shadow-lg bg-white/90 backdrop-blur border-red-200">
+                <CardHeader className="bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-t-lg">
+                  <CardTitle className="flex items-center space-x-3">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <Trash2 className="h-5 w-5" />
+                    </div>
                     <span>⚠️ Zona Pericolosa</span>
                   </CardTitle>
-                  <CardDescription className="text-red-600">
+                  <CardDescription className="text-red-100">
                     Elimina completamente l'account e tutti i suoi dati
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-6">
                   {!showDeleteConfirm ? (
                     <Button
                       onClick={() => setShowDeleteConfirm(true)}
                       variant="destructive"
-                      className="w-full"
+                      className="w-full h-12 text-lg"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Elimina Account
@@ -650,116 +825,147 @@ Check console for detailed data structure`)
             )}
           </div>
 
-          {/* Template Preview & Current Settings */}
+          {/* 🚀 NEW: Enhanced Template Preview & Current Settings */}
           <div className="space-y-6">
             
             {/* Current Account Settings */}
             {selectedAccount?.propFirmTemplate && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    <span>Configurazione Corrente</span>
+              <Card className="border-0 shadow-lg bg-white/90 backdrop-blur">
+                <CardHeader className="bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-t-lg">
+                  <CardTitle className="flex items-center space-x-3">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <CheckCircle className="h-5 w-5" />
+                    </div>
+                    <span>✅ Configurazione Attuale</span>
                   </CardTitle>
+                  <CardDescription className="text-green-100">
+                    Template attualmente assegnato all'account {selectedAccount.login}
+                  </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Account:</span>
-                      <span className="font-medium">{selectedAccount.login}</span>
+                <CardContent className="p-6">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center p-4 bg-green-50 rounded-xl border border-green-200">
+                        <DollarSign className="h-8 w-8 mx-auto text-green-500 mb-2" />
+                        <div className="text-sm text-gray-600">PropFirm</div>
+                        <div className="font-bold text-green-600">{selectedAccount.propFirmTemplate.propFirm.name}</div>
+                      </div>
+                      <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200">
+                        <Target className="h-8 w-8 mx-auto text-blue-500 mb-2" />
+                        <div className="text-sm text-gray-600">Account Size</div>
+                        <div className="font-bold text-blue-600">{formatCurrency(selectedAccount.propFirmTemplate.accountSize)}</div>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">PropFirm:</span>
-                      <Badge variant="default">{selectedAccount.propFirmTemplate.propFirm.name}</Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Template:</span>
-                      <span className="text-sm">{selectedAccount.propFirmTemplate.name}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Account Size:</span>
-                      <span className="font-medium">{formatCurrency(selectedAccount.propFirmTemplate.accountSize)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Saldo Iniziale:</span>
-                      <span className="font-medium">{formatCurrency(selectedAccount.initialBalance || 0)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Fase:</span>
-                      <Badge variant="secondary">{selectedAccount.currentPhase}</Badge>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <span className="text-sm text-gray-600">Template:</span>
+                        <span className="font-medium">{selectedAccount.propFirmTemplate.name}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <span className="text-sm text-gray-600">Saldo Iniziale:</span>
+                        <span className="font-medium">{formatCurrency(selectedAccount.initialBalance || 0)}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <span className="text-sm text-gray-600">Fase Corrente:</span>
+                        <Badge variant="secondary" className="text-lg px-3 py-1">{selectedAccount.currentPhase}</Badge>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             )}
 
-            {/* Template Preview */}
-            {templateInfo && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Target className="h-5 w-5 text-blue-500" />
-                    <span>Anteprima Template</span>
+            {/* 🚀 NEW: Enhanced Template Preview */}
+            {selectedTemplateData && (
+              <Card className="border-0 shadow-xl bg-white/90 backdrop-blur">
+                <CardHeader className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-t-lg">
+                  <CardTitle className="flex items-center space-x-3">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <Star className="h-5 w-5" />
+                    </div>
+                    <span>🔮 Preview Template</span>
                   </CardTitle>
-                  <CardDescription>
-                    {templateInfo.firm.name} - {templateInfo.template.name}
+                  <CardDescription className="text-indigo-100">
+                    {selectedTemplateData.firm.name} - {selectedTemplateData.template.name}
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
+                <CardContent className="p-6">
+                  <div className="space-y-6">
+                    
+                    {/* Main Stats */}
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-3 bg-blue-50 rounded-lg">
-                        <DollarSign className="h-6 w-6 mx-auto text-blue-500 mb-1" />
+                      <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                        <DollarSign className="h-8 w-8 mx-auto text-blue-500 mb-2" />
                         <div className="text-sm text-gray-600">Account Size</div>
-                        <div className="font-bold text-blue-600">
-                          {formatCurrency(templateInfo.template.accountSize, templateInfo.template.currency)}
+                        <div className="font-bold text-blue-600 text-lg">
+                          {formatCurrency(selectedTemplateData.template.accountSize, selectedTemplateData.template.currency)}
                         </div>
                       </div>
-                      <div className="text-center p-3 bg-green-50 rounded-lg">
-                        <Target className="h-6 w-6 mx-auto text-green-500 mb-1" />
+                      <div className="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                        <Target className="h-8 w-8 mx-auto text-green-500 mb-2" />
                         <div className="text-sm text-gray-600">Profit Target</div>
-                        <div className="font-bold text-green-600">
-                          {templateInfo.template.rulesJson?.phase1?.profitTarget || 0}%
+                        <div className="font-bold text-green-600 text-lg">
+                          {selectedTemplateData.template.rulesJson?.profitTargets?.PHASE_1?.percentage || 0}%
                         </div>
                       </div>
                     </div>
 
+                    {/* Rules Grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Shield className="h-4 w-4 text-red-600" />
+                          <span className="text-xs font-medium text-red-800">Daily Loss</span>
+                        </div>
+                        <div className="text-sm font-bold text-red-600">
+                          {selectedTemplateData.template.rulesJson?.dailyLossLimits?.PHASE_1?.percentage || 0}%
+                        </div>
+                      </div>
+                      <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <AlertCircle className="h-4 w-4 text-orange-600" />
+                          <span className="text-xs font-medium text-orange-800">Overall Loss</span>
+                        </div>
+                        <div className="text-sm font-bold text-orange-600">
+                          {selectedTemplateData.template.rulesJson?.overallLossLimits?.PHASE_1?.percentage || 0}%
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Special Features */}
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Max Daily Loss:</span>
-                        <Badge variant="destructive">
-                          {templateInfo.template.rulesJson?.phase1?.maxDailyLoss || 0}%
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Max Overall Loss:</span>
-                        <Badge variant="destructive">
-                          {templateInfo.template.rulesJson?.phase1?.maxOverallLoss || 0}%
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <span className="text-sm text-gray-600">Min Trading Days:</span>
                         <Badge variant="secondary">
-                          {templateInfo.template.rulesJson?.phase1?.minTradingDays || 0} giorni
+                          {selectedTemplateData.template.rulesJson?.minimumTradingDays?.PHASE_1?.days || 0} giorni
                         </Badge>
                       </div>
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <span className="text-sm text-gray-600">Consistency Rules:</span>
-                        <Badge variant={templateInfo.template.rulesJson?.phase2?.consistencyRules ? "default" : "secondary"}>
-                          {templateInfo.template.rulesJson?.phase2?.consistencyRules ? 'Attive in Fase 2' : 'Disattive'}
+                        <Badge variant={selectedTemplateData.template.rulesJson?.consistencyRules?.PHASE_2?.enabled ? "default" : "secondary"}>
+                          {selectedTemplateData.template.rulesJson?.consistencyRules?.PHASE_2?.enabled ? '✅ Fase 2' : '❌ Disattive'}
                         </Badge>
                       </div>
                     </div>
 
-                    {templateInfo.template.rulesJson?.phase2?.consistencyRules && (
-                      <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <Shield className="h-4 w-4 text-yellow-600" />
-                          <span className="text-sm font-medium text-yellow-800">Simple Protection Rules</span>
+                    {/* Phase 2 Protection Rules Preview */}
+                    {selectedTemplateData.template.rulesJson?.consistencyRules?.PHASE_2?.enabled && (
+                      <div className="p-4 bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-xl">
+                        <div className="flex items-center space-x-2 mb-3">
+                          <div className="p-1 bg-yellow-500 rounded-full">
+                            <Shield className="h-3 w-3 text-white" />
+                          </div>
+                          <span className="text-sm font-bold text-yellow-800">🛡️ Protection Rules (Phase 2)</span>
                         </div>
                         <div className="text-xs text-yellow-700 space-y-1">
-                          <div>• 50% Daily Protection: Profitto ≥ 2x miglior giorno</div>
-                          <div>• 50% Trade Protection: Profitto ≥ 2x miglior trade</div>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full"></div>
+                            <span>Daily Protection: Profit ≥ 2x Best Day</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full"></div>
+                            <span>Trade Protection: Profit ≥ 2x Best Trade</span>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -768,35 +974,47 @@ Check console for detailed data structure`)
               </Card>
             )}
 
-            {/* Available PropFirms */}
-            <Card>
-              <CardHeader>
-                <CardTitle>📊 PropFirms Disponibili</CardTitle>
-                <CardDescription>
-                  Template disponibili per la configurazione
+            {/* Available PropFirms Overview (Enhanced) */}
+            <Card className="border-0 shadow-lg bg-white/90 backdrop-blur">
+              <CardHeader className="bg-gradient-to-r from-gray-700 to-gray-800 text-white rounded-t-lg">
+                <CardTitle className="flex items-center space-x-3">
+                  <div className="p-2 bg-white/20 rounded-lg">
+                    <TrendingUp className="h-5 w-5" />
+                  </div>
+                  <span>📊 PropFirms Disponibili</span>
+                </CardTitle>
+                <CardDescription className="text-gray-200">
+                  {propFirms.length} PropFirms con {propFirms.reduce((sum, firm) => sum + (firm.templates?.length || 0), 0)} templates
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6">
                 <div className="space-y-4">
                   {propFirms && propFirms.length > 0 ? (
                     propFirms.map(firm => (
-                      <div key={firm.id} className="border rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-semibold">{firm.name}</h3>
-                          <Badge variant={firm.isActive ? "default" : "secondary"}>
-                            {firm.templates?.length || 0} templates
+                      <div key={firm.id} className="border rounded-xl p-4 hover:shadow-md transition-shadow">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center">
+                              <Award className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-lg">{firm.name}</h3>
+                              <p className="text-sm text-gray-600">{firm.description}</p>
+                            </div>
+                          </div>
+                          <Badge variant={firm.isActive ? "default" : "secondary"} className="text-lg px-3 py-1">
+                            {firm.templates?.length || 0} sizes
                           </Badge>
                         </div>
-                        <p className="text-sm text-gray-600 mb-3">{firm.description}</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          {firm.templates && firm.templates.slice(0, 4).map(template => (
-                            <div key={template.id} className="text-xs bg-gray-50 p-2 rounded">
+                        <div className="grid grid-cols-3 gap-2">
+                          {firm.templates && firm.templates.slice(0, 6).map(template => (
+                            <div key={template.id} className="text-xs bg-gradient-to-r from-gray-50 to-gray-100 p-2 rounded-lg text-center font-medium">
                               {formatCurrency(template.accountSize, template.currency)}
                             </div>
                           ))}
-                          {firm.templates && firm.templates.length > 4 && (
-                            <div className="text-xs text-gray-500 p-2">
-                              +{firm.templates.length - 4} altri
+                          {firm.templates && firm.templates.length > 6 && (
+                            <div className="text-xs text-gray-500 p-2 text-center">
+                              +{firm.templates.length - 6} altri
                             </div>
                           )}
                         </div>
@@ -804,7 +1022,11 @@ Check console for detailed data structure`)
                     ))
                   ) : (
                     <div className="text-center py-8 text-gray-500">
-                      <p>Nessun PropFirm disponibile</p>
+                      <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <AlertCircle className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <p className="text-lg font-medium">Nessun PropFirm disponibile</p>
+                      <p className="text-sm">I template PropFirm potrebbero non essere stati caricati</p>
                     </div>
                   )}
                 </div>
