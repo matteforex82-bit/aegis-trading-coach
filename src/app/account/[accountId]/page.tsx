@@ -120,6 +120,9 @@ interface RuleMetrics {
   tradeProtectionRequired: number
   dailyProtectionPassing: boolean
   tradeProtectionPassing: boolean
+  
+  // 🔧 NEW: Corrected daily P&L (uses closeTime)
+  dailyPnL: number
 }
 
 // 🏦 PROFESSIONAL FINTECH KPI PROGRESS BAR
@@ -361,12 +364,15 @@ export default function AccountDashboard() {
           let bestTradeActive = 0
 
           closedTrades.forEach(trade => {
-            const date = new Date(trade.openTime).toISOString().split('T')[0]
+            // 🔧 FIX: Use closeTime instead of openTime for daily grouping
+            if (!trade.closeTime) return // Skip if no close time
+            
+            const closeDate = new Date(trade.closeTime).toISOString().split('T')[0]
             const tradeProfit = trade.pnlGross + trade.commission + trade.swap
             
-            // Track daily profits (closed only)
-            if (!dailyProfitsActive[date]) dailyProfitsActive[date] = 0
-            dailyProfitsActive[date] += tradeProfit
+            // Track daily profits by CLOSE date (not open date)
+            if (!dailyProfitsActive[closeDate]) dailyProfitsActive[closeDate] = 0
+            dailyProfitsActive[closeDate] += tradeProfit
             
             // Track best single trade (closed only)
             if (tradeProfit > bestTradeActive) {
@@ -423,11 +429,12 @@ export default function AccountDashboard() {
           
           // Calculate daily drawdown (resets at midnight)
           // Use existing today variable declared above
-          const todayTrades = trades.filter(t => {
-            const tradeDate = new Date(t.openTime).toISOString().split('T')[0]
-            return tradeDate === today
+          const todayClosedTrades = closedTrades.filter(t => {
+            if (!t.closeTime) return false
+            const closeDate = new Date(t.closeTime).toISOString().split('T')[0]
+            return closeDate === today
           })
-          const dailyPnL = todayTrades.reduce((sum, t) => sum + (t.pnlGross + t.commission + t.swap), 0)
+          const dailyPnL = todayClosedTrades.reduce((sum, t) => sum + (t.pnlGross + t.commission + t.swap), 0)
           const dailyDrawdownAmount = Math.min(0, dailyPnL) // Only negative values count as drawdown
           const dailyDrawdownLimit = accountSize * 0.05 // 5% limit
           
@@ -501,7 +508,10 @@ export default function AccountDashboard() {
             dailyProtectionRequired,
             tradeProtectionRequired,
             dailyProtectionPassing: totalPnL >= dailyProtectionRequired,
-            tradeProtectionPassing: totalPnL >= tradeProtectionRequired
+            tradeProtectionPassing: totalPnL >= tradeProtectionRequired,
+            
+            // 🔧 NEW: Add corrected daily P&L for compact cards
+            dailyPnL: dailyPnL // Now uses closeTime, not openTime
           })
         }
       }
@@ -543,9 +553,9 @@ export default function AccountDashboard() {
     )
   }
 
-  // 🚀 NEW: Compact Rules Cards Calculation
+  // 🚀 NEW: Compact Rules Cards Calculation  
   const calculateDailyMargin = () => {
-    if (!account?.propFirmTemplate || !stats) return null
+    if (!account?.propFirmTemplate || !stats || !rules) return null
 
     const accountSize = account.propFirmTemplate.accountSize || 50000
     const currentPhase = account.currentPhase || 'PHASE_1'
@@ -555,9 +565,8 @@ export default function AccountDashboard() {
     const dailyLossPercent = template.rulesJson?.dailyLossLimits?.[currentPhase]?.percentage || 5
     const dailyLimit = accountSize * (dailyLossPercent / 100)
     
-    // Calculate current daily P&L (today only)
-    const today = new Date().toISOString().split('T')[0]
-    const dailyPnL = rules?.dailyPnL || 0 // From existing calculation
+    // Get today's actual P&L from the corrected calculation (now uses closeTime)
+    const dailyPnL = rules.dailyPnL || 0
     
     const currentLoss = Math.max(0, -dailyPnL) // Only negative counts as loss
     const marginRemaining = dailyLimit - currentLoss
