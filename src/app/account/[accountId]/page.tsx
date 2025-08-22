@@ -291,6 +291,17 @@ export default function AccountDashboard() {
       const currentAccount = accounts.find((acc: any) => acc.id === accountId)
       
       if (currentAccount) {
+        console.log('🔍 Debug currentAccount data:', {
+          login: currentAccount.login,
+          phase: currentAccount.currentPhase,
+          initialBalance: currentAccount.initialBalance,
+          startBalance: currentAccount.startBalance,
+          hasTemplate: !!currentAccount.propFirmTemplate,
+          templateName: currentAccount.propFirmTemplate?.name,
+          hasRules: !!currentAccount.propFirmTemplate?.rulesJson,
+          phase2Target: currentAccount.propFirmTemplate?.rulesJson?.profitTargets?.PHASE_2
+        });
+        
         setAccount({
           id: currentAccount.id,
           name: currentAccount.name,
@@ -300,6 +311,8 @@ export default function AccountDashboard() {
           currency: currentAccount.currency,
           currentPhase: currentAccount.currentPhase,
           initialBalance: currentAccount.initialBalance,
+          startBalance: currentAccount.startBalance,
+          currentBalance: currentAccount.currentBalance,
           propFirmTemplate: currentAccount.propFirmTemplate
         })
 
@@ -639,8 +652,8 @@ export default function AccountDashboard() {
         {/* Core PropFirm KPIs - ALWAYS SHOW FOR DEBUG */}
         {(() => {
           // Pre-calculate all values for FUTURA FUNDING
-          const baseBalance = account?.initialBalance || account?.currentBalance || 50000;
-          const currentBalance = baseBalance + (stats?.totalPnL || 0);
+          const baseBalance = account?.initialBalance || account?.startBalance || account?.currentBalance || 50000;
+          const currentBalance = (account?.currentBalance || baseBalance) + (stats?.totalPnL || 0);
           const currentPhase = account?.currentPhase || 'PHASE_1';
           
           // Get profit target from template or fallback

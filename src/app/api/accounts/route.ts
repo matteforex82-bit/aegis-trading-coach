@@ -30,9 +30,6 @@ export async function GET(request: NextRequest) {
           _count: {
             select: { trades: true }
           },
-          user: {
-            select: { name: true, email: true }
-          },
           propFirmTemplate: {
             include: {
               propFirm: true
