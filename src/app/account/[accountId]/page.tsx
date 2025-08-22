@@ -368,7 +368,21 @@ export default function AccountDashboard() {
             if (!trade.closeTime) return // Skip if no close time
             
             const closeDate = new Date(trade.closeTime).toISOString().split('T')[0]
+            const openDate = new Date(trade.openTime).toISOString().split('T')[0]
             const tradeProfit = trade.pnlGross + trade.commission + trade.swap
+            
+            // 🔍 DEBUG: Log trades with large profits
+            if (Math.abs(tradeProfit) > 500) {
+              console.log(`🔍 LARGE TRADE DEBUG:`, {
+                ticket: trade.ticketId,
+                profit: tradeProfit,
+                openDate,
+                closeDate,
+                openTime: trade.openTime,
+                closeTime: trade.closeTime,
+                dateDiff: openDate !== closeDate ? 'DIFFERENT_DAYS' : 'SAME_DAY'
+              })
+            }
             
             // Track daily profits by CLOSE date (not open date)
             if (!dailyProfitsActive[closeDate]) dailyProfitsActive[closeDate] = 0
@@ -381,6 +395,17 @@ export default function AccountDashboard() {
           })
 
           const bestDayActive = Math.max(...Object.values(dailyProfitsActive), 0)
+          
+          // 🔍 DEBUG: Log daily profits breakdown
+          console.log('🔍 DAILY PROFITS BREAKDOWN:', {
+            dailyProfitsActive,
+            bestDayActive,
+            totalDays: Object.keys(dailyProfitsActive).length,
+            sortedDays: Object.entries(dailyProfitsActive)
+              .sort(([,a], [,b]) => b - a)
+              .slice(0, 5)
+              .map(([date, profit]) => ({ date, profit: Math.round(profit * 100) / 100 }))
+          })
           
           // Calculate PROJECTION protection (including open trades)
           const dailyProfitsProjection: { [date: string]: number } = { ...dailyProfitsActive }
