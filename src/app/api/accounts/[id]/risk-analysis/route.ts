@@ -86,13 +86,18 @@ export async function GET(
     const { id } = await params
     console.log('🔍 Risk Analysis API called for account:', id)
 
-    // Get account with open trades
+    // Get account with open trades and PropFirm template for risk limits
     const account = await db.account.findUnique({
       where: { id },
       include: {
         trades: {
           where: { closeTime: null }, // Only open positions
           orderBy: { openTime: 'desc' }
+        },
+        propFirmTemplate: {
+          include: {
+            propFirm: true
+          }
         }
       }
     })
@@ -121,8 +126,8 @@ export async function GET(
     console.log(`   Floating P&L: $${floatingPL.toFixed(2)}`)
     console.log(`   Current Equity: $${currentEquity.toFixed(2)}`)
     
-    // Calculate risk metrics with complete account data
-    const riskMetrics = await calculateRiskMetrics(openTrades, currentBalance, currentEquity, floatingPL, id)
+    // Calculate risk metrics with PropFirm rules and complete account data
+    const riskMetrics = await calculateRiskMetrics(openTrades, currentBalance, currentEquity, floatingPL, id, account)
     
     console.log('⚡ Risk Level:', riskMetrics.riskLevel)
     console.log('📈 Current Exposure:', riskMetrics.totalExposurePercent.toFixed(2) + '%')
@@ -152,7 +157,8 @@ async function calculateRiskMetrics(
   currentBalance: number,
   currentEquity: number,
   floatingPL: number,
-  accountId: string
+  accountId: string,
+  account: any
 ): Promise<RiskMetrics> {
   
   // 1. Calculate total exposure
@@ -290,8 +296,8 @@ async function calculateRiskMetrics(
   // 7. Calculate Worst Case Scenario
   const worstCaseScenario = calculateWorstCaseScenario(openTrades, currentBalance)
   
-  // 8. 🚨 CRITICAL: Calculate TRUE Safe Capacity (minimum equity based)
-  const trueSafeCapacity = calculateTrueSafeCapacity(openTrades, currentBalance, currentEquity, floatingPL, dailyLimitUSD)
+  // 8. 🚨 CRITICAL: Calculate TRUE Safe Capacity with PropFirm rules
+  const trueSafeCapacity = calculateTrueSafeCapacity(openTrades, currentBalance, currentEquity, floatingPL, dailyLimitUSD, account)
   
   // 🚨 CRITICAL ALERTS based on TRUE Safe Capacity (overrides worst case alerts)
   if (trueSafeCapacity.trueSafeCapacity === 0) {
@@ -647,7 +653,8 @@ function calculateTrueSafeCapacity(
   startingBalance: number, 
   currentEquity: number, 
   floatingPL: number,
-  dailyLimitUSD: number
+  dailyLimitUSD: number,
+  account: any
 ): TrueSafeCapacity {
   
   console.log('🚨 CRITICAL: Calculating TRUE Safe Capacity...')
@@ -656,7 +663,54 @@ function calculateTrueSafeCapacity(
   console.log(`   Floating P&L: $${floatingPL.toFixed(2)}`)
   console.log(`   Daily Limit: $${dailyLimitUSD} (5%)`)
   
-  // Calculate the old (misleading) theoretical capacity
+  // 🎯 CRITICAL FIX: Calculate PropFirm-specific risk limits
+  let effectiveDailyLimit = dailyLimitUSD  // Default 5% daily limit
+  let overallDrawdownLimit = startingBalance * 0.1  // Default 10% overall limit
+  
+  if (account?.propFirmTemplate?.rulesJson && account.currentPhase) {
+    const rules = account.propFirmTemplate.rulesJson
+    const phase = account.currentPhase
+    
+    console.log(`🏢 PropFirm: ${account.propFirmTemplate.propFirm?.name || 'Unknown'}`)
+    console.log(`📋 Template: ${account.propFirmTemplate.name}`)
+    console.log(`🎯 Phase: ${phase}`)
+    
+    // Get daily loss limit for current phase
+    const dailyLossRules = rules.dailyLossLimits?.[phase] || rules.dailyLossLimits?.PHASE_1
+    if (dailyLossRules?.percentage) {
+      const propFirmDailyLimit = startingBalance * (dailyLossRules.percentage / 100)
+      effectiveDailyLimit = Math.min(effectiveDailyLimit, propFirmDailyLimit)
+      console.log(`📊 PropFirm Daily Loss Limit: ${dailyLossRules.percentage}% = $${propFirmDailyLimit}`)
+    }
+    
+    // Get overall drawdown limit for current phase
+    const overallLossRules = rules.overallLossLimits?.[phase] || rules.overallLossLimits?.PHASE_1
+    if (overallLossRules?.percentage) {
+      const propFirmOverallLimit = startingBalance * (overallLossRules.percentage / 100)
+      overallDrawdownLimit = propFirmOverallLimit
+      console.log(`📊 PropFirm Overall Loss Limit: ${overallLossRules.percentage}% = $${propFirmOverallLimit}`)
+    }
+  }
+  
+  // 🚨 MOST IMPORTANT: Calculate minimum allowed equity considering BOTH limits
+  const minEquityFromDaily = startingBalance - effectiveDailyLimit
+  const minEquityFromOverall = startingBalance - overallDrawdownLimit
+  const absoluteMinEquity = Math.max(minEquityFromDaily, minEquityFromOverall)  // Most restrictive
+  
+  console.log(`🚨 EFFECTIVE LIMITS:`)
+  console.log(`   Daily Loss Limit: $${effectiveDailyLimit} → Min Equity: $${minEquityFromDaily}`)
+  console.log(`   Overall DD Limit: $${overallDrawdownLimit} → Min Equity: $${minEquityFromOverall}`)
+  console.log(`   ABSOLUTE Min Equity: $${absoluteMinEquity} (most restrictive)`)
+  
+  // Calculate REAL safe capacity considering the most restrictive limit
+  const realSafeCapacity = Math.max(0, currentEquity - absoluteMinEquity)
+  
+  console.log(`🎯 REAL CALCULATION:`)
+  console.log(`   Current Equity: $${currentEquity.toFixed(2)}`)
+  console.log(`   Absolute Min Allowed: $${absoluteMinEquity.toFixed(2)}`)
+  console.log(`   TRUE Safe Capacity: $${realSafeCapacity.toFixed(2)} ← CORRECT VALUE`)
+  
+  // Calculate the old (misleading) theoretical capacity for comparison
   const theoreticalCapacity = Math.max(0, dailyLimitUSD - Math.abs(floatingPL))
   
   // Prepare trades with their potential Stop Loss losses
@@ -743,7 +797,7 @@ function calculateTrueSafeCapacity(
       minEquityTouched = Math.min(minEquityTouched, runningEquity)
       
       const drawdownAtThisPoint = startingBalance - runningEquity
-      const violatesHere = drawdownAtThisPoint > dailyLimitUSD
+      const violatesHere = runningEquity < absoluteMinEquity  // Use most restrictive limit
       
       if (violatesHere && !violationFound) {
         violationFound = true
@@ -757,7 +811,7 @@ function calculateTrueSafeCapacity(
     minEquityTouched = Math.min(minEquityTouched, runningEquity)
     
     const drawdownAtThisPoint = startingBalance - runningEquity
-    const violatesHere = drawdownAtThisPoint > dailyLimitUSD
+    const violatesHere = runningEquity < absoluteMinEquity  // Use most restrictive limit
     
     sequence.push({
       trade: `${trade.symbol} #${trade.ticketId}`,
@@ -768,16 +822,14 @@ function calculateTrueSafeCapacity(
     })
   }
   
-  // Calculate TRUE safe capacity
-  const maxDrawdownAllowed = startingBalance - dailyLimitUSD // Minimum equity allowed
-  const currentDrawdownUsed = startingBalance - minEquityTouched
-  const trueSafeCapacity = Math.max(0, dailyLimitUSD - currentDrawdownUsed)
+  // Calculate TRUE safe capacity using the most restrictive limit
+  const finalTrueSafeCapacity = Math.max(0, Math.min(realSafeCapacity, currentEquity - minEquityTouched))
   
   // Determine risk level
   let riskLevel: 'SAFE' | 'DANGER' | 'CRITICAL'
-  if (violationFound || trueSafeCapacity === 0) {
+  if (violationFound || finalTrueSafeCapacity === 0) {
     riskLevel = 'CRITICAL'
-  } else if (trueSafeCapacity < 500) {
+  } else if (finalTrueSafeCapacity < 500) {
     riskLevel = 'DANGER' 
   } else {
     riskLevel = 'SAFE'
@@ -786,32 +838,32 @@ function calculateTrueSafeCapacity(
   // Generate warning message
   let warning: string | null = null
   if (violationFound) {
-    warning = `⚠️ DANGER: Sequential SL hits would violate daily limit at step ${violationAtStep + 1}!`
-  } else if (trueSafeCapacity === 0) {
-    warning = `⚠️ CRITICAL: Zero safe capacity - any loss will violate daily limit!`
-  } else if (trueSafeCapacity < 200) {
-    warning = `⚠️ WARNING: Only $${trueSafeCapacity.toFixed(2)} real capacity remaining!`
+    warning = `⚠️ DANGER: Sequential SL hits would violate PropFirm limit at step ${violationAtStep + 1}!`
+  } else if (finalTrueSafeCapacity === 0) {
+    warning = `⚠️ CRITICAL: Zero safe capacity - any loss will violate PropFirm limits!`
+  } else if (finalTrueSafeCapacity < 200) {
+    warning = `⚠️ WARNING: Only $${finalTrueSafeCapacity.toFixed(2)} real capacity remaining!`
   }
   
   console.log('🚨 TRUE SAFE CAPACITY RESULTS:')
   console.log(`   Minimum Equity Touched: $${minEquityTouched.toFixed(2)}`)
-  console.log(`   TRUE Safe Capacity: $${trueSafeCapacity.toFixed(2)} (REAL)`)
+  console.log(`   FINAL TRUE Safe Capacity: $${finalTrueSafeCapacity.toFixed(2)} (REAL)`)
   console.log(`   Theoretical Capacity: $${theoreticalCapacity.toFixed(2)} (MISLEADING)`)
   console.log(`   Sequential Violation Risk: ${violationFound ? 'YES 🚨' : 'NO ✅'}`)
   console.log(`   Risk Level: ${riskLevel}`)
   
   return {
-    trueSafeCapacity,
+    trueSafeCapacity: finalTrueSafeCapacity,
     theoreticalCapacity, 
     floatingPL,
     startingBalance,
     currentEquity,
-    dailyLimitUSD,
+    dailyLimitUSD: overallDrawdownLimit, // Use the actual effective limit
     scenarios: {
       ifAllSLHit: {
         minEquityTouched,
         wouldViolate: violationFound,
-        marginToViolation: Math.max(0, dailyLimitUSD - (startingBalance - minEquityTouched)),
+        marginToViolation: Math.max(0, currentEquity - absoluteMinEquity),
         sequence
       },
       ifWorstFirst: {
