@@ -903,11 +903,176 @@ export default function AccountDashboard() {
           </div>
         </div>
 
-        {/* 🚀 NEW: Compact PropFirm Rules Monitoring */}
+        {/* 🆕 Account Information Overview */}
+        <div className="mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-slate-50">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-blue-800">
+                  <DollarSign className="h-5 w-5" />
+                  Account Balance
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-blue-900 mb-2">
+                  {new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: account.currency || 'USD',
+                    minimumFractionDigits: 2
+                  }).format(account.currentBalance || account.initialBalance || 0)}
+                </div>
+                <div className="text-sm text-blue-600">
+                  Account Size: {new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: account.currency || 'USD',
+                    minimumFractionDigits: 0
+                  }).format(account.propFirmTemplate?.accountSize || account.initialBalance || 50000)}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-slate-50">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-green-800">
+                  <Activity className="h-5 w-5" />
+                  Current Equity
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-green-900 mb-2">
+                  {(() => {
+                    const balance = account.currentBalance || account.initialBalance || 0
+                    const equity = balance + (openPositionsTotal || 0)
+                    return new Intl.NumberFormat('en-US', {
+                      style: 'currency',
+                      currency: account.currency || 'USD',
+                      minimumFractionDigits: 2
+                    }).format(equity)
+                  })()}
+                </div>
+                <div className="flex items-center gap-2 text-sm text-green-600">
+                  <span>P&L Aperte:</span>
+                  <span className={`font-semibold ${openPositionsTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {openPositionsTotal >= 0 ? '+' : ''}{new Intl.NumberFormat('en-US', {
+                      style: 'currency',
+                      currency: account.currency || 'USD',
+                      minimumFractionDigits: 2
+                    }).format(openPositionsTotal || 0)}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* 📊 Trading Performance Summary - MOVED UP */}
+        {stats && (
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <BarChart3 className="h-6 w-6 text-blue-600" />
+              Trading Performance
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              
+              {/* P&L Chiuse */}
+              <Card className="border border-slate-200 hover:shadow-lg transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-slate-600">P&L Chiuse</CardTitle>
+                  <DollarSign className="h-4 w-4 text-slate-400" />
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {new Intl.NumberFormat('en-US', {
+                      style: 'currency',
+                      currency: account.currency,
+                      minimumFractionDigits: 2
+                    }).format(stats.totalPnL)}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {stats.closedTrades} operazioni chiuse
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* P&L Aperte */}
+              <Card className="border border-slate-200 hover:shadow-lg transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-slate-600">P&L Aperte</CardTitle>
+                  <Activity className="h-4 w-4 text-slate-400" />
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${openPositionsTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {new Intl.NumberFormat('en-US', {
+                      style: 'currency',
+                      currency: account.currency,
+                      minimumFractionDigits: 2
+                    }).format(openPositionsTotal)}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {stats.openPositions} posizioni aperte
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Win Rate */}
+              <Card className="border border-slate-200 hover:shadow-lg transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-slate-600">Win Rate</CardTitle>
+                  <Target className="h-4 w-4 text-slate-400" />
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${stats.winRate >= 50 ? 'text-green-600' : 'text-orange-600'}`}>
+                    {stats.winRate.toFixed(1)}%
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {stats.winningTrades}W / {stats.losingTrades}L
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Total Volume */}
+              <Card className="border border-slate-200 hover:shadow-lg transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-slate-600">Volume Totale</CardTitle>
+                  <BarChart3 className="h-4 w-4 text-slate-400" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {stats.totalVolume.toFixed(2)}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    lots scambiati
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Trading Days */}
+              <Card className="border border-slate-200 hover:shadow-lg transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-slate-600">Trading Days</CardTitle>
+                  <Calendar className="h-4 w-4 text-slate-400" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-purple-600">
+                    {rules?.tradingDays || 0}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    di {rules?.minTradingDays || 5} minimi
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {/* 🚀 PropFirm Rules Monitoring */}
         {account && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-800">PropFirm Rules Monitor</h2>
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Shield className="h-6 w-6 text-purple-600" />
+                PropFirm Rules Monitor
+              </h2>
               <Badge variant="outline" className="text-xs">
                 Live Updates • {new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
               </Badge>
@@ -1060,86 +1225,6 @@ export default function AccountDashboard() {
         {/* NEW: Open Positions Section */}
         <OpenPositionsSection openTrades={openTrades} account={account} />
 
-        {/* Performance Summary Cards */}
-        {stats && (
-          <div>
-            <h2 className="text-lg font-semibold text-slate-800 mb-4">Trading Performance</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              
-              {/* P&L Chiuse */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">P&L Chiuse</CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {new Intl.NumberFormat('en-US', {
-                      style: 'currency',
-                      currency: account.currency,
-                      minimumFractionDigits: 2
-                    }).format(stats.totalPnL)}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {stats.closedTrades} operazioni chiuse
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* P&L Aperte */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">P&L Aperte</CardTitle>
-                  <Activity className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-2xl font-bold ${openPositionsTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {new Intl.NumberFormat('en-US', {
-                      style: 'currency',
-                      currency: account.currency,
-                      minimumFractionDigits: 2
-                    }).format(openPositionsTotal)}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {stats.openPositions} posizioni aperte
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* Win Rate */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
-                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-2xl font-bold ${stats.winRate >= 50 ? 'text-green-600' : 'text-red-600'}`}>
-                    {stats.winRate.toFixed(1)}%
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {stats.winningTrades} vincenti / {stats.losingTrades} perdenti
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* Trading Days */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Trading Days</CardTitle>
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-slate-700">
-                    {rules?.tradingDays || 0}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    di {rules?.minTradingDays || 5} minimi richiesti
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        )}
 
         {/* Action Buttons */}
         <div className="flex justify-center gap-4 pt-6">
