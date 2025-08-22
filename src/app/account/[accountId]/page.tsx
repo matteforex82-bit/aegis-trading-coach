@@ -543,6 +543,210 @@ export default function AccountDashboard() {
     )
   }
 
+  // 🚀 NEW: Compact Rules Cards Calculation
+  const calculateDailyMargin = () => {
+    if (!account?.propFirmTemplate || !stats) return null
+
+    const accountSize = account.propFirmTemplate.accountSize || 50000
+    const currentPhase = account.currentPhase || 'PHASE_1'
+    const template = account.propFirmTemplate
+    
+    // Get daily loss limit from template (default 5% for most PropFirms)
+    const dailyLossPercent = template.rulesJson?.dailyLossLimits?.[currentPhase]?.percentage || 5
+    const dailyLimit = accountSize * (dailyLossPercent / 100)
+    
+    // Calculate current daily P&L (today only)
+    const today = new Date().toISOString().split('T')[0]
+    const dailyPnL = rules?.dailyPnL || 0 // From existing calculation
+    
+    const currentLoss = Math.max(0, -dailyPnL) // Only negative counts as loss
+    const marginRemaining = dailyLimit - currentLoss
+    
+    return {
+      limit: dailyLimit,
+      used: currentLoss,
+      margin: marginRemaining,
+      percentage: (currentLoss / dailyLimit) * 100,
+      color: marginRemaining > dailyLimit * 0.5 ? 'green' : marginRemaining > dailyLimit * 0.2 ? 'orange' : 'red'
+    }
+  }
+
+  const calculateOverallMargin = () => {
+    if (!account?.propFirmTemplate || !stats) return null
+
+    const accountSize = account.propFirmTemplate.accountSize || 50000
+    const currentPhase = account.currentPhase || 'PHASE_1'
+    const template = account.propFirmTemplate
+    
+    // Get overall loss limit from template (default 10% for most PropFirms)
+    const maxLossPercent = template.rulesJson?.overallLossLimits?.[currentPhase]?.percentage || 10
+    const maxLossLimit = accountSize * (maxLossPercent / 100)
+    const minimumEquity = accountSize - maxLossLimit
+    
+    const currentBalance = account.currentBalance || accountSize
+    const totalPnL = stats.totalPnL || 0
+    const currentEquity = accountSize + totalPnL
+    
+    const marginFromLimit = currentEquity - minimumEquity
+    const usedAmount = Math.max(0, accountSize - currentEquity)
+    
+    return {
+      currentEquity,
+      minimumAllowed: minimumEquity,
+      limit: maxLossLimit,
+      used: usedAmount,
+      margin: marginFromLimit,
+      percentage: (usedAmount / maxLossLimit) * 100,
+      color: marginFromLimit > maxLossLimit * 0.5 ? 'green' : marginFromLimit > maxLossLimit * 0.2 ? 'orange' : 'red'
+    }
+  }
+
+  const calculateProfitTarget = () => {
+    if (!account?.propFirmTemplate || !stats) return null
+
+    const accountSize = account.propFirmTemplate.accountSize || 50000
+    const currentPhase = account.currentPhase || 'PHASE_1'
+    const template = account.propFirmTemplate
+    
+    // Get profit target from template
+    const profitTargetPercent = template.rulesJson?.profitTargets?.[currentPhase]?.percentage || 
+                              (currentPhase === 'PHASE_1' ? 8 : 5)
+    const targetAmount = accountSize * (profitTargetPercent / 100)
+    
+    const currentPnL = stats.totalPnL || 0
+    const percentage = Math.min(100, Math.max(0, (currentPnL / targetAmount) * 100))
+    const remaining = Math.max(0, targetAmount - currentPnL)
+    
+    return {
+      target: targetAmount,
+      current: currentPnL,
+      percentage,
+      remaining,
+      color: percentage >= 90 ? 'green' : percentage >= 50 ? 'blue' : 'gray'
+    }
+  }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount)
+  }
+
+  const getCompactRulesCards = () => {
+    if (!account?.propFirmTemplate) {
+      return (
+        <div className="col-span-full">
+          <Alert className="border-amber-200 bg-amber-50">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800">
+              Template PropFirm non configurato. <Link href="/settings" className="underline font-medium">Configura ora</Link>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )
+    }
+
+    const profitData = calculateProfitTarget()
+    const dailyData = calculateDailyMargin()
+    const overallData = calculateOverallMargin()
+
+    if (!profitData || !dailyData || !overallData) return null
+
+    return (
+      <>
+        {/* CARD 1: Profit Target */}
+        <Card className="p-4 border-green-200 bg-green-50/50">
+          <div className="flex items-center justify-between mb-3">
+            <Badge variant="secondary" className="text-xs font-semibold bg-green-100 text-green-800 border-green-200">
+              PROFIT TARGET
+            </Badge>
+            <span className={`text-2xl font-bold ${profitData.color === 'green' ? 'text-green-600' : profitData.color === 'blue' ? 'text-blue-600' : 'text-gray-600'}`}>
+              {profitData.percentage.toFixed(1)}%
+            </span>
+          </div>
+          <div className="space-y-2">
+            <div className="text-sm text-gray-600">
+              {account.propFirmTemplate.rulesJson?.profitTargets?.[account.currentPhase]?.percentage || 8}% del conto richiesto
+            </div>
+            <div className="flex justify-between items-baseline">
+              <span className="text-lg font-semibold text-gray-800">{formatCurrency(profitData.current)}</span>
+              <span className="text-sm text-gray-500">/ {formatCurrency(profitData.target)}</span>
+            </div>
+            <Progress value={profitData.percentage} className="h-2" />
+            <div className="text-xs text-gray-600">
+              {profitData.remaining > 0 ? (
+                <>Mancano: {formatCurrency(profitData.remaining)} per target</>
+              ) : (
+                <span className="text-green-600">🎯 Target raggiunto!</span>
+              )}
+            </div>
+          </div>
+        </Card>
+
+        {/* CARD 2: Daily Loss */}
+        <Card className="p-4 border-orange-200 bg-orange-50/50">
+          <div className="flex items-center justify-between mb-3">
+            <Badge variant="secondary" className="text-xs font-semibold bg-orange-100 text-orange-800 border-orange-200">
+              DAILY LOSS
+            </Badge>
+            <span className={`text-lg font-bold ${dailyData.color === 'green' ? 'text-green-500' : dailyData.color === 'orange' ? 'text-orange-500' : 'text-red-500'}`}>
+              {dailyData.margin > 0 ? '+' : ''}{formatCurrency(dailyData.margin)}
+            </span>
+          </div>
+          <div className="space-y-2">
+            <div className="text-sm text-gray-600">
+              Max {account.propFirmTemplate.rulesJson?.dailyLossLimits?.[account.currentPhase]?.percentage || 5}% giornaliero
+            </div>
+            <div className="flex justify-between items-baseline">
+              <span className="text-sm">Usato: {formatCurrency(dailyData.used)}</span>
+              <span className="text-sm text-gray-500">/ {formatCurrency(dailyData.limit)}</span>
+            </div>
+            <Progress value={dailyData.percentage} className="h-2" />
+            <div className={`text-xs ${dailyData.color === 'green' ? 'text-green-600' : dailyData.color === 'orange' ? 'text-orange-600' : 'text-red-600'}`}>
+              {dailyData.margin > 0 ? (
+                <>Margine disponibile: {formatCurrency(dailyData.margin)} ✓</>
+              ) : (
+                <>⚠️ Limite superato di {formatCurrency(Math.abs(dailyData.margin))}</>
+              )}
+            </div>
+          </div>
+        </Card>
+
+        {/* CARD 3: Overall Loss */}
+        <Card className="p-4 border-red-200 bg-red-50/50">
+          <div className="flex items-center justify-between mb-3">
+            <Badge variant="secondary" className="text-xs font-semibold bg-red-100 text-red-800 border-red-200">
+              OVERALL LOSS
+            </Badge>
+            <span className={`text-lg font-bold ${overallData.color === 'green' ? 'text-green-500' : overallData.color === 'orange' ? 'text-orange-500' : 'text-red-500'}`}>
+              {overallData.margin > 0 ? '+' : ''}{formatCurrency(overallData.margin)}
+            </span>
+          </div>
+          <div className="space-y-2">
+            <div className="text-sm text-gray-600">
+              Max {account.propFirmTemplate.rulesJson?.overallLossLimits?.[account.currentPhase]?.percentage || 10}% totale
+            </div>
+            <div className="flex justify-between items-baseline">
+              <span className="text-sm">Equity: {formatCurrency(overallData.currentEquity)}</span>
+              <span className="text-sm text-gray-500">Limite: {formatCurrency(overallData.minimumAllowed)}</span>
+            </div>
+            <Progress value={overallData.percentage} className="h-2" />
+            <div className={`text-xs ${overallData.color === 'green' ? 'text-green-600' : overallData.color === 'orange' ? 'text-orange-600' : 'text-red-600'}`}>
+              {overallData.margin > 0 ? (
+                <>Margine dal limite: {formatCurrency(overallData.margin)} ✓</>
+              ) : (
+                <>⚠️ Sotto il limite di {formatCurrency(Math.abs(overallData.margin))}</>
+              )}
+            </div>
+          </div>
+        </Card>
+      </>
+    )
+  }
+
   return (
     <DashboardLayout 
       title={account.name || 'Unknown Account'} 
@@ -665,32 +869,33 @@ export default function AccountDashboard() {
           </div>
         </div>
 
-        {/* Dynamic Template-Based Rules Monitoring */}
+        {/* 🚀 NEW: Compact PropFirm Rules Monitoring */}
         {account && (
           <div className="space-y-6">
-            <h2 className="text-lg font-semibold text-slate-800 mb-4">PropFirm Rules Monitoring</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-800">PropFirm Rules Monitor</h2>
+              <Badge variant="outline" className="text-xs">
+                Live Updates • {new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+              </Badge>
+            </div>
             
-            {/* DYNAMIC RULE RENDERER - REPLACES ALL HARDCODED KPIS */}
-            <DynamicRuleRenderer 
-              account={{
-                startBalance: account.startBalance || 50000,
-                currentBalance: account.currentBalance,
-                currentPhase: account.currentPhase,
-                propFirmTemplate: account.propFirmTemplate
-              }}
-              stats={{
-                totalPnL: stats?.totalPnL || 0,
-                dailyPnL: 0, // TODO: Calculate from trades
-                bestDay: rules?.bestDay || 0,
-                bestTrade: rules?.bestSingleTrade || 0,
-                tradingDaysCount: rules?.tradingDays || 0
-              }}
-              className="mb-6"
-            />
+            {/* 3 CARD COMPATTE IN RIGA SINGOLA */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">{getCompactRulesCards()}</div>
 
-            {/* 🚀 ENHANCED PROTECTION RULES - PHASE 2 */}
-            <div className="mt-8">
-                <h3 className="text-md font-semibold text-slate-700 mb-4">🛡️ Advanced Protection Rules (Phase 2)</h3>
+            {/* 🚀 ENHANCED PROTECTION RULES - PHASE 2 (COLLAPSIBLE) */}
+            <details className="mt-8 group">
+              <summary className="cursor-pointer list-none">
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border hover:bg-gray-100 transition-colors">
+                  <h3 className="text-md font-semibold text-slate-700">🛡️ Advanced Protection Rules (Phase 2)</h3>
+                  <div className="flex items-center space-x-2">
+                    <Badge variant="outline" className="text-xs">Optional Details</Badge>
+                    <svg className="w-4 h-4 text-slate-500 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+              </summary>
+              <div className="mt-4 p-4 bg-gray-50/50 rounded-lg border border-gray-200">
                 
                 {/* Simple 50% Daily Protection */}
                 <div className="mb-8">
@@ -806,7 +1011,8 @@ export default function AccountDashboard() {
                   </div>
                 </div>
               </div>
-            </div>
+            </details>
+          </div>
         )}
 
         {/* 🔥 PRIORITY: Risk Exposure Scanner */}
