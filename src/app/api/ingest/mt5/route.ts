@@ -54,6 +54,14 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('🏦 Account login:', account.login)
+    console.log('🔍 TEMP DEBUG: Account fields received:', Object.keys(account))
+    console.log('🔍 TEMP DEBUG: Account margin data:', {
+      balance: account.balance,
+      equity: account.equity, 
+      freeMargin: account.freeMargin,
+      marginLevel: account.marginLevel,
+      usedMargin: account.usedMargin
+    })
 
     // Test database connection first
     try {
