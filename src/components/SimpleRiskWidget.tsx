@@ -83,7 +83,7 @@ export default function SimpleRiskWidget({ account, rules, stats }: SimpleRiskWi
     <Card className="mb-6">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          🔍 Simple Risk Widget - Primi 2 Valori Base
+          🔍 Simple Risk Widget - Base + Algoritmo Intelligente
         </CardTitle>
       </CardHeader>
       
@@ -149,12 +149,60 @@ export default function SimpleRiskWidget({ account, rules, stats }: SimpleRiskWi
           </div>
         </div>
 
+        {/* STEP 2: Intelligent Comparison Logic */}
+        <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+          <h4 className="font-semibold text-purple-800 mb-3">
+            3️⃣ ALGORITMO INTELLIGENTE - Limite più Restrittivo
+          </h4>
+          <div className="space-y-3">
+            
+            {/* Comparison Logic */}
+            <div className="bg-white p-3 rounded border">
+              <div className="text-sm font-medium mb-2">🧠 Logica di Confronto:</div>
+              <div className="text-xs space-y-1 text-gray-700">
+                <div>Daily DD: <span className="font-mono">${dailyData.effective.toFixed(2)}</span></div>
+                <div>Overall DD: <span className="font-mono">${overallData.effective.toFixed(2)}</span></div>
+                <div className="border-t pt-1 mt-2">
+                  {dailyData.effective <= overallData.effective ? (
+                    <div className="text-orange-700">
+                      ⚠️ <strong>Daily è più restrittivo</strong> → Usa Daily
+                    </div>
+                  ) : (
+                    <div className="text-blue-700">
+                      ℹ️ <strong>Overall è più restrittivo</strong> → Usa Overall
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Final Result */}
+            <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-4 rounded-lg">
+              <div className="text-center">
+                <div className="text-sm opacity-90 mb-1">🎯 MASSIMO RISCHIABILE</div>
+                <div className="text-2xl font-bold">
+                  ${Math.min(dailyData.effective, overallData.effective).toFixed(2)}
+                </div>
+                <div className="text-xs opacity-75 mt-1">
+                  ({dailyData.effective <= overallData.effective ? 'Limitato da Daily' : 'Limitato da Overall'})
+                </div>
+              </div>
+            </div>
+            
+          </div>
+        </div>
+
         {/* Quick Summary */}
         <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
           <div className="text-sm text-gray-600 mb-2">📊 Summary:</div>
           <div className="text-xs space-y-1">
             <div>Daily DD Effettivo: <strong>${dailyData.effective.toFixed(2)}</strong></div>
             <div>Overall DD Effettivo: <strong>${overallData.effective.toFixed(2)}</strong></div>
+            <div className="border-t pt-1 mt-1">
+              <div className="text-purple-700 font-semibold">
+                Massimo Rischiabile: <strong>${Math.min(dailyData.effective, overallData.effective).toFixed(2)}</strong>
+              </div>
+            </div>
           </div>
         </div>
 
