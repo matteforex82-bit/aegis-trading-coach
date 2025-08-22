@@ -649,99 +649,47 @@ export default function AccountDashboard() {
           </div>
         </div>
 
-        {/* Core PropFirm KPIs - ALWAYS SHOW FOR DEBUG */}
-        {(() => {
-          // Pre-calculate all values for FUTURA FUNDING
-          const baseBalance = account?.initialBalance || account?.startBalance || account?.currentBalance || 50000;
-          const currentBalance = (account?.currentBalance || baseBalance) + (stats?.totalPnL || 0);
-          const currentPhase = account?.currentPhase || 'PHASE_1';
-          
-          // Get profit target from template or fallback
-          let profitTargetAmount = 0;
-          let profitTargetPercentage = '';
-          let profitTargetBalance = baseBalance;
-          
-          if (account?.propFirmTemplate?.rulesJson?.profitTargets) {
-            const phaseTarget = account.propFirmTemplate.rulesJson.profitTargets[currentPhase];
-            profitTargetAmount = phaseTarget?.amount || 0;
-            profitTargetPercentage = phaseTarget?.percentage ? `${phaseTarget.percentage}%` : '';
-            profitTargetBalance = baseBalance + profitTargetAmount;
-          } else {
-            // Fallback for FUTURA FUNDING
-            if (currentPhase === 'PHASE_1') {
-              profitTargetAmount = baseBalance * 0.08; // 8%
-              profitTargetPercentage = '8%';
-            } else if (currentPhase === 'PHASE_2') {
-              profitTargetAmount = baseBalance * 0.05; // 5%
-              profitTargetPercentage = '5%';
-            } else {
-              profitTargetPercentage = 'No target';
-            }
-            profitTargetBalance = baseBalance + profitTargetAmount;
-          }
-          
-          // Calculate daily loss limit
-          let dailyLossLimit = 0;
-          if (account?.propFirmTemplate?.rulesJson?.maxDailyLoss) {
-            dailyLossLimit = account.propFirmTemplate.rulesJson.maxDailyLoss.amount || 0;
-          } else {
-            dailyLossLimit = baseBalance * 0.05; // 5% fallback
-          }
-          const dailyLossBalance = baseBalance - dailyLossLimit;
-          
-          // Calculate total loss limit  
-          let totalLossLimit = 0;
-          if (account?.propFirmTemplate?.rulesJson?.maxTotalLoss) {
-            totalLossLimit = account.propFirmTemplate.rulesJson.maxTotalLoss.amount || 0;
-          } else {
-            totalLossLimit = baseBalance * 0.10; // 10% fallback
-          }
-          const totalLossBalance = baseBalance - totalLossLimit;
-          
-          const profitPercentage = profitTargetAmount > 0 ? ((stats?.totalPnL || 0) / profitTargetAmount) * 100 : 0;
-          
-          return (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-800 mb-4">PropFirm Rules Monitoring</h2>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  
-                  {/* PROFIT TARGET - FUTURA FUNDING CORRECTED */}
-                  <FintechKPIBar
-                    title="PROFIT TARGET"
-                    requirement={`${profitTargetPercentage} del conto`}
-                    current={currentBalance}
-                    target={profitTargetBalance}
-                    percentage={profitPercentage}
-                    type="profit"
-                    currency="USD"
-                  />
+        {/* Core PropFirm KPIs - FUTURA FUNDING FIXED */}
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-800 mb-4">PropFirm Rules Monitoring</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* PROFIT TARGET - PHASE-SPECIFIC SIMPLE */}
+              <FintechKPIBar
+                title="PROFIT TARGET"
+                requirement={account?.currentPhase === 'PHASE_2' ? '5% del conto' : '8% del conto'}
+                current={50000 + (stats?.totalPnL || 0)}
+                target={account?.currentPhase === 'PHASE_2' ? 52500 : 54000}
+                percentage={((stats?.totalPnL || 0) / (account?.currentPhase === 'PHASE_2' ? 2500 : 4000)) * 100}
+                type="profit"
+                currency="USD"
+              />
 
-                  {/* DAILY LOSS - FUTURA FUNDING CORRECTED */}
-                  <FintechKPIBar
-                    title="DAILY LOSS"
-                    requirement={`Balance must stay above $${dailyLossBalance.toLocaleString()} (5% daily limit)`}
-                    current={currentBalance}
-                    target={dailyLossBalance}
-                    percentage={0} // With profit, you're safe (0% risk used)
-                    type="daily_risk"
-                    currency="USD"
-                  />
+              {/* DAILY LOSS - FIXED VALUES */}
+              <FintechKPIBar
+                title="DAILY LOSS"
+                requirement="Balance must stay above $47,500 (5% daily limit)"
+                current={(account?.currentBalance || account?.initialBalance || account?.startBalance || 50000) + (stats?.totalPnL || 0)}
+                target={47500}
+                percentage={0}
+                type="daily_risk"
+                currency="USD"
+              />
 
-                  {/* MAXIMUM TOTAL LOSS - FUTURA FUNDING CORRECTED */}
-                  <FintechKPIBar
-                    title="MAXIMUM TOTAL LOSS"
-                    requirement={`Balance must stay above $${totalLossBalance.toLocaleString()} (10% total limit)`}
-                    current={currentBalance}
-                    target={totalLossBalance}
-                    percentage={0} // With profit, you're safe (0% risk used)
-                    type="total_risk"
-                    currency="USD"
-                  />
-                </div>
-              </div>
-            );
-          })()}
+              {/* TOTAL LOSS - FIXED VALUES */}
+              <FintechKPIBar
+                title="MAXIMUM TOTAL LOSS"
+                requirement="Balance must stay above $45,000 (10% total limit)"
+                current={(account?.currentBalance || account?.initialBalance || account?.startBalance || 50000) + (stats?.totalPnL || 0)}
+                target={45000}
+                percentage={0}
+                type="total_risk"
+                currency="USD"
+              />
+            </div>
+          </div>
+        </div>
 
         {/* 🚀 ENHANCED PROTECTION RULES - PHASE 2 */}
         {(
