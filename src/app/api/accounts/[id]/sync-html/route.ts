@@ -208,79 +208,140 @@ function parseHtmlReport($: cheerio.CheerioAPI) {
   console.log(`   Company: "${company}"`)
   console.log(`   Date: "${reportDate}"`)
 
-  // Parse closed trades (Positions section)
+  // Parse closed trades (Closed Transactions section)
   const closedTrades: ParsedTrade[] = []
-  $('th:contains("Positions")').closest('table').find('tr').each((i, row) => {
-    const cells = $(row).find('td')
-    if (cells.length >= 13 && !$(row).hasClass('hidden')) {
-      const openTime = $(cells[0]).text().trim()
-      const ticketId = $(cells[1]).text().trim()
-      const symbol = $(cells[2]).text().trim()
-      const side = $(cells[3]).text().trim() as 'buy' | 'sell'
+  
+  // Find the "Closed Transactions:" section
+  const closedTransactionsTable = $('td:contains("Closed Transactions:")').closest('table')
+  
+  console.log('🔍 Looking for Closed Transactions section...')
+  
+  if (closedTransactionsTable.length > 0) {
+    console.log('✅ Found Closed Transactions table')
+    
+    // Find all trade rows (skip header and balance rows)
+    closedTransactionsTable.find('tr').each((i, row) => {
+      const cells = $(row).find('td')
       
-      // Skip if not a valid trade row
-      if (!ticketId || !symbol || !side || ticketId === 'Position') return
+      if (cells.length >= 14) {
+        const ticketId = $(cells[0]).text().trim()
+        const openTime = $(cells[1]).text().trim()
+        const type = $(cells[2]).text().trim().toLowerCase()
+        const volume = parseFloat($(cells[3]).text().trim().replace(/[,\s]/g, '')) || 0
+        const symbol = $(cells[4]).text().trim().toLowerCase()
+        const openPrice = parseFloat($(cells[5]).text().trim()) || 0
+        const stopLoss = $(cells[6]).text().trim()
+        const takeProfit = $(cells[7]).text().trim()
+        const closeTime = $(cells[8]).text().trim()
+        const closePrice = parseFloat($(cells[9]).text().trim()) || 0
+        const commission = parseFloat($(cells[10]).text().trim().replace(/[,\s]/g, '')) || 0
+        const taxes = parseFloat($(cells[11]).text().trim().replace(/[,\s]/g, '')) || 0
+        const swap = parseFloat($(cells[12]).text().trim().replace(/[,\s]/g, '')) || 0
+        const profit = parseFloat($(cells[13]).text().trim().replace(/[,\s]/g, '')) || 0
 
-      const volume = parseFloat($(cells[4]).text().trim()) || 0
-      const openPrice = parseFloat($(cells[5]).text().trim()) || 0
-      const closeTime = $(cells[8]).text().trim()
-      const closePrice = parseFloat($(cells[9]).text().trim()) || 0
-      const commission = parseFloat($(cells[10]).text().trim()) || 0
-      const swap = parseFloat($(cells[11]).text().trim()) || 0
-      const profit = parseFloat($(cells[12]).text().trim()) || 0
+        // Skip balance operations and invalid rows
+        if (type === 'balance' || !ticketId || !symbol || ticketId === 'Ticket') {
+          return
+        }
+        
+        // Skip cancelled orders
+        if (type.includes('limit') && $(row).text().includes('cancelled')) {
+          return
+        }
 
-      if (ticketId && openTime && closeTime && closeTime !== 'Time') {
-        closedTrades.push({
-          ticketId,
-          symbol,
-          side,
-          volume,
-          openPrice,
-          closePrice,
-          openTime: convertMT5DateTime(openTime),
-          closeTime: convertMT5DateTime(closeTime),
-          pnlGross: profit - swap - commission, // Extract gross P&L
-          swap,
-          commission,
-          comment: $(cells[13])?.text().trim() || ''
-        })
+        // Only process buy/sell transactions with valid close times
+        if ((type === 'buy' || type === 'sell') && closeTime && closeTime !== 'Time' && closeTime !== '') {
+          console.log(`🔍 Processing trade: ${ticketId} - ${symbol} ${type} - Profit: ${profit}`)
+          
+          closedTrades.push({
+            ticketId,
+            symbol: symbol.toUpperCase(),
+            side: type as 'buy' | 'sell',
+            volume,
+            openPrice,
+            closePrice,
+            openTime: convertMT5DateTime(openTime),
+            closeTime: convertMT5DateTime(closeTime),
+            pnlGross: profit, // In MT4/5 HTML reports, profit is already net
+            swap,
+            commission,
+            comment: $(cells[0]).attr('title') || '' // Get comment from title attribute
+          })
+        }
       }
-    }
-  })
+    })
+  } else {
+    console.log('❌ Closed Transactions table not found')
+  }
 
-  // Parse open positions
+  // Parse open positions (MT4/MT5 compatible)
   const openPositions: ParsedOpenPosition[] = []
-  $('th:contains("Open Positions")').closest('table').find('tr').each((i, row) => {
-    const cells = $(row).find('td')
-    if (cells.length >= 11 && !$(row).hasClass('hidden')) {
-      const openTime = $(cells[0]).text().trim()
-      const ticketId = $(cells[1]).text().trim()
-      const symbol = $(cells[2]).text().trim()
-      const side = $(cells[3]).text().trim() as 'buy' | 'sell'
+  
+  console.log('🔍 Looking for Open Positions section...')
+  
+  // Try both "Open Positions" and "Open Trades" for compatibility
+  let openPositionsTable = $('th:contains("Open Positions")').closest('table')
+  if (openPositionsTable.length === 0) {
+    openPositionsTable = $('td:contains("Open Positions:")').closest('table')
+  }
+  if (openPositionsTable.length === 0) {
+    openPositionsTable = $('th:contains("Open Trades")').closest('table')
+  }
+  
+  if (openPositionsTable.length > 0) {
+    console.log('✅ Found Open Positions table')
+    
+    openPositionsTable.find('tr').each((i, row) => {
+      const cells = $(row).find('td')
+      
+      // MT4/MT5 open positions typically have 8-12+ columns
+      if (cells.length >= 8 && !$(row).hasClass('hidden')) {
+        const openTime = $(cells[0]).text().trim()
+        const ticketId = $(cells[1]).text().trim()
+        const symbol = $(cells[2]).text().trim()
+        const side = $(cells[3]).text().trim().toLowerCase() as 'buy' | 'sell'
 
-      // Skip if not a valid position row
-      if (!ticketId || !symbol || !side || ticketId === 'Position') return
+        // Skip header rows and invalid entries
+        if (!ticketId || !symbol || !side || ticketId === 'Position' || ticketId === 'Ticket' || openTime === 'Time') {
+          return
+        }
 
-      const volume = parseFloat($(cells[4]).text().trim()) || 0
-      const openPrice = parseFloat($(cells[5]).text().trim()) || 0
-      const swap = parseFloat($(cells[9]).text().trim()) || 0
-      const profit = parseFloat($(cells[10]).text().trim()) || 0
+        const volume = parseFloat($(cells[4]).text().trim().replace(/[,\s]/g, '')) || 0
+        const openPrice = parseFloat($(cells[5]).text().trim()) || 0
+        
+        // For open positions, profit and swap are usually in the last columns
+        // Try to find them dynamically based on column count
+        let swap = 0
+        let profit = 0
+        
+        if (cells.length >= 10) {
+          swap = parseFloat($(cells[cells.length - 3]).text().trim().replace(/[,\s]/g, '')) || 0
+          profit = parseFloat($(cells[cells.length - 2]).text().trim().replace(/[,\s]/g, '')) || 0
+        } else if (cells.length >= 8) {
+          profit = parseFloat($(cells[cells.length - 1]).text().trim().replace(/[,\s]/g, '')) || 0
+        }
 
-      if (ticketId && openTime && openTime !== 'Time') {
-        openPositions.push({
-          ticketId,
-          symbol,
-          side,
-          volume,
-          openPrice,
-          openTime: convertMT5DateTime(openTime),
-          currentPnL: profit,
-          swap,
-          comment: $(cells[11])?.text().trim() || ''
-        })
+        // Only process valid open positions
+        if (ticketId && symbol && (side === 'buy' || side === 'sell') && openTime && openTime !== 'Time') {
+          console.log(`🔍 Processing open position: ${ticketId} - ${symbol} ${side} - Current P/L: ${profit}`)
+          
+          openPositions.push({
+            ticketId,
+            symbol: symbol.toUpperCase(),
+            side,
+            volume,
+            openPrice,
+            openTime: convertMT5DateTime(openTime),
+            currentPnL: profit,
+            swap,
+            comment: $(cells[cells.length - 1])?.text().trim() || ''
+          })
+        }
       }
-    }
-  })
+    })
+  } else {
+    console.log('❌ Open Positions table not found')
+  }
 
   // Extract summary data
   const balance = parseFloat($('td:contains("Balance:")').next().text().replace(/[^0-9.-]/g, '')) || 0
