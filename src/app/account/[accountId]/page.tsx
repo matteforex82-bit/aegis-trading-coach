@@ -37,6 +37,7 @@ import { DashboardLayout } from '@/components/dashboard-layout'
 import { OpenPositionsSection } from '@/components/OpenPositionsSection'
 import ConnectionStatus from '@/components/ConnectionStatus'
 import DynamicRuleRenderer from '@/components/DynamicRuleRenderer'
+import SimpleRiskWidget from '@/components/SimpleRiskWidget'
 
 interface Account {
   id: string
@@ -1048,7 +1049,12 @@ export default function AccountDashboard() {
           </div>
         )}
 
-        {/* Risk Exposure Scanner removed - will be rebuilt from scratch */}
+        {/* Simple Risk Widget - STEP 1: Just the 2 basic values */}
+        <SimpleRiskWidget 
+          account={account} 
+          rules={rules} 
+          stats={stats} 
+        />
 
         {/* NEW: Open Positions Section */}
         <OpenPositionsSection openTrades={openTrades} account={account} />
