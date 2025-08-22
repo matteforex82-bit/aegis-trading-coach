@@ -178,33 +178,35 @@ export default function RiskExposureScanner({
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
             <h4 className="font-semibold text-blue-800 mb-4">🧮 Calcolo Step-by-Step (Logica Semplice)</h4>
             
-            {/* STEP 1: Limiti */}
+            {/* STEP 1: Drawdown Rimanenti */}
             <div className="mb-4 p-3 bg-white rounded border">
-              <div className="font-medium text-blue-800 mb-2">STEP 1 - Limiti PropFirm</div>
+              <div className="font-medium text-blue-800 mb-2">STEP 1 - Drawdown Rimanenti (al netto perdite)</div>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-gray-600">Daily Loss Rimanente:</span>
+                  <span className="text-gray-600">Daily Drawdown Rimanente:</span>
                   <div className="font-bold text-blue-900">${riskAnalysis.dailyMarginLeft.toFixed(0)}</div>
+                  <div className="text-xs text-gray-500">Limite: ${riskAnalysis.dailyLossLimitUSD.toFixed(0)}</div>
                 </div>
                 <div>
-                  <span className="text-gray-600">Overall Loss Rimanente:</span>
+                  <span className="text-gray-600">Overall Drawdown Rimanente:</span>
                   <div className="font-bold text-blue-900">${riskAnalysis.overallMarginLeft.toFixed(0)}</div>
+                  <div className="text-xs text-gray-500">Limite: ${riskAnalysis.overallLossLimitUSD.toFixed(0)}</div>
                 </div>
               </div>
             </div>
 
-            {/* STEP 2: Controllo Intelligente */}
+            {/* STEP 2: Controllo Intelligente - USA IL MINORE */}
             <div className="mb-4 p-3 bg-white rounded border">
-              <div className="font-medium text-blue-800 mb-2">STEP 2 - Controllo Intelligente</div>
+              <div className="font-medium text-blue-800 mb-2">STEP 2 - Usa il MINORE (più restrittivo)</div>
               <div className="text-sm">
                 <div className="mb-1">
-                  <span className="text-gray-600">Domanda:</span> ${riskAnalysis.dailyMarginLeft.toFixed(0)} > ${riskAnalysis.overallMarginLeft.toFixed(0)}?
+                  <span className="text-gray-600">Confronto:</span> ${riskAnalysis.dailyMarginLeft.toFixed(0)} vs ${riskAnalysis.overallMarginLeft.toFixed(0)}
                 </div>
                 <div className="font-bold text-blue-900">
-                  Risposta: {riskAnalysis.dailyMarginLeft > riskAnalysis.overallMarginLeft ? 'SÌ' : 'NO'} → Usa <strong>{riskAnalysis.controllingLimit === 'OVERALL' ? 'OVERALL' : 'DAILY'} LIMIT</strong>
+                  Il MINORE è: <strong>${Math.min(riskAnalysis.dailyMarginLeft, riskAnalysis.overallMarginLeft).toFixed(0)}</strong> → Usa <strong>{riskAnalysis.controllingLimit}</strong>
                 </div>
                 <div className="mt-2 text-xs text-gray-600">
-                  Margine base: ${riskAnalysis.controllingLimit === 'OVERALL' ? riskAnalysis.overallMarginLeft.toFixed(0) : riskAnalysis.dailyMarginLeft.toFixed(0)}
+                  Margine base disponibile: ${riskAnalysis.controllingLimit === 'OVERALL' ? riskAnalysis.overallMarginLeft.toFixed(0) : riskAnalysis.dailyMarginLeft.toFixed(0)}
                 </div>
               </div>
             </div>
@@ -226,19 +228,25 @@ export default function RiskExposureScanner({
             </div>
 
             {/* RISULTATO FINALE */}
-            <div className="p-3 bg-green-50 border border-green-200 rounded">
-              <div className="font-medium text-green-800 mb-2">RISULTATO FINALE</div>
+            <div className={`p-3 border rounded ${riskAnalysis.finalSafeCapacity < 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
+              <div className={`font-medium mb-2 ${riskAnalysis.finalSafeCapacity < 0 ? 'text-red-800' : 'text-green-800'}`}>RISULTATO FINALE</div>
               <div className="text-sm">
                 {riskAnalysis.alerts.some(alert => alert.includes('NO STOP LOSS')) ? (
                   <div className="font-bold text-red-700">MARGINE DISPONIBILE: $0 (Posizioni senza SL)</div>
                 ) : (
                   <div>
-                    <div className="text-gray-600">
-                      ${riskAnalysis.controllingLimit === 'OVERALL' ? riskAnalysis.overallMarginLeft.toFixed(0) : riskAnalysis.dailyMarginLeft.toFixed(0)} - ${riskAnalysis.maxRiskFromSL.toFixed(0)} = 
+                    <div className="text-gray-600 mb-1">
+                      Base: ${Math.min(riskAnalysis.dailyMarginLeft, riskAnalysis.overallMarginLeft).toFixed(0)} - Stop Loss: ${riskAnalysis.maxRiskFromSL.toFixed(0)} = 
                     </div>
-                    <div className="font-bold text-green-800 text-lg">
-                      ${riskAnalysis.finalSafeCapacity.toFixed(0)} DISPONIBILE
+                    <div className={`font-bold text-lg ${
+                      riskAnalysis.finalSafeCapacity < 0 ? 'text-red-700' : 
+                      riskAnalysis.finalSafeCapacity < 500 ? 'text-orange-700' : 'text-green-800'
+                    }`}>
+                      ${riskAnalysis.finalSafeCapacity.toFixed(0)} {riskAnalysis.finalSafeCapacity < 0 ? 'RISCHIO CRITICO!' : 'DISPONIBILE'}
                     </div>
+                    {riskAnalysis.finalSafeCapacity < 0 && (
+                      <div className="text-xs text-red-600 mt-1">⚠️ Stai rischiando di perdere la challenge!</div>
+                    )}
                   </div>
                 )}
               </div>

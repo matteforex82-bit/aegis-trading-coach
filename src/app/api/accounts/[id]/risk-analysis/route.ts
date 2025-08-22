@@ -143,29 +143,35 @@ async function calculateConservativeRisk(account: any): Promise<ConservativeRisk
     }
   }
   
-  // 🎯 STEP 3: CALCOLA MARGINI DISPONIBILI (PRIMA DI SOTTRARRE RISCHI)
-  const dailyLossesToday = 0 // TODO: Calcolare dalle perdite di oggi
-  const dailyMarginLeft = Math.max(0, dailyLossLimitUSD - dailyLossesToday)
-  const overallMarginLeft = Math.max(0, currentEquity - (startingBalance - overallLossLimitUSD))
+  // 🎯 STEP 3: CALCOLA DRAWDOWN RIMANENTI (AL NETTO DELLE PERDITE)
+  const dailyLossesToday = 0 // TODO: Calcolare dalle perdite effettive di oggi
+  const totalLossesFromStart = startingBalance - currentEquity // Perdite totali dall'inizio
   
-  console.log(`🧮 STEP 3 - Margini Base:`)
-  console.log(`   Daily Loss Rimanente: $${dailyMarginLeft.toFixed(2)}`)
-  console.log(`   Overall Loss Rimanente: $${overallMarginLeft.toFixed(2)}`)
+  // DAILY DRAWDOWN RIMANENTE = Limite daily - perdite oggi
+  const dailyDrawdownLeft = Math.max(0, dailyLossLimitUSD - dailyLossesToday)
   
-  // 🎯 STEP 4: CONTROLLO INTELLIGENTE (QUALE È PIÙ PICCOLO?)
+  // OVERALL DRAWDOWN RIMANENTE = Limite overall - perdite totali
+  const overallDrawdownLeft = Math.max(0, overallLossLimitUSD - totalLossesFromStart)
+  
+  console.log(`🧮 STEP 3 - Drawdown Rimanenti:`)
+  console.log(`   Total Losses From Start: $${totalLossesFromStart.toFixed(2)}`)
+  console.log(`   Daily Drawdown Rimanente: $${dailyDrawdownLeft.toFixed(2)} (limite: $${dailyLossLimitUSD})`)
+  console.log(`   Overall Drawdown Rimanente: $${overallDrawdownLeft.toFixed(2)} (limite: $${overallLossLimitUSD})`)
+  
+  // 🎯 STEP 4: CONFRONTO CORRETTO (USA IL MINORE DEI DUE)
   let controllingLimit: 'DAILY' | 'OVERALL'
   let baseMargin: number
   
-  if (dailyMarginLeft > overallMarginLeft) {
-    // Overall è più restrittivo
+  if (dailyDrawdownLeft > overallDrawdownLeft) {
+    // Overall è più restrittivo (minore)
     controllingLimit = 'OVERALL'
-    baseMargin = overallMarginLeft
-    console.log(`🧠 STEP 4 - LOGICA: $${dailyMarginLeft} > $${overallMarginLeft} → USA OVERALL`)
+    baseMargin = overallDrawdownLeft
+    console.log(`🧠 STEP 4 - LOGICA: $${dailyDrawdownLeft} > $${overallDrawdownLeft} → USA OVERALL (più restrittivo)`)
   } else {
-    // Daily è più restrittivo  
+    // Daily è più restrittivo (minore o uguale)
     controllingLimit = 'DAILY'
-    baseMargin = dailyMarginLeft
-    console.log(`🧠 STEP 4 - LOGICA: $${dailyMarginLeft} ≤ $${overallMarginLeft} → USA DAILY`)
+    baseMargin = dailyDrawdownLeft
+    console.log(`🧠 STEP 4 - LOGICA: $${dailyDrawdownLeft} ≤ $${overallDrawdownLeft} → USA DAILY (più restrittivo)`)
   }
   
   // 🎯 STEP 5: ANALIZZA POSIZIONI APERTE E SOTTRAI RISCHI
@@ -247,8 +253,8 @@ async function calculateConservativeRisk(account: any): Promise<ConservativeRisk
     dailyLossesFloating: Math.max(0, -floatingPL),
     maxRiskFromSL,
     maxRiskFromNoSL,
-    dailyMarginLeft,
-    overallMarginLeft,
+    dailyMarginLeft: dailyDrawdownLeft,  // Corrected: use drawdown left
+    overallMarginLeft: overallDrawdownLeft,  // Corrected: use drawdown left
     controllingLimit,
     finalSafeCapacity,
     riskLevel,
