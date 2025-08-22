@@ -104,12 +104,12 @@ async function calculateConservativeRisk(account: any): Promise<ConservativeRisk
   }, 0)
   const currentEquity = startingBalance + floatingPL
   
-  console.log(`💰 Account Status:`)
+  console.log(`💰 STEP 1 - Account Status:`)
   console.log(`   Starting Balance: $${startingBalance}`)
   console.log(`   Floating P&L: $${floatingPL.toFixed(2)}`)
   console.log(`   Current Equity: $${currentEquity.toFixed(2)}`)
   
-  // 🎯 STEP 1: GET REAL PROPFIRM LIMITS
+  // 🎯 STEP 2: GET REAL PROPFIRM LIMITS
   let dailyLossLimitUSD = startingBalance * 0.05  // Default 5%
   let overallLossLimitUSD = startingBalance * 0.10  // Default 10%
   
@@ -143,16 +143,38 @@ async function calculateConservativeRisk(account: any): Promise<ConservativeRisk
     }
   }
   
-  // 🎯 STEP 2: CALCULATE DAILY LOSSES (CONSERVATIVE)
-  let dailyLossesRealized = 0 // TODO: Calculate from today's closed trades
-  let dailyLossesFloating = Math.max(0, -floatingPL) // Only count losses, not profits
+  // 🎯 STEP 3: CALCOLA MARGINI DISPONIBILI (PRIMA DI SOTTRARRE RISCHI)
+  const dailyLossesToday = 0 // TODO: Calcolare dalle perdite di oggi
+  const dailyMarginLeft = Math.max(0, dailyLossLimitUSD - dailyLossesToday)
+  const overallMarginLeft = Math.max(0, currentEquity - (startingBalance - overallLossLimitUSD))
   
-  // 🎯 STEP 3: CALCULATE MAXIMUM RISK FROM OPEN POSITIONS (CONSERVATIVE)
+  console.log(`🧮 STEP 3 - Margini Base:`)
+  console.log(`   Daily Loss Rimanente: $${dailyMarginLeft.toFixed(2)}`)
+  console.log(`   Overall Loss Rimanente: $${overallMarginLeft.toFixed(2)}`)
+  
+  // 🎯 STEP 4: CONTROLLO INTELLIGENTE (QUALE È PIÙ PICCOLO?)
+  let controllingLimit: 'DAILY' | 'OVERALL'
+  let baseMargin: number
+  
+  if (dailyMarginLeft > overallMarginLeft) {
+    // Overall è più restrittivo
+    controllingLimit = 'OVERALL'
+    baseMargin = overallMarginLeft
+    console.log(`🧠 STEP 4 - LOGICA: $${dailyMarginLeft} > $${overallMarginLeft} → USA OVERALL`)
+  } else {
+    // Daily è più restrittivo  
+    controllingLimit = 'DAILY'
+    baseMargin = dailyMarginLeft
+    console.log(`🧠 STEP 4 - LOGICA: $${dailyMarginLeft} ≤ $${overallMarginLeft} → USA DAILY`)
+  }
+  
+  // 🎯 STEP 5: ANALIZZA POSIZIONI APERTE E SOTTRAI RISCHI
   let maxRiskFromSL = 0
   let maxRiskFromNoSL = 0
   const alerts: string[] = []
+  let hasNoSLPositions = false
   
-  console.log(`📊 Analyzing ${openTrades.length} open positions (CONSERVATIVE):`)
+  console.log(`📊 STEP 5 - Analisi ${openTrades.length} posizioni aperte:`)
   
   for (const trade of openTrades) {
     const tradePnL = (trade.pnlGross || 0) + (trade.commission || 0) + (trade.swap || 0)
@@ -165,67 +187,64 @@ async function calculateConservativeRisk(account: any): Promise<ConservativeRisk
     console.log(`🔍 Trade ${trade.ticketId}: ${symbol} ${side} ${volume} lots, P&L: $${tradePnL.toFixed(2)}`)
     
     if (stopLoss && stopLoss !== 0) {
-      // HAS STOP LOSS: Count as CERTAIN LOSS (conservative)
+      // ✅ HAS STOP LOSS: Calcola perdita massima possibile
       const priceDifference = Math.abs(openPrice - stopLoss)
-      const riskUSD = calculateGoldRiskUSD(symbol, priceDifference, volume)
+      const maxPossibleLoss = calculateGoldRiskUSD(symbol, priceDifference, volume)
       
-      // 🚨 CONSERVATIVE: Always count SL as a loss that WILL happen
-      maxRiskFromSL += riskUSD
+      // Se già in perdita, considera la perdita totale massima (P&L attuale + ulteriore perdita fino SL)
+      const totalMaxLoss = Math.abs(Math.min(tradePnL, 0)) + maxPossibleLoss
+      maxRiskFromSL += totalMaxLoss
       
-      console.log(`   ✅ HAS SL at ${stopLoss}: CONSERVATIVE RISK = $${riskUSD.toFixed(2)}`)
+      console.log(`   ✅ HAS SL at ${stopLoss}:`)
+      console.log(`      Current P&L: $${tradePnL.toFixed(2)}`)
+      console.log(`      Max Additional Risk to SL: $${maxPossibleLoss.toFixed(2)}`)
+      console.log(`      TOTAL MAX LOSS: $${totalMaxLoss.toFixed(2)}`)
       
     } else {
-      // NO STOP LOSS: Maximum possible loss
-      const worstCaseRisk = calculateWorstCaseRisk(symbol, volume, tradePnL)
-      maxRiskFromNoSL += worstCaseRisk
-      
-      alerts.push(`🚨 CRITICAL: ${symbol} has no Stop Loss! Risk: $${worstCaseRisk.toFixed(0)}`)
-      console.log(`   🚨 NO SL: WORST CASE RISK = $${worstCaseRisk.toFixed(2)}`)
+      // 🚨 NO STOP LOSS: MARGINE = 0 + WARNING
+      hasNoSLPositions = true
+      alerts.push(`🚨 CRITICAL: ${symbol} NO STOP LOSS! Position size: ${volume} lots`)
+      console.log(`   🚨 NO SL: CRITICAL RISK - MARGIN SET TO 0`)
     }
   }
   
-  // 🎯 STEP 4: CALCULATE MARGINS AVAILABLE
-  const dailyMarginLeft = Math.max(0, dailyLossLimitUSD - dailyLossesRealized - dailyLossesFloating - maxRiskFromSL - maxRiskFromNoSL)
-  const overallMarginLeft = Math.max(0, currentEquity - (startingBalance - overallLossLimitUSD))
+  // 🎯 STEP 6: CALCOLO FINALE
+  let finalSafeCapacity: number
   
-  // 🎯 STEP 5: INTELLIGENT CONTROL
-  let controllingLimit: 'DAILY' | 'OVERALL' = 'DAILY'
-  let finalSafeCapacity = dailyMarginLeft
-  
-  if (overallMarginLeft < dailyMarginLeft) {
-    controllingLimit = 'OVERALL'
-    finalSafeCapacity = overallMarginLeft
+  if (hasNoSLPositions) {
+    // Se ci sono posizioni senza SL = MARGINE 0
+    finalSafeCapacity = 0
+    alerts.unshift('🚨 ATTENZIONE: Posizioni senza Stop Loss - Non aprire nuovi trade!')
+    console.log(`❌ STEP 6 - RISULTATO: MARGINE = 0 (posizioni senza SL)`)
+  } else {
+    // Sottrai tutti i rischi dal margine base
+    finalSafeCapacity = Math.max(0, baseMargin - maxRiskFromSL)
+    console.log(`✅ STEP 6 - CALCOLO FINALE:`)
+    console.log(`   Margine Base (${controllingLimit}): $${baseMargin.toFixed(2)}`)
+    console.log(`   Rischio da SL: -$${maxRiskFromSL.toFixed(2)}`)
+    console.log(`   MARGINE FINALE: $${finalSafeCapacity.toFixed(2)}`)
   }
   
-  // 🎯 STEP 6: RISK LEVEL DETERMINATION
+  // 🎯 STEP 7: RISK LEVEL
   let riskLevel: 'SAFE' | 'CAUTION' | 'DANGER' | 'CRITICAL'
   
-  if (finalSafeCapacity <= 0) {
+  if (hasNoSLPositions || finalSafeCapacity <= 0) {
     riskLevel = 'CRITICAL'
-    alerts.unshift('🚨 CRITICAL: No safe capacity left!')
   } else if (finalSafeCapacity < 500) {
     riskLevel = 'DANGER' 
-    alerts.unshift('⚠️ DANGER: Very low safe capacity!')
   } else if (finalSafeCapacity < 1000) {
     riskLevel = 'CAUTION'
   } else {
     riskLevel = 'SAFE'
   }
   
-  console.log(`🧠 CONSERVATIVE DECISION:`)
-  console.log(`   Daily Margin Left: $${dailyMarginLeft.toFixed(2)}`)
-  console.log(`   Overall Margin Left: $${overallMarginLeft.toFixed(2)}`)
-  console.log(`   Controlling Limit: ${controllingLimit}`)
-  console.log(`   Final Safe Capacity: $${finalSafeCapacity.toFixed(2)}`)
-  console.log(`   Risk Level: ${riskLevel}`)
-  
   return {
     currentEquity,
     startingBalance,
     dailyLossLimitUSD,
     overallLossLimitUSD,
-    dailyLossesRealized,
-    dailyLossesFloating,
+    dailyLossesRealized: dailyLossesToday,
+    dailyLossesFloating: Math.max(0, -floatingPL),
     maxRiskFromSL,
     maxRiskFromNoSL,
     dailyMarginLeft,
