@@ -19,7 +19,9 @@
       "Bash(npm run dev:*)",
       "Bash(npx prisma:*)",
       "Bash(mv:*)",
-      "Bash(timeout 10 tail -f package.json)"
+      "Bash(timeout 10 tail -f package.json)",
+      "Bash(grep:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": [],

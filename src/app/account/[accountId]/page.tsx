@@ -291,17 +291,6 @@ export default function AccountDashboard() {
       const currentAccount = accounts.find((acc: any) => acc.id === accountId)
       
       if (currentAccount) {
-        console.log('🔍 Debug currentAccount data:', {
-          login: currentAccount.login,
-          phase: currentAccount.currentPhase,
-          initialBalance: currentAccount.initialBalance,
-          startBalance: currentAccount.startBalance,
-          hasTemplate: !!currentAccount.propFirmTemplate,
-          templateName: currentAccount.propFirmTemplate?.name,
-          hasRules: !!currentAccount.propFirmTemplate?.rulesJson,
-          phase2Target: currentAccount.propFirmTemplate?.rulesJson?.profitTargets?.PHASE_2
-        });
-        
         setAccount({
           id: currentAccount.id,
           name: currentAccount.name,
@@ -311,8 +300,6 @@ export default function AccountDashboard() {
           currency: currentAccount.currency,
           currentPhase: currentAccount.currentPhase,
           initialBalance: currentAccount.initialBalance,
-          startBalance: currentAccount.startBalance,
-          currentBalance: currentAccount.currentBalance,
           propFirmTemplate: currentAccount.propFirmTemplate
         })
 
@@ -649,52 +636,49 @@ export default function AccountDashboard() {
           </div>
         </div>
 
-        {/* Core PropFirm KPIs - FUTURA FUNDING FIXED */}
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-800 mb-4">PropFirm Rules Monitoring</h2>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              
-              {/* PROFIT TARGET - PHASE-SPECIFIC SIMPLE */}
-              <FintechKPIBar
-                title="PROFIT TARGET"
-                requirement={account?.currentPhase === 'PHASE_2' ? '5% del conto' : '8% del conto'}
-                current={50000 + (stats?.totalPnL || 0)}
-                target={account?.currentPhase === 'PHASE_2' ? 52500 : 54000}
-                percentage={((stats?.totalPnL || 0) / (account?.currentPhase === 'PHASE_2' ? 2500 : 4000)) * 100}
-                type="profit"
-                currency="USD"
-              />
-
-              {/* DAILY LOSS - FIXED VALUES */}
-              <FintechKPIBar
-                title="DAILY LOSS"
-                requirement="Balance must stay above $47,500 (5% daily limit)"
-                current={(account?.currentBalance || account?.initialBalance || account?.startBalance || 50000) + (stats?.totalPnL || 0)}
-                target={47500}
-                percentage={0}
-                type="daily_risk"
-                currency="USD"
-              />
-
-              {/* TOTAL LOSS - FIXED VALUES */}
-              <FintechKPIBar
-                title="MAXIMUM TOTAL LOSS"
-                requirement="Balance must stay above $45,000 (10% total limit)"
-                current={(account?.currentBalance || account?.initialBalance || account?.startBalance || 50000) + (stats?.totalPnL || 0)}
-                target={45000}
-                percentage={0}
-                type="total_risk"
-                currency="USD"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* 🚀 ENHANCED PROTECTION RULES - PHASE 2 */}
+        {/* Core PropFirm KPIs - ALWAYS SHOW FOR DEBUG */}
         {(
           <div className="space-y-6">
-            <div className="mt-8">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-800 mb-4">PropFirm Rules Monitoring</h2>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* PROFIT TARGET - REAL CALCULATION */}
+                <FintechKPIBar
+                  title="PROFIT TARGET"
+                  requirement={`${account?.currentPhase === 'PHASE_1' ? '8%' : account?.currentPhase === 'PHASE_2' ? '5%' : 'No target'} del conto`}
+                  current={(account?.currentBalance || account?.initialBalance || 0) + (stats?.totalPnL || 0)} 
+                  target={account?.currentPhase === 'PHASE_2' ? 52500 : 54000}
+                  percentage={((stats?.totalPnL || 0) / (account?.currentPhase === 'PHASE_2' ? 2500 : 4000)) * 100}
+                  type="profit"
+                  currency="USD"
+                />
+
+                {/* DAILY LOSS - DYNAMIC FROM TEMPLATE */}
+                <FintechKPIBar
+                  title="DAILY LOSS"
+                  requirement="Balance must stay above $47,500 (5% daily limit)"
+                  current={(account?.currentBalance || account?.initialBalance || 0) + (stats?.totalPnL || 0)}
+                  target={47500}
+                  percentage={0} // With profit, you're safe (0% risk used)
+                  type="daily_risk"
+                  currency="USD"
+                />
+
+                {/* MAXIMUM TOTAL LOSS - DYNAMIC FROM TEMPLATE */}
+                <FintechKPIBar
+                  title="MAXIMUM TOTAL LOSS"
+                  requirement="Balance must stay above $45,000 (10% total limit)"
+                  current={(account?.currentBalance || account?.initialBalance || 0) + (stats?.totalPnL || 0)}
+                  target={45000}
+                  percentage={0} // With profit, you're safe (0% risk used)
+                  type="total_risk"
+                  currency="USD"
+                />
+              </div>
+
+              {/* 🚀 ENHANCED PROTECTION RULES - PHASE 2 */}
+              <div className="mt-8">
                 <h3 className="text-md font-semibold text-slate-700 mb-4">🛡️ Advanced Protection Rules (Phase 2)</h3>
                 
                 {/* Simple 50% Daily Protection */}
@@ -811,10 +795,6 @@ export default function AccountDashboard() {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
-
             </div>
           </div>
         )}
