@@ -3,7 +3,7 @@
 import React from 'react'
 import { PropFirmTemplate, PropFirm } from '@prisma/client'
 import { TemplateBasedCalculator } from '@/lib/template-calculator'
-import FintechKPIBar from '@/components/FintechKPIBar'
+// import FintechKPIBar from '@/components/FintechKPIBar'
 import { Badge } from '@/components/ui/badge'
 import { AlertTriangle, CheckCircle, Clock, Target, Shield, TrendingUp } from 'lucide-react'
 
@@ -131,15 +131,26 @@ function ProfitTargetKPI({ calculator, stats }: {
   const progress = calculator.getProfitTargetProgress(stats.totalPnL)
 
   return (
-    <FintechKPIBar
-      title="PROFIT TARGET"
-      requirement={calculator.getRequirementText('profit')}
-      current={calculator.getTemplateInfo().accountSize + stats.totalPnL}
-      target={targetAmount}
-      percentage={Math.min(progress, 100)}
-      type="profit"
-      currency="USD"
-    />
+    <div className="p-4 border rounded-lg bg-green-50 border-green-200">
+      <div className="flex items-center gap-2 mb-2">
+        <Target className="h-4 w-4 text-green-600" />
+        <h3 className="font-semibold text-sm">PROFIT TARGET</h3>
+      </div>
+      <div className="space-y-2">
+        <div className="text-xs text-gray-600">{calculator.getRequirementText('profit')}</div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">${(calculator.getTemplateInfo().accountSize + stats.totalPnL).toLocaleString()}</span>
+          <span className="text-sm text-gray-500">/ ${targetAmount.toLocaleString()}</span>
+        </div>
+        <div className="bg-gray-200 rounded-full h-2">
+          <div 
+            className="bg-green-500 h-2 rounded-full transition-all"
+            style={{ width: `${Math.min(progress, 100)}%` }}
+          />
+        </div>
+        <div className="text-xs text-center font-medium">{Math.min(progress, 100).toFixed(1)}%</div>
+      </div>
+    </div>
   )
 }
 
@@ -158,15 +169,26 @@ function DailyLossKPI({ calculator, stats }: {
   const percentage = dailyLimit.amount ? (lossUsed / dailyLimit.amount) * 100 : 0
 
   return (
-    <FintechKPIBar
-      title="DAILY LOSS LIMIT"
-      requirement={calculator.getRequirementText('dailyLoss')}
-      current={dailyLimit.amount! - lossUsed}
-      target={dailyLimit.amount!}
-      percentage={Math.min(percentage, 100)}
-      type="loss"
-      currency="USD"
-    />
+    <div className="p-4 border rounded-lg bg-amber-50 border-amber-200">
+      <div className="flex items-center gap-2 mb-2">
+        <Shield className="h-4 w-4 text-amber-600" />
+        <h3 className="font-semibold text-sm">DAILY LOSS LIMIT</h3>
+      </div>
+      <div className="space-y-2">
+        <div className="text-xs text-gray-600">{calculator.getRequirementText('dailyLoss')}</div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">${(dailyLimit.amount! - lossUsed).toLocaleString()}</span>
+          <span className="text-sm text-gray-500">/ ${dailyLimit.amount!.toLocaleString()}</span>
+        </div>
+        <div className="bg-gray-200 rounded-full h-2">
+          <div 
+            className="bg-amber-500 h-2 rounded-full transition-all"
+            style={{ width: `${Math.min(percentage, 100)}%` }}
+          />
+        </div>
+        <div className="text-xs text-center font-medium">{Math.min(percentage, 100).toFixed(1)}%</div>
+      </div>
+    </div>
   )
 }
 
@@ -182,15 +204,26 @@ function OverallLossKPI({ calculator, stats }: {
   const percentage = overallLimit.amount ? (totalLoss / overallLimit.amount) * 100 : 0
 
   return (
-    <FintechKPIBar
-      title="OVERALL LOSS LIMIT"
-      requirement={calculator.getRequirementText('overallLoss')}
-      current={overallLimit.amount! - totalLoss}
-      target={overallLimit.amount!}
-      percentage={Math.min(percentage, 100)}
-      type="loss"
-      currency="USD"
-    />
+    <div className="p-4 border rounded-lg bg-red-50 border-red-200">
+      <div className="flex items-center gap-2 mb-2">
+        <AlertTriangle className="h-4 w-4 text-red-600" />
+        <h3 className="font-semibold text-sm">OVERALL LOSS LIMIT</h3>
+      </div>
+      <div className="space-y-2">
+        <div className="text-xs text-gray-600">{calculator.getRequirementText('overallLoss')}</div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">${(overallLimit.amount! - totalLoss).toLocaleString()}</span>
+          <span className="text-sm text-gray-500">/ ${overallLimit.amount!.toLocaleString()}</span>
+        </div>
+        <div className="bg-gray-200 rounded-full h-2">
+          <div 
+            className="bg-red-500 h-2 rounded-full transition-all"
+            style={{ width: `${Math.min(percentage, 100)}%` }}
+          />
+        </div>
+        <div className="text-xs text-center font-medium">{Math.min(percentage, 100).toFixed(1)}%</div>
+      </div>
+    </div>
   )
 }
 

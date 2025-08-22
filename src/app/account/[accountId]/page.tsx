@@ -545,8 +545,8 @@ export default function AccountDashboard() {
 
   return (
     <DashboardLayout 
-      title={account.name} 
-      subtitle={`Account: ${account.login} | ${account.broker} | ${account.server}`}
+      title={account.name || 'Unknown Account'} 
+      subtitle={`Account: ${account.login || 'N/A'} | ${account.broker || 'N/A'} | ${account.server || 'N/A'}`}
     >
       <div className="p-6 space-y-6">
         {/* Professional Account Header */}
@@ -554,7 +554,7 @@ export default function AccountDashboard() {
           {/* First Row: Title and Connection Status */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold text-slate-800">{account.name}</h1>
+              <h1 className="text-2xl font-bold text-slate-800">{account.name || 'Unknown Account'}</h1>
               {/* Safely render ConnectionStatus */}
               <div className="flex items-center">
                 <ConnectionStatus />
@@ -575,9 +575,9 @@ export default function AccountDashboard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               <div className="text-sm text-gray-600">
-                Account: <span className="font-medium">{account.login}</span> | 
-                Broker: <span className="font-medium">{account.broker}</span> | 
-                Server: <span className="font-medium">{account.server}</span>
+                Account: <span className="font-medium">{account.login || 'N/A'}</span> | 
+                Broker: <span className="font-medium">{account.broker || 'N/A'}</span> | 
+                Server: <span className="font-medium">{account.server || 'N/A'}</span>
               </div>
               
               {account.propFirmTemplate && (
@@ -661,8 +661,8 @@ export default function AccountDashboard() {
               className="mb-6"
             />
 
-              {/* 🚀 ENHANCED PROTECTION RULES - PHASE 2 */}
-              <div className="mt-8">
+            {/* 🚀 ENHANCED PROTECTION RULES - PHASE 2 */}
+            <div className="mt-8">
                 <h3 className="text-md font-semibold text-slate-700 mb-4">🛡️ Advanced Protection Rules (Phase 2)</h3>
                 
                 {/* Simple 50% Daily Protection */}
@@ -780,14 +780,13 @@ export default function AccountDashboard() {
                 </div>
               </div>
             </div>
-          </div>
         )}
 
         {/* 🔥 PRIORITY: Risk Exposure Scanner */}
         {openTrades.length > 0 && (
           <RiskExposureScanner 
             accountId={params.accountId}
-            balance={account?.initialBalance || 50000}
+            balance={account?.startBalance || 50000}
             openTrades={openTrades}
           />
         )}

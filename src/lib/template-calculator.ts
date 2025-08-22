@@ -79,7 +79,7 @@ export class TemplateBasedCalculator {
     currentPhase: string = 'PHASE_1'
   ) {
     this.template = template
-    this.rules = template?.rulesJson as TemplateRules || null
+    this.rules = (template?.rulesJson as unknown as TemplateRules) || null
     this.accountBalance = accountBalance
     this.currentPhase = currentPhase
   }
@@ -268,7 +268,7 @@ export class TemplateBasedCalculator {
   getTemplateInfo() {
     return {
       name: this.template?.name || 'Unknown Template',
-      propFirm: this.template?.propFirm?.name || 'Unknown PropFirm',
+      propFirm: 'Unknown PropFirm', // Will be provided by parent component
       accountSize: this.template?.accountSize || 0,
       currency: this.template?.currency || 'USD',
       currentPhase: this.currentPhase
