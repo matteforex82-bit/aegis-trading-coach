@@ -905,7 +905,7 @@ export default function AccountDashboard() {
 
         {/* 🆕 Account Information Overview */}
         <div className="mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-slate-50">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-blue-800">
@@ -985,10 +985,62 @@ export default function AccountDashboard() {
                 </div>
               </CardContent>
             </Card>
+
+            <Card className="border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-slate-50">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-orange-800">
+                  <Target className="h-5 w-5" />
+                  P&L Daily (Oggi)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className={`text-3xl font-bold mb-2 ${rules?.dailyPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {(() => {
+                    // P&L DAILY = Solo posizioni chiuse oggi (incluso commissioni + swap)
+                    const dailyPnL = rules?.dailyPnL || 0
+                    return new Intl.NumberFormat('en-US', {
+                      style: 'currency',
+                      currency: account.currency || 'USD',
+                      minimumFractionDigits: 2
+                    }).format(dailyPnL)
+                  })()}
+                </div>
+                <div className="flex items-center gap-2 text-sm text-orange-600">
+                  <span>Solo trades chiusi oggi</span>
+                  <Badge variant="outline" className="text-xs text-orange-700">
+                    Reset @ 00:00
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
 
-        {/* 📊 Trading Performance Summary - MOVED UP */}
+        {/* 🚀 PropFirm Rules Monitor - PRIORITY SECTION */}
+        {account && (
+          <div className="mb-8 p-6 bg-gradient-to-r from-purple-100 via-indigo-50 to-blue-100 border-2 border-purple-300 rounded-xl shadow-lg">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-purple-800 flex items-center gap-3">
+                <div className="p-2 bg-purple-600 rounded-lg text-white">
+                  <Shield className="h-6 w-6" />
+                </div>
+                PropFirm Rules Monitor
+                <Badge className="bg-purple-600 text-white text-xs">
+                  METRICHE FONDAMENTALI
+                </Badge>
+              </h2>
+              <Badge variant="outline" className="text-xs border-purple-300 text-purple-700">
+                Live Updates • {new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+              </Badge>
+            </div>
+            
+            {/* 3 CARD COMPATTE IN RIGA SINGOLA */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">{getCompactRulesCards()}</div>
+            
+          </div>
+        )}
+
+        {/* 📊 Trading Performance Summary */}
         {stats && (
           <div className="mb-6">
             <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
@@ -997,10 +1049,10 @@ export default function AccountDashboard() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               
-              {/* P&L Chiuse */}
+              {/* P&L Chiuse TOTALI */}
               <Card className="border border-slate-200 hover:shadow-lg transition-shadow">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-slate-600">P&L Chiuse</CardTitle>
+                  <CardTitle className="text-sm font-medium text-slate-600">P&L Chiuse Totali</CardTitle>
                   <DollarSign className="h-4 w-4 text-slate-400" />
                 </CardHeader>
                 <CardContent>
@@ -1012,7 +1064,7 @@ export default function AccountDashboard() {
                     }).format(stats.totalPnL)}
                   </div>
                   <p className="text-xs text-slate-500 mt-1">
-                    {stats.closedTrades} operazioni chiuse
+                    {stats.closedTrades} operazioni totali
                   </p>
                 </CardContent>
               </Card>
@@ -1032,7 +1084,7 @@ export default function AccountDashboard() {
                     }).format(openPositionsTotal)}
                   </div>
                   <p className="text-xs text-slate-500 mt-1">
-                    {stats.openPositions} posizioni aperte
+                    {stats.openPositions} posizioni live
                   </p>
                 </CardContent>
               </Card>
@@ -1088,24 +1140,21 @@ export default function AccountDashboard() {
           </div>
         )}
 
-        {/* 🚀 PropFirm Rules Monitoring */}
+        {/* 🛡️ PropFirm Detailed Rules */}
         {account && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Shield className="h-6 w-6 text-purple-600" />
-                PropFirm Rules Monitor
+              <h2 className="text-lg font-semibold text-slate-700 flex items-center gap-2">
+                <Zap className="h-5 w-5 text-slate-500" />
+                Regole Dettagliate
               </h2>
               <Badge variant="outline" className="text-xs">
-                Live Updates • {new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                Advanced
               </Badge>
             </div>
-            
-            {/* 3 CARD COMPATTE IN RIGA SINGOLA */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">{getCompactRulesCards()}</div>
 
             {/* 🚀 ENHANCED PROTECTION RULES - PHASE 2 (COLLAPSIBLE) */}
-            <details className="mt-8 group">
+            <details className="group">
               <summary className="cursor-pointer list-none">
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border hover:bg-gray-100 transition-colors">
                   <h3 className="text-md font-semibold text-slate-700">🛡️ Advanced Protection Rules (Phase 2)</h3>
