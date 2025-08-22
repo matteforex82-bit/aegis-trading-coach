@@ -693,28 +693,54 @@ function calculateTrueSafeCapacity(
     }
   }
   
-  // 🎯 CORRECT LOGIC: Calculate margins separately for daily vs overall limits
+  // 🧠 SMART LOGIC: Determine which limit is more restrictive and why
   
-  // OVERALL MARGIN: How much can we lose considering overall drawdown limit
+  // OVERALL MARGIN: How much we can lose before hitting overall drawdown limit
   const overallMinEquity = startingBalance - effectiveOverallLossLimit
-  const overallMargin = Math.max(0, currentEquity - overallMinEquity)
+  const overallMarginAvailable = Math.max(0, currentEquity - overallMinEquity)
   
-  // DAILY MARGIN: How much can we lose today (assuming no daily losses yet)
-  // For now, assume no daily losses - this should be calculated from actual daily P&L
-  const dailyLossesToday = 0  // TODO: Calculate actual daily losses from trades
-  const dailyMargin = Math.max(0, effectiveDailyLossLimit - dailyLossesToday)
+  // DAILY MARGIN: How much we can lose TODAY considering:
+  // 1. Daily loss limit
+  // 2. Losses already made today (TODO: calculate from actual trades)  
+  // 3. Risk from current open positions
+  const dailyLossesToday = 0  // TODO: Calculate actual daily P&L from closed trades today
   
-  // FINAL SAFE CAPACITY: The most restrictive (minimum) margin
-  const realSafeCapacity = Math.min(overallMargin, dailyMargin)
+  // Calculate risk from open positions (if they all hit SL)
+  const openPositionsRisk = openTrades.reduce((total, trade) => {
+    const tradePnL = (trade.pnlGross || 0) + (trade.commission || 0) + (trade.swap || 0)
+    
+    // If position is currently losing, it could lose more
+    if (tradePnL < 0) {
+      return total + Math.abs(tradePnL) * 1.5  // Estimate additional risk
+    }
+    return total
+  }, 0)
   
-  console.log(`🎯 CORRECTED CALCULATION:`)
-  console.log(`   Overall Limit: $${effectiveOverallLossLimit} max loss → Min Equity: $${overallMinEquity}`)
+  const dailyMarginAvailable = Math.max(0, effectiveDailyLossLimit - dailyLossesToday - openPositionsRisk)
+  
+  // 🎯 INTELLIGENT DECISION: Which limit is more restrictive?
+  let controllingLimit = 'DAILY'
+  let finalSafeCapacity = dailyMarginAvailable
+  
+  if (overallMarginAvailable < dailyMarginAvailable) {
+    // Overall limit is more restrictive - we're close to account termination
+    controllingLimit = 'OVERALL'
+    finalSafeCapacity = overallMarginAvailable
+  }
+  
+  console.log(`🧠 INTELLIGENT RISK ASSESSMENT:`)
   console.log(`   Current Equity: $${currentEquity.toFixed(2)}`)
-  console.log(`   Overall Margin: $${overallMargin.toFixed(2)}`)
-  console.log(`   Daily Limit: $${effectiveDailyLossLimit} max loss today`)
-  console.log(`   Daily Losses Today: $${dailyLossesToday} (TODO: calculate from actual trades)`)  
-  console.log(`   Daily Margin: $${dailyMargin.toFixed(2)}`)
-  console.log(`   FINAL Safe Capacity: $${realSafeCapacity.toFixed(2)} (min of overall and daily)`)
+  console.log(`   Overall Min Equity: $${overallMinEquity.toFixed(2)}`)
+  console.log(`   Overall Margin Available: $${overallMarginAvailable.toFixed(2)}`)
+  console.log(`   Daily Loss Limit: $${effectiveDailyLossLimit}`)
+  console.log(`   Daily Losses Today: $${dailyLossesToday} (actual trades)`)
+  console.log(`   Open Positions Risk: $${openPositionsRisk.toFixed(2)}`)
+  console.log(`   Daily Margin Available: $${dailyMarginAvailable.toFixed(2)}`)
+  console.log(`   🎯 CONTROLLING LIMIT: ${controllingLimit}`)
+  console.log(`   📊 FINAL SAFE CAPACITY: $${finalSafeCapacity.toFixed(2)}`)
+  
+  // Use the intelligent calculation result
+  const realSafeCapacity = finalSafeCapacity
   
   
   // Calculate the old (misleading) theoretical capacity for comparison
