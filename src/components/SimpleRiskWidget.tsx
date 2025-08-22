@@ -7,9 +7,10 @@ interface SimpleRiskWidgetProps {
   account: any
   rules: any
   stats: any
+  openTrades?: any[]
 }
 
-export default function SimpleRiskWidget({ account, rules, stats }: SimpleRiskWidgetProps) {
+export default function SimpleRiskWidget({ account, rules, stats, openTrades = [] }: SimpleRiskWidgetProps) {
   // 🎯 STEP 1: Calculate Daily Drawdown EFFETTIVO
   const calculateDailyDrawdownEffective = () => {
     if (!account?.propFirmTemplate || !rules) return null
@@ -63,8 +64,57 @@ export default function SimpleRiskWidget({ account, rules, stats }: SimpleRiskWi
     }
   }
 
+  // 🎯 STEP 2.5: Calculate Open Positions Risk
+  const calculateOpenPositionsRisk = () => {
+    if (!openTrades || openTrades.length === 0) return { totalRisk: 0, positions: [] }
+    
+    let totalRisk = 0
+    const positionsWithSL = []
+    
+    for (const trade of openTrades) {
+      const hasStopLoss = trade.sl && trade.sl !== 0
+      if (hasStopLoss) {
+        // Calculate potential loss if stop loss is hit
+        const currentPrice = trade.openPrice // We need current price but for now use openPrice as approximation
+        const volume = trade.volume || 0
+        
+        // Calculate potential loss based on stop loss
+        let potentialLoss = 0
+        
+        if (trade.side?.toLowerCase() === 'buy') {
+          // BUY: loss = (open - stop) * volume * pip_value
+          potentialLoss = Math.abs((trade.openPrice - trade.sl) * volume * 10) // rough pip value calculation
+        } else {
+          // SELL: loss = (stop - open) * volume * pip_value  
+          potentialLoss = Math.abs((trade.sl - trade.openPrice) * volume * 10) // rough pip value calculation
+        }
+        
+        // Add commission and swap as additional risk
+        potentialLoss += Math.abs(trade.commission || 0) + Math.abs(trade.swap || 0)
+        
+        totalRisk += potentialLoss
+        positionsWithSL.push({
+          symbol: trade.symbol,
+          ticketId: trade.ticketId,
+          side: trade.side,
+          volume: trade.volume,
+          sl: trade.sl,
+          potentialLoss: potentialLoss
+        })
+      }
+    }
+    
+    return {
+      totalRisk: totalRisk,
+      positions: positionsWithSL,
+      totalPositions: openTrades.length,
+      positionsWithSL: positionsWithSL.length
+    }
+  }
+
   const dailyData = calculateDailyDrawdownEffective()
   const overallData = calculateMaxDrawdownEffective()
+  const openPositionsRisk = calculateOpenPositionsRisk()
 
   if (!dailyData || !overallData) {
     return (
@@ -149,7 +199,53 @@ export default function SimpleRiskWidget({ account, rules, stats }: SimpleRiskWi
           </div>
         </div>
 
-        {/* STEP 2: Intelligent Comparison Logic */}
+        {/* STEP 2.5: Open Positions Risk Analysis */}
+        {openPositionsRisk.totalPositions > 0 && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <h4 className="font-semibold text-red-800 mb-3">
+              2️⃣.5 POSIZIONI APERTE - Analisi Rischio Stop Loss
+            </h4>
+            <div className="space-y-3">
+              
+              {/* Open Positions Summary */}
+              <div className="bg-white p-3 rounded border">
+                <div className="text-sm font-medium mb-2">📊 Posizioni Live:</div>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <div className="text-gray-600">Totale Posizioni:</div>
+                    <div className="font-mono text-red-700">{openPositionsRisk.totalPositions}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-600">Con Stop Loss:</div>
+                    <div className="font-mono text-red-700">{openPositionsRisk.positionsWithSL}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stop Loss Risk Calculation */}
+              {openPositionsRisk.positionsWithSL > 0 && (
+                <div className="bg-white p-3 rounded border">
+                  <div className="text-sm font-medium mb-2">⚠️ Rischio Stop Loss:</div>
+                  <div className="space-y-2">
+                    {openPositionsRisk.positions.map((pos, idx) => (
+                      <div key={idx} className="flex justify-between text-xs bg-gray-50 p-2 rounded">
+                        <span>{pos.symbol} #{pos.ticketId}</span>
+                        <span className="font-mono text-red-600">-${pos.potentialLoss.toFixed(2)}</span>
+                      </div>
+                    ))}
+                    <div className="border-t pt-2 flex justify-between font-semibold text-sm">
+                      <span>Totale Rischio SL:</span>
+                      <span className="font-mono text-red-700">-${openPositionsRisk.totalRisk.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+            </div>
+          </div>
+        )}
+
+        {/* STEP 3: Intelligent Comparison Logic */}
         <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
           <h4 className="font-semibold text-purple-800 mb-3">
             3️⃣ ALGORITMO INTELLIGENTE - Limite più Restrittivo
@@ -162,6 +258,9 @@ export default function SimpleRiskWidget({ account, rules, stats }: SimpleRiskWi
               <div className="text-xs space-y-1 text-gray-700">
                 <div>Daily DD: <span className="font-mono">${dailyData.effective.toFixed(2)}</span></div>
                 <div>Overall DD: <span className="font-mono">${overallData.effective.toFixed(2)}</span></div>
+                {openPositionsRisk.totalRisk > 0 && (
+                  <div>Stop Loss Risk: <span className="font-mono text-red-600">-${openPositionsRisk.totalRisk.toFixed(2)}</span></div>
+                )}
                 <div className="border-t pt-1 mt-2">
                   {dailyData.effective <= overallData.effective ? (
                     <div className="text-orange-700">
@@ -176,13 +275,27 @@ export default function SimpleRiskWidget({ account, rules, stats }: SimpleRiskWi
               </div>
             </div>
 
-            {/* Final Result */}
+            {/* Final Result AFTER subtracting open positions */}
             <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-4 rounded-lg">
               <div className="text-center">
-                <div className="text-sm opacity-90 mb-1">🎯 MASSIMO RISCHIABILE</div>
-                <div className="text-2xl font-bold">
+                <div className="text-sm opacity-90 mb-1">🎯 MASSIMO TEORICO</div>
+                <div className="text-lg font-bold">
                   ${Math.min(dailyData.effective, overallData.effective).toFixed(2)}
                 </div>
+                {openPositionsRisk.totalRisk > 0 && (
+                  <>
+                    <div className="text-sm opacity-75 mt-1">- Rischio Posizioni Aperte:</div>
+                    <div className="text-lg font-bold text-red-200">
+                      -${openPositionsRisk.totalRisk.toFixed(2)}
+                    </div>
+                    <div className="border-t border-purple-400 mt-2 pt-2">
+                      <div className="text-sm opacity-90">= DISPONIBILE EFFETTIVO:</div>
+                      <div className="text-2xl font-bold">
+                        ${Math.max(0, Math.min(dailyData.effective, overallData.effective) - openPositionsRisk.totalRisk).toFixed(2)}
+                      </div>
+                    </div>
+                  </>
+                )}
                 <div className="text-xs opacity-75 mt-1">
                   ({dailyData.effective <= overallData.effective ? 'Limitato da Daily' : 'Limitato da Overall'})
                 </div>
@@ -219,17 +332,28 @@ export default function SimpleRiskWidget({ account, rules, stats }: SimpleRiskWi
               <div className="text-sm font-medium mb-2">📊 Calcoli Conservativi:</div>
               <div className="space-y-2 text-xs">
                 {(() => {
-                  const maxRisk = Math.min(dailyData.effective, overallData.effective)
-                  const safetyBuffer = maxRisk * 0.15 // 15% safety buffer
-                  const slippageBuffer = maxRisk * 0.05 // 5% for slippage
+                  const maxTheorical = Math.min(dailyData.effective, overallData.effective)
+                  const availableAfterPositions = Math.max(0, maxTheorical - openPositionsRisk.totalRisk)
+                  const safetyBuffer = availableAfterPositions * 0.15 // 15% safety buffer
+                  const slippageBuffer = availableAfterPositions * 0.05 // 5% for slippage
                   const totalBuffer = safetyBuffer + slippageBuffer
-                  const conservativeRisk = Math.max(0, maxRisk - totalBuffer)
+                  const conservativeRisk = Math.max(0, availableAfterPositions - totalBuffer)
                   
                   return (
                     <>
                       <div className="flex justify-between">
                         <span>Massimo Teorico:</span>
-                        <span className="font-mono">${maxRisk.toFixed(2)}</span>
+                        <span className="font-mono">${maxTheorical.toFixed(2)}</span>
+                      </div>
+                      {openPositionsRisk.totalRisk > 0 && (
+                        <div className="flex justify-between text-red-600">
+                          <span>- Posizioni Aperte (SL):</span>
+                          <span className="font-mono">-${openPositionsRisk.totalRisk.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-medium">
+                        <span>= Disponibile:</span>
+                        <span className="font-mono">${availableAfterPositions.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-orange-600">
                         <span>- Buffer Sicurezza (15%):</span>
@@ -255,8 +379,9 @@ export default function SimpleRiskWidget({ account, rules, stats }: SimpleRiskWi
                 <div className="text-sm opacity-90 mb-1">🎯 RISCHIO CONSIGLIATO</div>
                 <div className="text-2xl font-bold">
                   ${(() => {
-                    const maxRisk = Math.min(dailyData.effective, overallData.effective)
-                    const conservativeRisk = Math.max(0, maxRisk - (maxRisk * 0.20))
+                    const maxTheorical = Math.min(dailyData.effective, overallData.effective)
+                    const availableAfterPositions = Math.max(0, maxTheorical - openPositionsRisk.totalRisk)
+                    const conservativeRisk = Math.max(0, availableAfterPositions - (availableAfterPositions * 0.20))
                     return conservativeRisk.toFixed(2)
                   })()}
                 </div>
@@ -271,8 +396,9 @@ export default function SimpleRiskWidget({ account, rules, stats }: SimpleRiskWi
               <div className="text-sm font-medium mb-2">📈 Esempi Position Size:</div>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 {(() => {
-                  const maxRisk = Math.min(dailyData.effective, overallData.effective)
-                  const conservativeRisk = Math.max(0, maxRisk - (maxRisk * 0.20))
+                  const maxTheorical = Math.min(dailyData.effective, overallData.effective)
+                  const availableAfterPositions = Math.max(0, maxTheorical - openPositionsRisk.totalRisk)
+                  const conservativeRisk = Math.max(0, availableAfterPositions - (availableAfterPositions * 0.20))
                   
                   // Example position sizes for different pip values
                   const examples = [
@@ -282,7 +408,7 @@ export default function SimpleRiskWidget({ account, rules, stats }: SimpleRiskWi
                   ]
                   
                   return examples.map((ex, idx) => {
-                    const lots = conservativeRisk / (ex.stopPips * ex.pipValue)
+                    const lots = conservativeRisk > 0 ? conservativeRisk / (ex.stopPips * ex.pipValue) : 0
                     return (
                       <div key={idx} className="p-2 bg-gray-50 rounded">
                         <div className="font-medium">{ex.pair}</div>
@@ -301,7 +427,7 @@ export default function SimpleRiskWidget({ account, rules, stats }: SimpleRiskWi
         {/* Final Summary */}
         <div className="p-4 bg-gradient-to-r from-slate-100 to-gray-100 border border-gray-300 rounded-lg">
           <div className="text-sm text-gray-700 font-medium mb-3">📊 RIEPILOGO COMPLETO:</div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
             <div className="text-center p-3 bg-blue-100 rounded">
               <div className="text-blue-800 font-medium">Daily DD Effettivo</div>
               <div className="text-lg font-bold text-blue-900">${dailyData.effective.toFixed(2)}</div>
@@ -314,18 +440,47 @@ export default function SimpleRiskWidget({ account, rules, stats }: SimpleRiskWi
               <div className="text-purple-800 font-medium">Massimo Teorico</div>
               <div className="text-lg font-bold text-purple-900">${Math.min(dailyData.effective, overallData.effective).toFixed(2)}</div>
             </div>
+            {openPositionsRisk.totalRisk > 0 && (
+              <div className="text-center p-3 bg-red-100 rounded">
+                <div className="text-red-800 font-medium">Rischio Posizioni</div>
+                <div className="text-lg font-bold text-red-900">-${openPositionsRisk.totalRisk.toFixed(2)}</div>
+              </div>
+            )}
           </div>
+          
+          {/* Calculation Flow */}
+          <div className="mt-4 p-3 bg-white rounded border">
+            <div className="text-sm font-medium mb-2 text-center">🧮 Flusso di Calcolo:</div>
+            <div className="flex items-center justify-center space-x-2 text-xs">
+              <span className="px-2 py-1 bg-purple-100 rounded">Limite più Restrittivo</span>
+              {openPositionsRisk.totalRisk > 0 && (
+                <>
+                  <span>−</span>
+                  <span className="px-2 py-1 bg-red-100 rounded">Posizioni SL</span>
+                </>
+              )}
+              <span>−</span>
+              <span className="px-2 py-1 bg-orange-100 rounded">Buffer 20%</span>
+              <span>=</span>
+              <span className="px-2 py-1 bg-green-200 rounded font-bold">RISULTATO</span>
+            </div>
+          </div>
+          
           <div className="mt-4 p-3 bg-gradient-to-r from-green-200 to-teal-200 rounded text-center">
             <div className="text-green-800 font-medium">🎯 RISCHIO CONSIGLIATO FINALE</div>
             <div className="text-2xl font-bold text-green-900">
               ${(() => {
-                const maxRisk = Math.min(dailyData.effective, overallData.effective)
-                const conservativeRisk = Math.max(0, maxRisk - (maxRisk * 0.20))
+                const maxTheorical = Math.min(dailyData.effective, overallData.effective)
+                const availableAfterPositions = Math.max(0, maxTheorical - openPositionsRisk.totalRisk)
+                const conservativeRisk = Math.max(0, availableAfterPositions - (availableAfterPositions * 0.20))
                 return conservativeRisk.toFixed(2)
               })()}
             </div>
             <div className="text-xs text-green-700 mt-1">
-              (Calcolo conservativo con buffer di sicurezza del 20%)
+              {openPositionsRisk.totalRisk > 0 
+                ? `(Include ${openPositionsRisk.positionsWithSL} posizioni SL + buffer 20%)`
+                : '(Calcolo conservativo con buffer di sicurezza del 20%)'
+              }
             </div>
           </div>
         </div>

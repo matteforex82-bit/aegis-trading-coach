@@ -1049,11 +1049,12 @@ export default function AccountDashboard() {
           </div>
         )}
 
-        {/* Simple Risk Widget - STEP 1: Just the 2 basic values */}
+        {/* Complete Risk Widget - Include posizioni aperte */}
         <SimpleRiskWidget 
           account={account} 
           rules={rules} 
-          stats={stats} 
+          stats={stats}
+          openTrades={openTrades} 
         />
 
         {/* NEW: Open Positions Section */}

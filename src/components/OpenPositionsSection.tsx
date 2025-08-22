@@ -18,6 +18,8 @@ interface Trade {
   commission: number
   swap: number
   comment?: string
+  sl?: number | null
+  tp?: number | null
 }
 
 interface OpenPositionsSectionProps {
