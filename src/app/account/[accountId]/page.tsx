@@ -1005,11 +1005,26 @@ export default function AccountDashboard() {
                     }).format(dailyPnL)
                   })()}
                 </div>
-                <div className="flex items-center gap-2 text-sm text-orange-600">
-                  <span>Solo trades chiusi oggi</span>
-                  <Badge variant="outline" className="text-xs text-orange-700">
-                    Reset @ 00:00
-                  </Badge>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm text-orange-600">
+                    <span>Solo trades chiusi oggi</span>
+                    <Badge variant="outline" className="text-xs text-orange-700">
+                      Reset @ 00:00
+                    </Badge>
+                  </div>
+                  {(() => {
+                    // DEBUG: Mostra se il calcolo è corretto
+                    const dailyPnL = rules?.dailyPnL || 0
+                    const expectedWithFees = dailyPnL - 145 - 8 // Esempio: dovrebbe essere circa -153 in meno
+                    return (
+                      <div className="text-xs space-y-1">
+                        <div className="text-orange-500">Incluso: P&L lordo + commissioni + swap</div>
+                        <div className="text-slate-400">
+                          Debug: Se manca -$153 (swap+comm.), controlla sync EA
+                        </div>
+                      </div>
+                    )
+                  })()}
                 </div>
               </CardContent>
             </Card>
