@@ -161,16 +161,22 @@ async function calculateConservativeRisk(account: any): Promise<ConservativeRisk
   // OVERALL DRAWDOWN RIMANENTE = Limite overall - perdite totali dall'inizio  
   const overallDrawdownLeft = Math.max(0, overallLossLimitUSD - totalLossesFromStart)
   
-  console.log(`🧮 STEP 3 - Drawdown Rimanenti (DATI CORRETTI):`)
+  console.log(`🧮 STEP 3 - Drawdown Rimanenti (DEBUG COMPLETO):`)
   console.log(`   Starting Balance: $${startingBalance}`)
   console.log(`   Current Equity: $${currentEquity.toFixed(2)}`)
   console.log(`   Floating P&L: $${floatingPL.toFixed(2)}`)
   console.log(`   Balance Closed Only: $${currentBalanceClosedOnly.toFixed(2)}`)
-  console.log(`   Total Losses From Start: $${totalLossesFromStart.toFixed(2)}`)
-  console.log(`   Daily Losses Today: $${dailyLossesToday.toFixed(2)}`)
   console.log(`   `)
-  console.log(`   Daily Limit: $${dailyLossLimitUSD} - Daily Losses: $${dailyLossesToday.toFixed(2)} = $${dailyDrawdownLeft.toFixed(2)}`)
-  console.log(`   Overall Limit: $${overallLossLimitUSD} - Total Losses: $${totalLossesFromStart.toFixed(2)} = $${overallDrawdownLeft.toFixed(2)}`)
+  console.log(`   🔍 CALCOLO TOTAL LOSSES:`)
+  console.log(`   Starting Balance ($${startingBalance}) - Balance Closed ($${currentBalanceClosedOnly.toFixed(2)}) = $${(startingBalance - currentBalanceClosedOnly).toFixed(2)}`)
+  console.log(`   Math.max(0, ${(startingBalance - currentBalanceClosedOnly).toFixed(2)}) = $${totalLossesFromStart.toFixed(2)}`)
+  console.log(`   `)
+  console.log(`   📊 RISULTATI FINALI:`)
+  console.log(`   Daily Losses Today: $${dailyLossesToday.toFixed(2)}`)
+  console.log(`   Total Losses From Start: $${totalLossesFromStart.toFixed(2)}`)
+  console.log(`   `)
+  console.log(`   Daily: $${dailyLossLimitUSD} - $${dailyLossesToday.toFixed(2)} = $${dailyDrawdownLeft.toFixed(2)}`)
+  console.log(`   Overall: $${overallLossLimitUSD} - $${totalLossesFromStart.toFixed(2)} = $${overallDrawdownLeft.toFixed(2)}`)
   
   // 🎯 STEP 4: CONFRONTO CORRETTO (USA IL MINORE DEI DUE)
   let controllingLimit: 'DAILY' | 'OVERALL'
