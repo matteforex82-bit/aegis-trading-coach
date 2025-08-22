@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { AlertTriangle, Shield, ShieldAlert, TrendingUp, X, Settings } from 'lucide-react'
+import { AlertTriangle, Shield, ShieldAlert, TrendingUp, X, Settings, Eye } from 'lucide-react'
 
 interface WorstCaseScenario {
   totalPotentialLoss: number
@@ -371,166 +371,162 @@ export default function RiskExposureScanner({
             )}
           </div>
 
-          {/* 🚨 TRUE SAFE CAPACITY - CRITICAL SAFETY SECTION */}
-          <div className={`p-4 rounded-lg border-2 ${
+          {/* 🚨 MARGINE DI SICUREZZA GIORNALIERO - REDESIGN COMPLETO */}
+          <div className={`p-6 rounded-xl border-2 ${
             riskMetrics.trueSafeCapacity.riskLevel === 'CRITICAL' 
               ? 'bg-red-50 border-red-500 animate-pulse' 
               : riskMetrics.trueSafeCapacity.riskLevel === 'DANGER'
               ? 'bg-orange-50 border-orange-400'
               : 'bg-green-50 border-green-300'
           }`}>
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                {riskMetrics.trueSafeCapacity.riskLevel === 'CRITICAL' ? (
-                  <><AlertTriangle className="h-5 w-5 text-red-600" />🚨 TRUE SAFE CAPACITY</>
-                ) : riskMetrics.trueSafeCapacity.riskLevel === 'DANGER' ? (
-                  <><ShieldAlert className="h-5 w-5 text-orange-600" />⚠️ TRUE SAFE CAPACITY</>
-                ) : (
-                  <><Shield className="h-5 w-5 text-green-600" />✅ TRUE SAFE CAPACITY</>
-                )}
-                <Badge className={`${
+            
+            {/* 🎯 LIVELLO 1: MESSAGGIO PRINCIPALE CHIARO */}
+            <div className="text-center mb-6">
+              <div className="flex items-center justify-center mb-3">
+                <div className={`p-3 rounded-full ${
                   riskMetrics.trueSafeCapacity.riskLevel === 'CRITICAL' ? 'bg-red-600' :
                   riskMetrics.trueSafeCapacity.riskLevel === 'DANGER' ? 'bg-orange-500' :
                   'bg-green-600'
-                } text-white`}>
-                  {riskMetrics.trueSafeCapacity.riskLevel}
-                </Badge>
-              </h4>
-            </div>
-
-            {/* Critical Warning if exists */}
-            {riskMetrics.trueSafeCapacity.warning && (
-              <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm text-red-800 font-medium">
-                    {riskMetrics.trueSafeCapacity.warning}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Main Capacity Display */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              {/* TRUE Safe Capacity */}
-              <div className="p-3 bg-white rounded-lg border">
-                <div className="text-sm font-medium text-gray-600 mb-1">REAL Safe Capacity</div>
-                <div className={`text-2xl font-bold ${
-                  riskMetrics.trueSafeCapacity.riskLevel === 'CRITICAL' ? 'text-red-600' :
-                  riskMetrics.trueSafeCapacity.riskLevel === 'DANGER' ? 'text-orange-600' :
-                  'text-green-600'
                 }`}>
-                  ${riskMetrics.trueSafeCapacity.trueSafeCapacity.toFixed(0)}
-                </div>
-                <div className="text-xs text-gray-500">
-                  Considers minimum equity risk
+                  <Shield className="h-8 w-8 text-white" />
                 </div>
               </div>
               
-              {/* Theoretical (Old) Capacity - Grayed out */}
-              <div className="p-3 bg-gray-100 rounded-lg border border-gray-300 opacity-75">
-                <div className="text-sm font-medium text-gray-500 mb-1 line-through">Theoretical (OLD)</div>
-                <div className="text-xl font-bold text-gray-500">
-                  ${riskMetrics.trueSafeCapacity.theoreticalCapacity.toFixed(0)}
-                </div>
-                <div className="text-xs text-red-500 font-medium">
-                  ⚠️ MISLEADING - Ignores SL risk
-                </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">💰 Margine di Sicurezza Giornaliero</h3>
+              
+              {/* IL NUMERO PIU' IMPORTANTE - GRANDISSIMO */}
+              <div className={`text-6xl font-bold mb-2 ${
+                riskMetrics.trueSafeCapacity.riskLevel === 'CRITICAL' ? 'text-red-600' :
+                riskMetrics.trueSafeCapacity.riskLevel === 'DANGER' ? 'text-orange-600' :
+                'text-green-600'
+              }`}>
+                ${Math.abs(riskMetrics.trueSafeCapacity.trueSafeCapacity).toFixed(0)}
+              </div>
+              
+              <p className="text-lg text-gray-600 mb-4">
+                {riskMetrics.trueSafeCapacity.trueSafeCapacity >= 0 
+                  ? "puoi perdere ancora questo oggi"
+                  : "ATTENZIONE: sei già oltre il limite!"}
+              </p>
+
+              {/* LIVELLO 2: SAFE/WARNING/DANGER BADGE */}
+              <Badge className={`text-lg px-6 py-2 ${
+                riskMetrics.trueSafeCapacity.riskLevel === 'CRITICAL' ? 'bg-red-600 text-white' :
+                riskMetrics.trueSafeCapacity.riskLevel === 'DANGER' ? 'bg-orange-500 text-white' :
+                'bg-green-600 text-white'
+              }`}>
+                {riskMetrics.trueSafeCapacity.riskLevel === 'CRITICAL' ? '🚨 CRITICO' :
+                 riskMetrics.trueSafeCapacity.riskLevel === 'DANGER' ? '⚠️ ATTENZIONE' :
+                 '✅ SICURO'}
+              </Badge>
+            </div>
+
+            {/* LIVELLO 3: BARRA VISUALE POSIZIONE */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700">Posizione Corrente</span>
+                <span className="text-sm text-gray-600">
+                  ${riskMetrics.trueSafeCapacity.currentEquity.toFixed(0)} equity → ${(riskMetrics.trueSafeCapacity.startingBalance - riskMetrics.trueSafeCapacity.dailyLimitUSD).toFixed(0)} limite
+                </span>
+              </div>
+              
+              {/* BARRA ORIZZONTALE COLORATA */}
+              <div className="w-full bg-gray-200 rounded-full h-6 relative overflow-hidden">
+                {/* Gradiente verde → giallo → rosso */}
+                <div className="absolute inset-0 bg-gradient-to-r from-green-400 via-yellow-400 to-red-500"></div>
+                
+                {/* Indicatore posizione attuale */}
+                <div 
+                  className="absolute top-0 h-full w-1 bg-gray-900 border-2 border-white shadow-lg"
+                  style={{ 
+                    left: `${Math.min(Math.max(
+                      ((riskMetrics.trueSafeCapacity.currentEquity - (riskMetrics.trueSafeCapacity.startingBalance - riskMetrics.trueSafeCapacity.dailyLimitUSD)) / riskMetrics.trueSafeCapacity.dailyLimitUSD) * 100, 
+                      0
+                    ), 100)}%`
+                  }}
+                ></div>
+              </div>
+              
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>Limite violazione</span>
+                <span>75% safe</span>
+                <span>Equity attuale</span>
               </div>
             </div>
 
-            {/* Account Status */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm mb-4">
-              <div className="text-center">
-                <div className="font-medium text-gray-600">Current Equity</div>
-                <div className="font-bold text-blue-600">${riskMetrics.trueSafeCapacity.currentEquity.toFixed(0)}</div>
-              </div>
-              <div className="text-center">
-                <div className="font-medium text-gray-600">Floating P&L</div>
-                <div className={`font-bold ${
-                  riskMetrics.trueSafeCapacity.floatingPL >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {riskMetrics.trueSafeCapacity.floatingPL >= 0 ? '+' : ''}${riskMetrics.trueSafeCapacity.floatingPL.toFixed(0)}
-                </div>
-              </div>
-              <div className="text-center">
-                <div className="font-medium text-gray-600">Daily Limit</div>
-                <div className="font-bold text-red-600">-${riskMetrics.trueSafeCapacity.dailyLimitUSD.toFixed(0)}</div>
-              </div>
-              <div className="text-center">
-                <div className="font-medium text-gray-600">Starting Balance</div>
-                <div className="font-bold text-gray-600">${riskMetrics.trueSafeCapacity.startingBalance.toFixed(0)}</div>
-              </div>
-            </div>
-
-            {/* Sequential SL Simulation */}
+            {/* LIVELLO 4: SIMULAZIONE WORST CASE SEMPLIFICATA */}
             <div className="mb-4">
-              <h5 className="font-medium text-gray-700 mb-2 flex items-center gap-2">
-                <span className="text-lg">🎯</span> Sequential SL Hit Simulation
-              </h5>
-              
-              <div className="bg-white rounded-lg border p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">
-                    If all SL hit (worst order): Min equity ${riskMetrics.trueSafeCapacity.scenarios.ifAllSLHit.minEquityTouched.toFixed(0)}
-                  </span>
-                  <Badge className={`${
-                    riskMetrics.trueSafeCapacity.scenarios.ifAllSLHit.wouldViolate 
-                      ? 'bg-red-100 text-red-800 border-red-200' 
-                      : 'bg-green-100 text-green-800 border-green-200'
-                  }`}>
-                    {riskMetrics.trueSafeCapacity.scenarios.ifAllSLHit.wouldViolate ? 'WOULD VIOLATE' : 'SAFE'}
-                  </Badge>
-                </div>
+              <div className="bg-white rounded-lg border p-4">
+                <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                  <span className="text-lg">⚠️</span>
+                  Cosa succede se tutti gli SL vengono colpiti?
+                </h4>
                 
-                {riskMetrics.trueSafeCapacity.scenarios.ifAllSLHit.wouldViolate && (
-                  <div className="text-sm text-red-700 font-medium mb-2">
-                    ⚠️ Margin to violation: only ${Math.abs(riskMetrics.trueSafeCapacity.scenarios.ifAllSLHit.marginToViolation).toFixed(0)}
-                  </div>
-                )}
-                
-                {/* Step-by-step sequence */}
-                <div className="space-y-1">
-                  {riskMetrics.trueSafeCapacity.scenarios.ifAllSLHit.sequence.slice(0, 3).map((step, i) => (
-                    <div key={i} className={`text-xs p-2 rounded flex items-center justify-between ${
-                      step.violatesHere ? 'bg-red-100 border border-red-200' : 'bg-gray-50'
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className={`text-2xl font-bold ${
+                      riskMetrics.trueSafeCapacity.scenarios.ifAllSLHit.wouldViolate ? 'text-red-600' : 'text-green-600'
                     }`}>
-                      <span>
-                        {i + 1}. {step.trade}: {step.slLoss.toFixed(0)}
-                      </span>
-                      <span className={`font-medium ${
-                        step.violatesHere ? 'text-red-600' : 'text-gray-600'
-                      }`}>
-                        → ${step.runningEquity.toFixed(0)} {step.violatesHere ? '🚨 VIOLATION' : ''}
-                      </span>
+                      {riskMetrics.trueSafeCapacity.scenarios.ifAllSLHit.wouldViolate ? '🚨 VIOLAZIONE' : '✅ SAFE'}
                     </div>
-                  ))}
-                  {riskMetrics.trueSafeCapacity.scenarios.ifAllSLHit.sequence.length > 3 && (
-                    <div className="text-xs text-gray-500 text-center py-1">
-                      ... +{riskMetrics.trueSafeCapacity.scenarios.ifAllSLHit.sequence.length - 3} more steps
+                    <div className="text-sm text-gray-600">
+                      Equity minima toccata: ${riskMetrics.trueSafeCapacity.scenarios.ifAllSLHit.minEquityTouched.toFixed(0)}
+                    </div>
+                  </div>
+                  
+                  {riskMetrics.trueSafeCapacity.scenarios.ifAllSLHit.wouldViolate && (
+                    <div className="text-right">
+                      <div className="text-lg font-bold text-red-600">
+                        Margine: ${Math.abs(riskMetrics.trueSafeCapacity.scenarios.ifAllSLHit.marginToViolation).toFixed(0)}
+                      </div>
+                      <div className="text-xs text-red-600">troppo vicino al limite!</div>
                     </div>
                   )}
                 </div>
+
+                {/* Dettagli espandibili nascosti per ora */}
+                <details className="mt-3">
+                  <summary className="text-sm text-gray-600 cursor-pointer hover:text-gray-800">
+                    🔍 Mostra dettagli simulazione
+                  </summary>
+                  <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
+                    {riskMetrics.trueSafeCapacity.scenarios.ifAllSLHit.sequence.slice(0, 5).map((step, i) => (
+                      <div key={i} className={`text-xs p-2 rounded flex items-center justify-between ${
+                        step.violatesHere ? 'bg-red-100 border border-red-200' : 'bg-gray-50'
+                      }`}>
+                        <span>{i + 1}. {step.trade}: {step.slLoss.toFixed(0)}</span>
+                        <span className={`font-medium ${step.violatesHere ? 'text-red-600' : 'text-gray-600'}`}>
+                          → ${step.runningEquity.toFixed(0)} {step.violatesHere ? '🚨' : ''}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
               </div>
             </div>
 
-            {/* Critical Difference Warning */}
-            {Math.abs(riskMetrics.trueSafeCapacity.trueSafeCapacity - riskMetrics.trueSafeCapacity.theoreticalCapacity) > 100 && (
-              <div className="p-3 bg-yellow-100 border border-yellow-300 rounded-lg">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
-                  <div>
-                    <div className="text-sm font-medium text-yellow-800">
-                      HUGE DIFFERENCE DETECTED!
-                    </div>
-                    <div className="text-xs text-yellow-700">
-                      OLD calculation would show ${Math.abs(riskMetrics.trueSafeCapacity.trueSafeCapacity - riskMetrics.trueSafeCapacity.theoreticalCapacity).toFixed(0)} more capacity than reality.
-                      This could cause PropFirm violations!
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* LIVELLO 4: AZIONI UTILI */}
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1 border-blue-300 text-blue-700 hover:bg-blue-50"
+                onClick={() => alert('Position size calculator coming soon!')}
+              >
+                <TrendingUp className="h-4 w-4 mr-2" />
+                Calcola size sicura per prossimo trade
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+                onClick={() => alert('Detailed analysis coming soon!')}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Vedi analisi dettagliata
+              </Button>
+            </div>
           </div>
 
           {/* Risk Alerts */}
