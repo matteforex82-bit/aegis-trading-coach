@@ -1049,14 +1049,12 @@ export default function AccountDashboard() {
           </div>
         )}
 
-        {/* 🔥 PRIORITY: Risk Exposure Scanner */}
-        {openTrades.length > 0 && (
-          <RiskExposureScanner 
-            accountId={params.accountId}
-            balance={account?.startBalance || 50000}
-            openTrades={openTrades}
-          />
-        )}
+        {/* 🔥 PRIORITY: Risk Exposure Scanner - Always show for complete risk view */}
+        <RiskExposureScanner 
+          accountId={params.accountId}
+          balance={account?.startBalance || 50000}
+          openTrades={openTrades}
+        />
 
         {/* NEW: Open Positions Section */}
         <OpenPositionsSection openTrades={openTrades} account={account} />

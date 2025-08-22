@@ -181,6 +181,21 @@ export default function RiskExposureScanner({
 
   return (
     <>
+      {/* No Open Trades Info Banner */}
+      {openTrades.length === 0 && (
+        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-blue-600" />
+            <span className="font-semibold text-blue-800">
+              Nessuna posizione aperta - Account completamente sicuro
+            </span>
+          </div>
+          <p className="text-sm text-blue-700 mt-1">
+            Il pannello Margine di Sicurezza mostra la tua capacità di rischio disponibile per nuove operazioni.
+          </p>
+        </div>
+      )}
+
       {/* Critical Banner for No Stop Loss */}
       {riskMetrics.tradesWithoutSL.length > 0 && (
         <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
