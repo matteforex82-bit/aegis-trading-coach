@@ -593,6 +593,20 @@ export default function AccountDashboard() {
                     </Badge>
                   )}
                   
+                  {/* Template Size Badge */}
+                  <Badge 
+                    variant="outline" 
+                    className="px-3 py-1 text-xs font-medium border-green-300 text-green-700 bg-green-50"
+                  >
+                    <DollarSign className="h-3 w-3 mr-1" />
+                    {new Intl.NumberFormat('en-US', { 
+                      style: 'currency', 
+                      currency: account.propFirmTemplate.currency || 'USD',
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0 
+                    }).format(account.propFirmTemplate.accountSize)}
+                  </Badge>
+                  
                   {/* Template Name Badge */}
                   <Badge 
                     variant="outline" 
@@ -633,6 +647,19 @@ export default function AccountDashboard() {
                     {rules?.isCompliant ? 'COMPLIANT' : 'VIOLATION'}
                   </Badge>
                 </div>
+              )}
+              
+              {/* Alert when no template is assigned */}
+              {!account.propFirmTemplate && (
+                <Alert className="border-red-200 bg-red-50">
+                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                  <AlertDescription className="text-red-800">
+                    <strong>⚠️ Template non configurato</strong> - 
+                    <Link href="/settings" className="ml-1 underline font-medium hover:text-red-900">
+                      Configura template in Settings
+                    </Link>
+                  </AlertDescription>
+                </Alert>
               )}
             </div>
           </div>

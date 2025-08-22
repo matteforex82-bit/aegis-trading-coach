@@ -376,23 +376,23 @@ Check console for detailed data structure`)
           <div className="space-y-6">
             <Card className="border-0 shadow-lg bg-white/90 backdrop-blur">
               <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-t-lg">
-                <CardTitle className="flex items-center space-x-3">
-                  <div className="p-2 bg-white/20 rounded-lg">
-                    <Zap className="h-5 w-5" />
+                <CardTitle className="flex items-center space-x-2">
+                  <div className="p-1 bg-white/20 rounded-lg">
+                    <Zap className="h-4 w-4" />
                   </div>
-                  <span>🚀 Smart Template Assignment</span>
+                  <span className="text-base font-semibold truncate">🚀 Smart Template Assignment</span>
                 </CardTitle>
-                <CardDescription className="text-blue-100">
+                <CardDescription className="text-blue-100 text-sm line-clamp-2">
                   Sistema intelligente per configurare il tuo account PropFirm
                 </CardDescription>
               </CardHeader>
-              <CardContent className="p-6 space-y-6">
+              <CardContent className="p-4 space-y-4">
                 
                 {/* Step 1: Account Selection */}
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">1</div>
-                    <Label className="text-lg font-semibold text-gray-800">Seleziona Account MT5</Label>
+                    <div className="w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">1</div>
+                    <Label className="text-base font-medium text-gray-800 truncate">Seleziona Account MT5</Label>
                   </div>
                   <Select
                     value={selectedAccount?.id || ''}
@@ -401,20 +401,20 @@ Check console for detailed data structure`)
                       setSelectedAccount(account || null)
                     }}
                   >
-                    <SelectTrigger className="h-12 text-lg border-2 hover:border-blue-300">
-                      <SelectValue placeholder="🎯 Seleziona il tuo account MT5" />
+                    <SelectTrigger className="h-10 text-base border-2 hover:border-blue-300">
+                      <SelectValue placeholder="🎯 Seleziona account MT5" />
                     </SelectTrigger>
                     <SelectContent>
                       {accounts && accounts.length > 0 ? (
                         accounts.map(account => (
-                          <SelectItem key={account.id} value={account.id} className="text-lg p-3">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                <DollarSign className="h-4 w-4 text-blue-600" />
+                          <SelectItem key={account.id} value={account.id} className="text-base p-2">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                                <DollarSign className="h-3 w-3 text-blue-600" />
                               </div>
                               <div>
-                                <div className="font-medium">{account.name || account.login}</div>
-                                <div className="text-sm text-gray-500">Login: {account.login}</div>
+                                <div className="font-medium truncate">{account.name || account.login}</div>
+                                <div className="text-xs text-gray-500 truncate">Login: {account.login}</div>
                               </div>
                             </div>
                           </SelectItem>
@@ -429,10 +429,10 @@ Check console for detailed data structure`)
                 </div>
 
                 {/* Step 2: PropFirm Selection */}
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 bg-indigo-500 text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
-                    <Label className="text-lg font-semibold text-gray-800">Seleziona PropFirm</Label>
+                    <div className="w-5 h-5 bg-indigo-500 text-white rounded-full flex items-center justify-center text-xs font-bold">2</div>
+                    <Label className="text-base font-medium text-gray-800 truncate">Seleziona PropFirm</Label>
                   </div>
                   <Select 
                     value={selectedPropFirm} 
@@ -441,20 +441,20 @@ Check console for detailed data structure`)
                       setSelectedTemplate('') // Reset template when propfirm changes
                     }}
                   >
-                    <SelectTrigger className="h-12 text-lg border-2 hover:border-indigo-300">
-                      <SelectValue placeholder="🏢 Scegli la tua PropFirm" />
+                    <SelectTrigger className="h-10 text-base border-2 hover:border-indigo-300">
+                      <SelectValue placeholder="🏢 Scegli PropFirm" />
                     </SelectTrigger>
                     <SelectContent>
                       {propFirms && propFirms.length > 0 ? (
-                        propFirms.map(firm => (
-                          <SelectItem key={firm.id} value={firm.id} className="text-lg p-3">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                                <Award className="h-4 w-4 text-indigo-600" />
+                        propFirms.filter(firm => firm.templates && firm.templates.length > 0).map(firm => (
+                          <SelectItem key={firm.id} value={firm.id} className="text-base p-2">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center">
+                                <Award className="h-3 w-3 text-indigo-600" />
                               </div>
                               <div>
-                                <div className="font-medium">{firm.name}</div>
-                                <div className="text-sm text-gray-500">{firm.templates?.length || 0} templates disponibili</div>
+                                <div className="font-medium truncate">{firm.name}</div>
+                                <div className="text-xs text-gray-500 truncate">{firm.templates?.length || 0} templates</div>
                               </div>
                             </div>
                           </SelectItem>
@@ -470,28 +470,28 @@ Check console for detailed data structure`)
 
                 {/* Step 3: Template Selection (Only show if PropFirm selected) */}
                 {selectedPropFirm && (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="flex items-center space-x-2">
-                      <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-bold">3</div>
-                      <Label className="text-lg font-semibold text-gray-800">Seleziona Account Size</Label>
+                      <div className="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</div>
+                      <Label className="text-base font-medium text-gray-800 truncate">Seleziona Account Size</Label>
                     </div>
                     <Select 
                       value={selectedTemplate} 
                       onValueChange={setSelectedTemplate}
                     >
-                      <SelectTrigger className="h-12 text-lg border-2 hover:border-green-300">
-                        <SelectValue placeholder="💰 Scegli la size del tuo challenge" />
+                      <SelectTrigger className="h-10 text-base border-2 hover:border-green-300">
+                        <SelectValue placeholder="💰 Scegli size challenge" />
                       </SelectTrigger>
                       <SelectContent>
                         {getSelectedPropFirmData()?.templates.map(template => (
-                          <SelectItem key={template.id} value={template.id} className="text-lg p-3">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                <Target className="h-4 w-4 text-green-600" />
+                          <SelectItem key={template.id} value={template.id} className="text-base p-2">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
+                                <Target className="h-3 w-3 text-green-600" />
                               </div>
                               <div>
-                                <div className="font-medium">{formatCurrency(template.accountSize, template.currency)}</div>
-                                <div className="text-sm text-gray-500">{template.name}</div>
+                                <div className="font-medium truncate">{formatCurrency(template.accountSize, template.currency)}</div>
+                                <div className="text-xs text-gray-500 truncate">{template.name}</div>
                               </div>
                             </div>
                           </SelectItem>
@@ -503,10 +503,10 @@ Check console for detailed data structure`)
 
                 {/* Step 4: Initial Balance (Auto-filled but editable) */}
                 {selectedTemplate && (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="flex items-center space-x-2">
-                      <div className="w-6 h-6 bg-amber-500 text-white rounded-full flex items-center justify-center text-sm font-bold">4</div>
-                      <Label className="text-lg font-semibold text-gray-800">Conferma Saldo Iniziale</Label>
+                      <div className="w-5 h-5 bg-amber-500 text-white rounded-full flex items-center justify-center text-xs font-bold">4</div>
+                      <Label className="text-base font-medium text-gray-800 truncate">Conferma Saldo Iniziale</Label>
                     </div>
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -515,43 +515,43 @@ Check console for detailed data structure`)
                         placeholder="50000"
                         value={initialBalance}
                         onChange={(e) => setInitialBalance(e.target.value)}
-                        className="h-12 text-lg pl-10 border-2 hover:border-amber-300"
+                        className="h-10 text-base pl-10 border-2 hover:border-amber-300"
                       />
                     </div>
-                    <p className="text-sm text-gray-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
-                      💡 <strong>Auto-suggerito:</strong> Il saldo iniziale è stato pre-compilato con la size del template selezionato. Puoi modificarlo se necessario.
+                    <p className="text-xs text-gray-600 bg-amber-50 p-2 rounded-lg border border-amber-200">
+                      💡 <strong>Auto-suggerito:</strong> Saldo pre-compilato dalla template size. Modificabile.
                     </p>
                   </div>
                 )}
 
                 {/* Step 5: Phase Selection */}
                 {selectedTemplate && (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="flex items-center space-x-2">
-                      <div className="w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center text-sm font-bold">5</div>
-                      <Label className="text-lg font-semibold text-gray-800">Fase Challenge</Label>
+                      <div className="w-5 h-5 bg-purple-500 text-white rounded-full flex items-center justify-center text-xs font-bold">5</div>
+                      <Label className="text-base font-medium text-gray-800 truncate">Fase Challenge</Label>
                     </div>
                     <Select value={currentPhase} onValueChange={setCurrentPhase}>
-                      <SelectTrigger className="h-12 text-lg border-2 hover:border-purple-300">
+                      <SelectTrigger className="h-10 text-base border-2 hover:border-purple-300">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="PHASE_1" className="text-lg p-3">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">1</div>
-                            <span>Phase 1 - Evaluation</span>
+                        <SelectItem value="PHASE_1" className="text-base p-2">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">1</div>
+                            <span className="truncate">Phase 1 - Evaluation</span>
                           </div>
                         </SelectItem>
-                        <SelectItem value="PHASE_2" className="text-lg p-3">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-6 h-6 bg-indigo-500 rounded-full flex items-center justify-center text-white text-xs font-bold">2</div>
-                            <span>Phase 2 - Verification</span>
+                        <SelectItem value="PHASE_2" className="text-base p-2">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center text-white text-xs font-bold">2</div>
+                            <span className="truncate">Phase 2 - Verification</span>
                           </div>
                         </SelectItem>
-                        <SelectItem value="FUNDED" className="text-lg p-3">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">✓</div>
-                            <span>Funded Account</span>
+                        <SelectItem value="FUNDED" className="text-base p-2">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">✓</div>
+                            <span className="truncate">Funded Account</span>
                           </div>
                         </SelectItem>
                       </SelectContent>
@@ -583,7 +583,7 @@ Check console for detailed data structure`)
                 <Button 
                   onClick={handleAssignTemplate}
                   disabled={!isFormValid() || assigning}
-                  className={`w-full h-14 text-lg font-semibold transition-all duration-200 ${
+                  className={`w-full h-12 text-base font-semibold transition-all duration-200 ${
                     isFormValid() 
                       ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5' 
                       : 'bg-gray-300 cursor-not-allowed'
@@ -591,13 +591,13 @@ Check console for detailed data structure`)
                 >
                   {assigning ? (
                     <div className="flex items-center space-x-2">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      <span>Assegnando Template...</span>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span className="truncate">Assegnando...</span>
                     </div>
                   ) : (
                     <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-5 w-5" />
-                      <span>🚀 Assegna Template</span>
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="truncate">🚀 Assegna Template</span>
                     </div>
                   )}
                 </Button>
@@ -879,70 +879,74 @@ Check console for detailed data structure`)
             {selectedTemplateData && (
               <Card className="border-0 shadow-xl bg-white/90 backdrop-blur">
                 <CardHeader className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-t-lg">
-                  <CardTitle className="flex items-center space-x-3">
-                    <div className="p-2 bg-white/20 rounded-lg">
-                      <Star className="h-5 w-5" />
+                  <CardTitle className="flex items-center space-x-2">
+                    <div className="p-1 bg-white/20 rounded-lg">
+                      <Star className="h-4 w-4" />
                     </div>
-                    <span>🔮 Preview Template</span>
+                    <span className="text-base font-semibold truncate">🔮 Preview Template</span>
                   </CardTitle>
-                  <CardDescription className="text-indigo-100">
+                  <CardDescription className="text-indigo-100 text-sm line-clamp-2">
                     {selectedTemplateData.firm.name} - {selectedTemplateData.template.name}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="p-6">
-                  <div className="space-y-6">
+                <CardContent className="p-4">
+                  <div className="space-y-4">
                     
                     {/* Main Stats */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-                        <DollarSign className="h-8 w-8 mx-auto text-blue-500 mb-2" />
-                        <div className="text-sm text-gray-600">Account Size</div>
-                        <div className="font-bold text-blue-600 text-lg">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="text-center p-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                        <DollarSign className="h-6 w-6 mx-auto text-blue-500 mb-1" />
+                        <div className="text-xs text-gray-600">Account Size</div>
+                        <div className="font-bold text-blue-600 text-base truncate">
                           {formatCurrency(selectedTemplateData.template.accountSize, selectedTemplateData.template.currency)}
                         </div>
                       </div>
-                      <div className="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200">
-                        <Target className="h-8 w-8 mx-auto text-green-500 mb-2" />
-                        <div className="text-sm text-gray-600">Profit Target</div>
-                        <div className="font-bold text-green-600 text-lg">
-                          {selectedTemplateData.template.rulesJson?.profitTargets?.PHASE_1?.percentage || 0}%
+                      <div className="text-center p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                        <Target className="h-6 w-6 mx-auto text-green-500 mb-1" />
+                        <div className="text-xs text-gray-600">Profit Target</div>
+                        <div className="font-bold text-green-600 text-base">
+                          {selectedTemplateData.template.rulesJson?.profitTargets?.[currentPhase]?.percentage || 
+                           selectedTemplateData.template.rulesJson?.profitTargets?.PHASE_1?.percentage || 0}%
                         </div>
                       </div>
                     </div>
 
                     {/* Rules Grid */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3 bg-red-50 rounded-lg border border-red-200">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <Shield className="h-4 w-4 text-red-600" />
-                          <span className="text-xs font-medium text-red-800">Daily Loss</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-2 bg-red-50 rounded-lg border border-red-200">
+                        <div className="flex items-center space-x-1 mb-1">
+                          <Shield className="h-3 w-3 text-red-600" />
+                          <span className="text-xs font-medium text-red-800 truncate">Daily Loss</span>
                         </div>
                         <div className="text-sm font-bold text-red-600">
-                          {selectedTemplateData.template.rulesJson?.dailyLossLimits?.PHASE_1?.percentage || 0}%
+                          {selectedTemplateData.template.rulesJson?.dailyLossLimits?.[currentPhase]?.percentage || 
+                           selectedTemplateData.template.rulesJson?.dailyLossLimits?.PHASE_1?.percentage || 0}%
                         </div>
                       </div>
-                      <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <AlertCircle className="h-4 w-4 text-orange-600" />
-                          <span className="text-xs font-medium text-orange-800">Overall Loss</span>
+                      <div className="p-2 bg-orange-50 rounded-lg border border-orange-200">
+                        <div className="flex items-center space-x-1 mb-1">
+                          <AlertCircle className="h-3 w-3 text-orange-600" />
+                          <span className="text-xs font-medium text-orange-800 truncate">Overall Loss</span>
                         </div>
                         <div className="text-sm font-bold text-orange-600">
-                          {selectedTemplateData.template.rulesJson?.overallLossLimits?.PHASE_1?.percentage || 0}%
+                          {selectedTemplateData.template.rulesJson?.overallLossLimits?.[currentPhase]?.percentage || 
+                           selectedTemplateData.template.rulesJson?.overallLossLimits?.PHASE_1?.percentage || 0}%
                         </div>
                       </div>
                     </div>
 
                     {/* Special Features */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <span className="text-sm text-gray-600">Min Trading Days:</span>
-                        <Badge variant="secondary">
-                          {selectedTemplateData.template.rulesJson?.minimumTradingDays?.PHASE_1?.days || 0} giorni
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                        <span className="text-xs text-gray-600 truncate">Min Trading Days:</span>
+                        <Badge variant="secondary" className="text-xs">
+                          {selectedTemplateData.template.rulesJson?.minimumTradingDays?.[currentPhase]?.days || 
+                           selectedTemplateData.template.rulesJson?.minimumTradingDays?.PHASE_1?.days || 0} giorni
                         </Badge>
                       </div>
-                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <span className="text-sm text-gray-600">Consistency Rules:</span>
-                        <Badge variant={selectedTemplateData.template.rulesJson?.consistencyRules?.PHASE_2?.enabled ? "default" : "secondary"}>
+                      <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                        <span className="text-xs text-gray-600 truncate">Consistency Rules:</span>
+                        <Badge variant={selectedTemplateData.template.rulesJson?.consistencyRules?.PHASE_2?.enabled ? "default" : "secondary"} className="text-xs">
                           {selectedTemplateData.template.rulesJson?.consistencyRules?.PHASE_2?.enabled ? '✅ Fase 2' : '❌ Disattive'}
                         </Badge>
                       </div>
