@@ -664,8 +664,8 @@ function calculateTrueSafeCapacity(
   console.log(`   Daily Limit: $${dailyLimitUSD} (5%)`)
   
   // 🎯 CRITICAL FIX: Calculate PropFirm-specific risk limits
-  let effectiveDailyLimit = dailyLimitUSD  // Default 5% daily limit
-  let overallDrawdownLimit = startingBalance * 0.1  // Default 10% overall limit
+  let effectiveDailyLossLimit = dailyLimitUSD  // Default 5% daily loss limit ($2500)
+  let effectiveOverallLossLimit = startingBalance * 0.1  // Default 10% overall loss limit ($5000)
   
   if (account?.propFirmTemplate?.rulesJson && account.currentPhase) {
     const rules = account.propFirmTemplate.rulesJson
@@ -674,41 +674,48 @@ function calculateTrueSafeCapacity(
     console.log(`🏢 PropFirm: ${account.propFirmTemplate.propFirm?.name || 'Unknown'}`)
     console.log(`📋 Template: ${account.propFirmTemplate.name}`)
     console.log(`🎯 Phase: ${phase}`)
+    console.log(`📊 Starting Balance: $${startingBalance}`)
     
     // Get daily loss limit for current phase
     const dailyLossRules = rules.dailyLossLimits?.[phase] || rules.dailyLossLimits?.PHASE_1
     if (dailyLossRules?.percentage) {
-      const propFirmDailyLimit = startingBalance * (dailyLossRules.percentage / 100)
-      effectiveDailyLimit = Math.min(effectiveDailyLimit, propFirmDailyLimit)
-      console.log(`📊 PropFirm Daily Loss Limit: ${dailyLossRules.percentage}% = $${propFirmDailyLimit}`)
+      const propFirmDailyLossLimit = startingBalance * (dailyLossRules.percentage / 100)
+      effectiveDailyLossLimit = Math.min(effectiveDailyLossLimit, propFirmDailyLossLimit)
+      console.log(`📊 PropFirm Daily Loss Limit: ${dailyLossRules.percentage}% = $${propFirmDailyLossLimit} max loss`)
     }
     
     // Get overall drawdown limit for current phase
     const overallLossRules = rules.overallLossLimits?.[phase] || rules.overallLossLimits?.PHASE_1
     if (overallLossRules?.percentage) {
-      const propFirmOverallLimit = startingBalance * (overallLossRules.percentage / 100)
-      overallDrawdownLimit = propFirmOverallLimit
-      console.log(`📊 PropFirm Overall Loss Limit: ${overallLossRules.percentage}% = $${propFirmOverallLimit}`)
+      const propFirmOverallLossLimit = startingBalance * (overallLossRules.percentage / 100)
+      effectiveOverallLossLimit = propFirmOverallLossLimit
+      console.log(`📊 PropFirm Overall Loss Limit: ${overallLossRules.percentage}% = $${propFirmOverallLossLimit} max loss`)
     }
   }
   
-  // 🚨 MOST IMPORTANT: Calculate minimum allowed equity considering BOTH limits
-  const minEquityFromDaily = startingBalance - effectiveDailyLimit
-  const minEquityFromOverall = startingBalance - overallDrawdownLimit
-  const absoluteMinEquity = Math.max(minEquityFromDaily, minEquityFromOverall)  // Most restrictive
+  // 🎯 CORRECT LOGIC: Calculate margins separately for daily vs overall limits
   
-  console.log(`🚨 EFFECTIVE LIMITS:`)
-  console.log(`   Daily Loss Limit: $${effectiveDailyLimit} → Min Equity: $${minEquityFromDaily}`)
-  console.log(`   Overall DD Limit: $${overallDrawdownLimit} → Min Equity: $${minEquityFromOverall}`)
-  console.log(`   ABSOLUTE Min Equity: $${absoluteMinEquity} (most restrictive)`)
+  // OVERALL MARGIN: How much can we lose considering overall drawdown limit
+  const overallMinEquity = startingBalance - effectiveOverallLossLimit
+  const overallMargin = Math.max(0, currentEquity - overallMinEquity)
   
-  // Calculate REAL safe capacity considering the most restrictive limit
-  const realSafeCapacity = Math.max(0, currentEquity - absoluteMinEquity)
+  // DAILY MARGIN: How much can we lose today (assuming no daily losses yet)
+  // For now, assume no daily losses - this should be calculated from actual daily P&L
+  const dailyLossesToday = 0  // TODO: Calculate actual daily losses from trades
+  const dailyMargin = Math.max(0, effectiveDailyLossLimit - dailyLossesToday)
   
-  console.log(`🎯 REAL CALCULATION:`)
+  // FINAL SAFE CAPACITY: The most restrictive (minimum) margin
+  const realSafeCapacity = Math.min(overallMargin, dailyMargin)
+  
+  console.log(`🎯 CORRECTED CALCULATION:`)
+  console.log(`   Overall Limit: $${effectiveOverallLossLimit} max loss → Min Equity: $${overallMinEquity}`)
   console.log(`   Current Equity: $${currentEquity.toFixed(2)}`)
-  console.log(`   Absolute Min Allowed: $${absoluteMinEquity.toFixed(2)}`)
-  console.log(`   TRUE Safe Capacity: $${realSafeCapacity.toFixed(2)} ← CORRECT VALUE`)
+  console.log(`   Overall Margin: $${overallMargin.toFixed(2)}`)
+  console.log(`   Daily Limit: $${effectiveDailyLossLimit} max loss today`)
+  console.log(`   Daily Losses Today: $${dailyLossesToday} (TODO: calculate from actual trades)`)  
+  console.log(`   Daily Margin: $${dailyMargin.toFixed(2)}`)
+  console.log(`   FINAL Safe Capacity: $${realSafeCapacity.toFixed(2)} (min of overall and daily)`)
+  
   
   // Calculate the old (misleading) theoretical capacity for comparison
   const theoreticalCapacity = Math.max(0, dailyLimitUSD - Math.abs(floatingPL))
@@ -797,7 +804,7 @@ function calculateTrueSafeCapacity(
       minEquityTouched = Math.min(minEquityTouched, runningEquity)
       
       const drawdownAtThisPoint = startingBalance - runningEquity
-      const violatesHere = runningEquity < absoluteMinEquity  // Use most restrictive limit
+      const violatesHere = runningEquity < overallMinEquity  // Use overall limit for simulation
       
       if (violatesHere && !violationFound) {
         violationFound = true
@@ -811,7 +818,7 @@ function calculateTrueSafeCapacity(
     minEquityTouched = Math.min(minEquityTouched, runningEquity)
     
     const drawdownAtThisPoint = startingBalance - runningEquity
-    const violatesHere = runningEquity < absoluteMinEquity  // Use most restrictive limit
+    const violatesHere = runningEquity < overallMinEquity  // Use overall limit for simulation
     
     sequence.push({
       trade: `${trade.symbol} #${trade.ticketId}`,
@@ -858,12 +865,12 @@ function calculateTrueSafeCapacity(
     floatingPL,
     startingBalance,
     currentEquity,
-    dailyLimitUSD: overallDrawdownLimit, // Use the actual effective limit
+    dailyLimitUSD: effectiveOverallLossLimit, // Use the actual effective limit
     scenarios: {
       ifAllSLHit: {
         minEquityTouched,
         wouldViolate: violationFound,
-        marginToViolation: Math.max(0, currentEquity - absoluteMinEquity),
+        marginToViolation: Math.max(0, currentEquity - overallMinEquity),
         sequence
       },
       ifWorstFirst: {
