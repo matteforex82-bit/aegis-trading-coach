@@ -151,7 +151,9 @@ export default function RiskExposureScanner({
 
   const { riskMetrics } = riskData
   const exposurePercent = riskMetrics.totalExposurePercent
-  const maxDailyLimit = 5 // 5% daily limit
+  // Use REAL PropFirm daily limit from trueSafeCapacity calculation  
+  const effectiveDailyLimitUSD = riskMetrics.trueSafeCapacity.dailyLimitUSD
+  const maxDailyLimitPercent = (effectiveDailyLimitUSD / balance) * 100
 
   // Get main color based on risk level
   const getRiskColor = () => {
@@ -251,10 +253,10 @@ export default function RiskExposureScanner({
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium">
-                Current Exposure: {exposurePercent.toFixed(1)}% / {maxDailyLimit}% Daily Limit
+                Current Exposure: {exposurePercent.toFixed(1)}% / {maxDailyLimitPercent.toFixed(1)}% Daily Limit
               </span>
               <span className="text-sm text-gray-600">
-                ${riskMetrics.totalExposureUSD.toFixed(0)} / ${(balance * 0.05).toFixed(0)}
+                ${riskMetrics.totalExposureUSD.toFixed(0)} / ${effectiveDailyLimitUSD.toFixed(0)}
               </span>
             </div>
             
@@ -262,7 +264,7 @@ export default function RiskExposureScanner({
             <div className="w-full bg-gray-200 rounded-full h-4 relative overflow-hidden">
               <div 
                 className={`h-full transition-all duration-500 ${getRiskColor()}`}
-                style={{ width: `${Math.min(exposurePercent / maxDailyLimit * 100, 100)}%` }}
+                style={{ width: `${Math.min(exposurePercent / maxDailyLimitPercent * 100, 100)}%` }}
               ></div>
               
               {/* Markers */}
@@ -274,9 +276,9 @@ export default function RiskExposureScanner({
             
             <div className="flex justify-between text-xs text-gray-500 mt-1">
               <span>0%</span>
-              <span>2%</span>
-              <span>4%</span>
-              <span>5%</span>
+              <span>{(maxDailyLimitPercent * 0.4).toFixed(1)}%</span>
+              <span>{(maxDailyLimitPercent * 0.8).toFixed(1)}%</span>
+              <span>{maxDailyLimitPercent.toFixed(1)}%</span>
             </div>
           </div>
 
@@ -301,10 +303,10 @@ export default function RiskExposureScanner({
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">
-                  If all SL hit: -{riskMetrics.worstCaseScenario.totalPotentialLossPercent.toFixed(1)}% / {maxDailyLimit}% Daily Limit
+                  If all SL hit: -{riskMetrics.worstCaseScenario.totalPotentialLossPercent.toFixed(1)}% / {maxDailyLimitPercent.toFixed(1)}% Daily Limit
                 </span>
                 <span className="text-sm font-semibold text-red-600">
-                  -${Math.abs(riskMetrics.worstCaseScenario.totalPotentialLoss).toFixed(0)} / ${(balance * 0.05).toFixed(0)}
+                  -${Math.abs(riskMetrics.worstCaseScenario.totalPotentialLoss).toFixed(0)} / ${effectiveDailyLimitUSD.toFixed(0)}
                 </span>
               </div>
               
@@ -318,7 +320,7 @@ export default function RiskExposureScanner({
                       ? 'bg-yellow-500'
                       : 'bg-blue-500'
                   }`}
-                  style={{ width: `${Math.min(riskMetrics.worstCaseScenario.totalPotentialLossPercent / maxDailyLimit * 100, 100)}%` }}
+                  style={{ width: `${Math.min(riskMetrics.worstCaseScenario.totalPotentialLossPercent / maxDailyLimitPercent * 100, 100)}%` }}
                 ></div>
                 
                 {/* Markers */}
@@ -330,9 +332,9 @@ export default function RiskExposureScanner({
               
               <div className="flex justify-between text-xs text-gray-500 mt-1">
                 <span>0%</span>
-                <span>2%</span>
-                <span>4%</span>
-                <span>5%</span>
+                <span>{(maxDailyLimitPercent * 0.4).toFixed(1)}%</span>
+                <span>{(maxDailyLimitPercent * 0.8).toFixed(1)}%</span>
+                <span>{maxDailyLimitPercent.toFixed(1)}%</span>
               </div>
             </div>
 
@@ -377,7 +379,7 @@ export default function RiskExposureScanner({
               <div className="mt-3 p-3 bg-red-100 border border-red-300 rounded-lg">
                 <div className="flex items-center gap-2 text-red-800">
                   <AlertTriangle className="h-4 w-4" />
-                  <span className="font-semibold">DANGER: Would violate 5% daily limit!</span>
+                  <span className="font-semibold">DANGER: Would violate {maxDailyLimitPercent.toFixed(1)}% daily limit!</span>
                 </div>
                 <p className="text-sm text-red-700 mt-1">
                   Margin: only ${riskMetrics.worstCaseScenario.marginToViolation.toFixed(0)} away from violation
@@ -441,7 +443,7 @@ export default function RiskExposureScanner({
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-gray-700">Posizione Corrente</span>
                 <span className="text-sm text-gray-600">
-                  ${riskMetrics.trueSafeCapacity.currentEquity.toFixed(0)} equity → ${(riskMetrics.trueSafeCapacity.startingBalance - riskMetrics.trueSafeCapacity.dailyLimitUSD).toFixed(0)} limite
+                  ${riskMetrics.trueSafeCapacity.currentEquity.toFixed(0)} equity → ${(riskMetrics.trueSafeCapacity.startingBalance - effectiveDailyLimitUSD).toFixed(0)} limite
                 </span>
               </div>
               
@@ -455,7 +457,7 @@ export default function RiskExposureScanner({
                   className="absolute top-0 h-full w-1 bg-gray-900 border-2 border-white shadow-lg"
                   style={{ 
                     left: `${Math.min(Math.max(
-                      ((riskMetrics.trueSafeCapacity.currentEquity - (riskMetrics.trueSafeCapacity.startingBalance - riskMetrics.trueSafeCapacity.dailyLimitUSD)) / riskMetrics.trueSafeCapacity.dailyLimitUSD) * 100, 
+                      ((riskMetrics.trueSafeCapacity.currentEquity - (riskMetrics.trueSafeCapacity.startingBalance - effectiveDailyLimitUSD)) / effectiveDailyLimitUSD) * 100, 
                       0
                     ), 100)}%`
                   }}
