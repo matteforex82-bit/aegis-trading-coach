@@ -13,7 +13,6 @@ export async function GET(request: NextRequest) {
         name: true,
         currentPhase: true,
         startBalance: true,
-        initialBalance: true,
         propFirmTemplateId: true
       }
     })
@@ -45,7 +44,6 @@ export async function GET(request: NextRequest) {
           login: targetAccount.login,
           currentPhase: targetAccount.currentPhase,
           startBalance: targetAccount.startBalance,
-          initialBalance: targetAccount.initialBalance,
           templateName: targetAccount.propFirmTemplate.name,
           propFirmName: targetAccount.propFirmTemplate.propFirm?.name,
           phase2Target: phase2Target ? {

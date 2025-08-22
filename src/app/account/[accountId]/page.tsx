@@ -37,6 +37,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import { OpenPositionsSection } from '@/components/OpenPositionsSection'
 import ConnectionStatus from '@/components/ConnectionStatus'
+import DynamicRuleRenderer from '@/components/DynamicRuleRenderer'
 
 interface Account {
   id: string
@@ -46,14 +47,15 @@ interface Account {
   server: string
   currency: string
   currentPhase: 'PHASE_1' | 'PHASE_2' | 'FUNDED'
-  initialBalance?: number
+  startBalance?: number
+  currentBalance?: number
   propFirmTemplate?: {
     id: string
     name: string
     accountSize: number
     currency: string
     rulesJson: any
-    propFirm: {
+    propFirm?: {
       name: string
     }
   }
@@ -636,46 +638,28 @@ export default function AccountDashboard() {
           </div>
         </div>
 
-        {/* Core PropFirm KPIs - ALWAYS SHOW FOR DEBUG */}
-        {(
+        {/* Dynamic Template-Based Rules Monitoring */}
+        {account && (
           <div className="space-y-6">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-800 mb-4">PropFirm Rules Monitoring</h2>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* PROFIT TARGET - REAL CALCULATION */}
-                <FintechKPIBar
-                  title="PROFIT TARGET"
-                  requirement={`${account?.currentPhase === 'PHASE_1' ? '8%' : account?.currentPhase === 'PHASE_2' ? '5%' : 'No target'} del conto`}
-                  current={(account?.currentBalance || account?.initialBalance || 0) + (stats?.totalPnL || 0)} 
-                  target={account?.currentPhase === 'PHASE_2' ? 52500 : 54000}
-                  percentage={((stats?.totalPnL || 0) / (account?.currentPhase === 'PHASE_2' ? 2500 : 4000)) * 100}
-                  type="profit"
-                  currency="USD"
-                />
-
-                {/* DAILY LOSS - DYNAMIC FROM TEMPLATE */}
-                <FintechKPIBar
-                  title="DAILY LOSS"
-                  requirement="Balance must stay above $47,500 (5% daily limit)"
-                  current={(account?.currentBalance || account?.initialBalance || 0) + (stats?.totalPnL || 0)}
-                  target={47500}
-                  percentage={0} // With profit, you're safe (0% risk used)
-                  type="daily_risk"
-                  currency="USD"
-                />
-
-                {/* MAXIMUM TOTAL LOSS - DYNAMIC FROM TEMPLATE */}
-                <FintechKPIBar
-                  title="MAXIMUM TOTAL LOSS"
-                  requirement="Balance must stay above $45,000 (10% total limit)"
-                  current={(account?.currentBalance || account?.initialBalance || 0) + (stats?.totalPnL || 0)}
-                  target={45000}
-                  percentage={0} // With profit, you're safe (0% risk used)
-                  type="total_risk"
-                  currency="USD"
-                />
-              </div>
+            <h2 className="text-lg font-semibold text-slate-800 mb-4">PropFirm Rules Monitoring</h2>
+            
+            {/* DYNAMIC RULE RENDERER - REPLACES ALL HARDCODED KPIS */}
+            <DynamicRuleRenderer 
+              account={{
+                startBalance: account.startBalance || 50000,
+                currentBalance: account.currentBalance,
+                currentPhase: account.currentPhase,
+                propFirmTemplate: account.propFirmTemplate
+              }}
+              stats={{
+                totalPnL: stats?.totalPnL || 0,
+                dailyPnL: 0, // TODO: Calculate from trades
+                bestDay: rules?.bestDay || 0,
+                bestTrade: rules?.bestSingleTrade || 0,
+                tradingDaysCount: rules?.tradingDays || 0
+              }}
+              className="mb-6"
+            />
 
               {/* 🚀 ENHANCED PROTECTION RULES - PHASE 2 */}
               <div className="mt-8">
