@@ -1,81 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
-// Risk calculation types
-interface WorstCaseScenario {
-  totalPotentialLoss: number      // Somma di tutte le perdite possibili
-  totalPotentialLossPercent: number // In percentuale del balance
-  breakdown: {
-    tradesWithSL: {
-      count: number
-      potentialLoss: number      // Distanza da current price a SL in $
-    }
-    tradesWithoutSL: {
-      count: number
-      estimatedLoss: number      // Stima basata su ATR o 100 pips default
-    }
-    tradesInProfit: {
-      count: number
-      protectedProfit: number    // Trades con SL in profit (guadagno garantito)
-    }
-  }
-  wouldViolateDailyLimit: boolean
-  marginToViolation: number       // Quanto manca per violare il 5%
-}
+//+------------------------------------------------------------------+
+//| 🚨 RISK EXPOSURE SCANNER - LOGICA CONSERVATIVA CORRETTA         |
+//| Principio: ASSUMERE IL PEGGIO per non avere sorprese           |
+//+------------------------------------------------------------------+
 
-// 🚨 CRITICAL: TRUE Safe Capacity (considering MINIMUM equity touched)
-interface TrueSafeCapacity {
-  // Il VERO spazio di manovra considerando il worst case sequenziale
-  trueSafeCapacity: number        // Quanto posso VERAMENTE perdere senza violare
-  theoreticalCapacity: number     // Il vecchio calcolo (INGANNEVOLE)
-  floatingPL: number              // P&L corrente flottante
-  startingBalance: number         // Balance di inizio giornata
-  currentEquity: number           // Equity attuale
-  dailyLimitUSD: number          // Limite giornaliero in USD (5%)
-  
-  // Scenari di simulazione sequenziale
-  scenarios: {
-    ifAllSLHit: {
-      minEquityTouched: number    // Il punto più basso che toccheresti
-      wouldViolate: boolean       // True se viola il 5%
-      marginToViolation: number   // Quanto manca alla violazione
-      sequence: {
-        trade: string
-        slLoss: number
-        runningEquity: number
-        violatesHere: boolean
-      }[]
-    }
-    ifWorstFirst: {
-      // Simula se i trades peggiori chiudono per primi
-      sequence: string[]          // Ordine dei trades (peggiore → migliore)
-      minEquityReached: number    // Punto più basso in questa sequenza
-      wouldViolate: boolean
-    }
-  }
-  
-  warning: string | null // Messaggio di warning critico se necessario
-  riskLevel: 'SAFE' | 'DANGER' | 'CRITICAL' // Basato sulla vera capacità
-}
+interface ConservativeRiskAnalysis {
+  // 🎯 PRINCIPI CONSERVATIVI:
+  // 1. Ogni posizione con SL = PERDITA CERTA (per essere sicuri)
+  // 2. Ogni posizione senza SL = PERDITA MASSIMA POSSIBILE
+  // 3. Daily limit = LIMITE PROPFIRM REALE (non default)
+  // 4. Margine sicurezza = QUANTO POSSO PERDERE ANCORA OGGI
 
-interface RiskMetrics {
-  totalExposurePercent: number
-  totalExposureUSD: number
-  maxAdditionalRisk: number // ⚠️ DEPRECATED - USE trueSafeCapacity instead
-  tradesWithoutSL: any[]
-  correlatedPairs: {
-    currency: string
-    exposure: number
-    trades: any[]
-  }[]
-  riskLevel: 'SAFE' | 'CAUTION' | 'DANGER'
-  worstCaseScenario: WorstCaseScenario
-  trueSafeCapacity: TrueSafeCapacity // 🚨 CRITICAL: Real safe capacity calculation
-  alerts: {
-    severity: 'CRITICAL' | 'WARNING' | 'INFO'
-    message: string
-    action?: string
-  }[]
+  currentEquity: number
+  startingBalance: number
+  
+  // LIMITI PROPFIRM REALI
+  dailyLossLimitUSD: number      // Es: $750 per Futura Funding 1.5%
+  overallLossLimitUSD: number    // Es: $5000 per 10% overall
+  
+  // PERDITE GIA' SUBITE
+  dailyLossesRealized: number    // Perdite trade chiusi oggi
+  dailyLossesFloating: number    // Perdite posizioni aperte ora
+  
+  // RISCHIO FUTURO (CONSERVATIVO)
+  maxRiskFromSL: number          // Se tutti gli SL vengono colpiti
+  maxRiskFromNoSL: number        // Se tutte le posizioni senza SL vanno male
+  
+  // MARGINE DISPONIBILE
+  dailyMarginLeft: number        // Quanto posso perdere ancora oggi
+  overallMarginLeft: number      // Quanto posso perdere in totale
+  
+  // CONTROLLO INTELLIGENTE
+  controllingLimit: 'DAILY' | 'OVERALL'  // Quale limite è più restrittivo
+  finalSafeCapacity: number      // Il vero margine di sicurezza
+  
+  riskLevel: 'SAFE' | 'CAUTION' | 'DANGER' | 'CRITICAL'
+  alerts: string[]
 }
 
 export async function GET(
@@ -84,9 +46,9 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    console.log('🔍 Risk Analysis API called for account:', id)
+    console.log('🔍 NEW CONSERVATIVE Risk Analysis for account:', id)
 
-    // Get account with open trades and PropFirm template for risk limits
+    // Get account with open trades and PropFirm template
     const account = await db.account.findUnique({
       where: { id },
       include: {
@@ -103,830 +65,202 @@ export async function GET(
     })
 
     if (!account) {
-      return NextResponse.json(
-        { error: 'Account not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Account not found' }, { status: 404 })
     }
 
-    const openTrades = account.trades
-    console.log('📊 Analyzing', openTrades.length, 'open positions')
-
-    // Calculate account balance (starting balance + current P&L)
-    const currentBalance = account.initialBalance || 50000
+    // 🎯 STEP 1: GET REAL PROPFIRM LIMITS
+    const analysis = await calculateConservativeRisk(account)
     
-    // Calculate current equity (balance + floating P&L)
-    const floatingPL = openTrades.reduce((total, trade) => {
-      return total + ((trade.pnlGross || 0) + (trade.commission || 0) + (trade.swap || 0))
-    }, 0)
-    const currentEquity = currentBalance + floatingPL
-    
-    console.log('🏦 Account Status:')
-    console.log(`   Balance: $${currentBalance}`)
-    console.log(`   Floating P&L: $${floatingPL.toFixed(2)}`)
-    console.log(`   Current Equity: $${currentEquity.toFixed(2)}`)
-    
-    // Calculate risk metrics with PropFirm rules and complete account data
-    const riskMetrics = await calculateRiskMetrics(openTrades, currentBalance, currentEquity, floatingPL, id, account)
-    
-    console.log('⚡ Risk Level:', riskMetrics.riskLevel)
-    console.log('📈 Current Exposure:', riskMetrics.totalExposurePercent.toFixed(2) + '%')
+    console.log('🚨 CONSERVATIVE ANALYSIS RESULTS:')
+    console.log(`   Current Equity: $${analysis.currentEquity}`)
+    console.log(`   Daily Limit (PropFirm): $${analysis.dailyLossLimitUSD}`)
+    console.log(`   Max SL Risk: $${analysis.maxRiskFromSL}`)
+    console.log(`   CONTROLLING LIMIT: ${analysis.controllingLimit}`)
+    console.log(`   FINAL SAFE CAPACITY: $${analysis.finalSafeCapacity}`)
     
     return NextResponse.json({
       success: true,
       accountId: id,
-      balance: currentBalance,
-      riskMetrics,
+      riskAnalysis: analysis,
       timestamp: new Date().toISOString()
     })
 
   } catch (error: any) {
-    console.error('❌ Risk Analysis error:', error)
+    console.error('❌ Conservative Risk Analysis error:', error)
     return NextResponse.json(
-      { 
-        error: 'Risk analysis failed', 
-        details: error.message 
-      },
+      { error: 'Risk analysis failed', details: error.message },
       { status: 500 }
     )
   }
 }
 
-async function calculateRiskMetrics(
-  openTrades: any[], 
-  currentBalance: number,
-  currentEquity: number,
-  floatingPL: number,
-  accountId: string,
-  account: any
-): Promise<RiskMetrics> {
+async function calculateConservativeRisk(account: any): Promise<ConservativeRiskAnalysis> {
+  const openTrades = account.trades
+  const startingBalance = account.initialBalance || 50000
   
-  // 1. Calculate total exposure
-  let totalExposureUSD = 0
-  const tradesWithoutSL: any[] = []
-  const currencyExposure: { [key: string]: { exposure: number, trades: any[] } } = {}
-
-  openTrades.forEach(trade => {
-    const tradePnL = (trade.pnlGross || 0) + (trade.commission || 0) + (trade.swap || 0)
-    let tradeExposure = 0
-
-    // 🎯 CORRECT RISK CALCULATION
-    if (trade.sl && trade.sl !== 0) {
-      // HAS STOP LOSS: Risk = potential loss from current price to SL
-      const currentPrice = trade.openPrice // Fallback if no current price
-      const stopLoss = trade.sl
-      const volume = trade.volume || 0
-      
-      // Calculate risk based on price difference to SL
-      let priceDifference = 0
-      if (trade.side === 'BUY') {
-        // BUY: Risk if price goes down to SL
-        priceDifference = Math.max(0, currentPrice - stopLoss)
-      } else {
-        // SELL: Risk if price goes up to SL  
-        priceDifference = Math.max(0, stopLoss - currentPrice)
-      }
-      
-      // Calculate precise risk in USD based on instrument type
-      tradeExposure = calculatePreciseRiskExposure(trade.symbol, priceDifference, volume, currentPrice)
-      
-      // If SL is in profit (protective stop), risk is minimal
-      if (trade.side === 'BUY' && stopLoss > trade.openPrice) {
-        tradeExposure = Math.min(tradeExposure, Math.abs(tradePnL) * 0.1) // Very low risk
-      } else if (trade.side === 'SELL' && stopLoss < trade.openPrice) {
-        tradeExposure = Math.min(tradeExposure, Math.abs(tradePnL) * 0.1) // Very low risk
-      }
-      
-    } else {
-      // NO STOP LOSS: High risk - use current P&L as exposure
-      tradeExposure = Math.abs(tradePnL) * 2 // Double penalty for no SL
-      tradesWithoutSL.push(trade)
-    }
-    
-    // Cap individual trade exposure to reasonable limits
-    tradeExposure = Math.min(tradeExposure, currentBalance * 0.02) // Max 2% per trade
-    totalExposureUSD += tradeExposure
-    
-    // Debug logging
-    console.log(`📊 Trade ${trade.ticketId || 'N/A'} ${trade.symbol}:`)
-    console.log(`   Side: ${trade.side}, Volume: ${trade.volume}`)
-    console.log(`   Current P&L: $${tradePnL.toFixed(2)}`)
-    console.log(`   Stop Loss: ${trade.sl || 'NONE'}`)
-    console.log(`   Calculated Risk Exposure: $${tradeExposure.toFixed(2)}`)
-    console.log(`   Has SL Protection: ${trade.sl && trade.sl !== 0 ? 'YES' : 'NO'}`)
-
-    // Check for missing stop loss (already handled above)
-    if (!trade.sl || trade.sl === 0) {
-      // Already added to tradesWithoutSL above
-    }
-
-    // Track currency exposure for correlation analysis
-    const symbol = trade.symbol.replace('.p', '').replace('.', '')
-    const baseCurrency = symbol.substring(0, 3) // First 3 chars (e.g., EUR from EURUSD)
-    
-    if (!currencyExposure[baseCurrency]) {
-      currencyExposure[baseCurrency] = { exposure: 0, trades: [] }
-    }
-    currencyExposure[baseCurrency].exposure += tradeExposure
-    currencyExposure[baseCurrency].trades.push(trade)
-  })
-
-  // 2. Calculate exposure percentage
-  const totalExposurePercent = (totalExposureUSD / currentBalance) * 100
+  // Current equity calculation
+  const floatingPL = openTrades.reduce((total: number, trade: any) => {
+    return total + ((trade.pnlGross || 0) + (trade.commission || 0) + (trade.swap || 0))
+  }, 0)
+  const currentEquity = startingBalance + floatingPL
   
-  // 3. Calculate max additional risk (5% daily limit)
-  const dailyLimitUSD = currentBalance * 0.05
-  const maxAdditionalRisk = Math.max(0, dailyLimitUSD - totalExposureUSD)
-  
-  // 4. Determine risk level
-  let riskLevel: 'SAFE' | 'CAUTION' | 'DANGER'
-  if (totalExposurePercent > 4) {
-    riskLevel = 'DANGER'
-  } else if (totalExposurePercent > 2) {
-    riskLevel = 'CAUTION' 
-  } else {
-    riskLevel = 'SAFE'
-  }
-
-  // 5. Find correlated pairs (3+ trades on same base currency)
-  const correlatedPairs = Object.entries(currencyExposure)
-    .filter(([currency, data]) => data.trades.length >= 3)
-    .map(([currency, data]) => ({
-      currency,
-      exposure: data.exposure,
-      trades: data.trades
-    }))
-
-  // 6. Generate alerts
-  const alerts: RiskMetrics['alerts'] = []
-
-  // Critical: No Stop Loss
-  if (tradesWithoutSL.length > 0) {
-    alerts.push({
-      severity: 'CRITICAL',
-      message: `${tradesWithoutSL.length} trade(s) without Stop Loss detected!`,
-      action: 'Set stop losses immediately to protect account'
-    })
-  }
-
-  // High exposure warnings
-  if (riskLevel === 'DANGER') {
-    alerts.push({
-      severity: 'CRITICAL',
-      message: `High risk exposure: ${totalExposurePercent.toFixed(1)}% of account at risk`,
-      action: 'Close positions immediately or reduce position sizes'
-    })
-  } else if (riskLevel === 'CAUTION') {
-    alerts.push({
-      severity: 'WARNING',
-      message: `Moderate risk exposure: ${totalExposurePercent.toFixed(1)}% of account`,
-      action: 'Monitor closely and consider reducing exposure'
-    })
-  }
-
-  // Correlation warnings
-  correlatedPairs.forEach(pair => {
-    alerts.push({
-      severity: 'WARNING',
-      message: `High ${pair.currency} correlation: ${pair.trades.length} positions`,
-      action: `Consider diversifying beyond ${pair.currency} pairs`
-    })
-  })
-
-  // 7. Calculate Worst Case Scenario
-  const worstCaseScenario = calculateWorstCaseScenario(openTrades, currentBalance)
-  
-  // 8. 🚨 CRITICAL: Calculate TRUE Safe Capacity with PropFirm rules
-  const trueSafeCapacity = calculateTrueSafeCapacity(openTrades, currentBalance, currentEquity, floatingPL, dailyLimitUSD, account)
-  
-  // 🚨 CRITICAL ALERTS based on TRUE Safe Capacity (overrides worst case alerts)
-  if (trueSafeCapacity.trueSafeCapacity === 0) {
-    alerts.unshift({
-      severity: 'CRITICAL',
-      message: `🚨 STOP TRADING NOW! Any SL hit will violate daily limit!`,
-      action: 'Close positions immediately or risk PropFirm violation'
-    })
-  } else if (trueSafeCapacity.scenarios.ifAllSLHit.wouldViolate) {
-    alerts.unshift({
-      severity: 'CRITICAL', 
-      message: `🔴 DANGER: Sequential SL hits would violate daily limit!`,
-      action: 'Reduce position sizes or tighten stops immediately'
-    })
-  } else if (trueSafeCapacity.trueSafeCapacity < 500) {
-    alerts.unshift({
-      severity: 'WARNING',
-      message: `⚠️ CRITICAL: Only $${trueSafeCapacity.trueSafeCapacity.toFixed(0)} TRUE safe capacity left!`,
-      action: 'Extreme caution required - one bad trade could violate limit'
-    })
-  }
-
-  // Add specific warning from trueSafeCapacity calculation
-  if (trueSafeCapacity.warning) {
-    alerts.unshift({
-      severity: 'CRITICAL',
-      message: trueSafeCapacity.warning,
-      action: 'Review minimum equity scenario immediately'
-    })
-  }
-  
-  // Update alerts based on worst case scenario (secondary to TRUE safe capacity)
-  if (worstCaseScenario.wouldViolateDailyLimit && trueSafeCapacity.trueSafeCapacity > 0) {
-    alerts.push({
-      severity: 'WARNING',
-      message: `📊 THEORETICAL: Would violate 5% limit (-${worstCaseScenario.totalPotentialLossPercent.toFixed(1)}%)`,
-      action: 'Check TRUE Safe Capacity for real risk assessment'
-    })
-  }
-
-  console.log('💥 Worst Case Total Loss:', worstCaseScenario.totalPotentialLoss.toFixed(2))
-  console.log('💥 Worst Case Percentage:', worstCaseScenario.totalPotentialLossPercent.toFixed(2) + '%')
-  console.log('💥 Would Violate Daily Limit:', worstCaseScenario.wouldViolateDailyLimit)
-  
-  console.log('🚨 TRUE SAFE CAPACITY ANALYSIS:')
-  console.log(`   TRUE Safe Capacity: $${trueSafeCapacity.trueSafeCapacity.toFixed(2)} (REAL limit)`)
-  console.log(`   Theoretical Capacity: $${trueSafeCapacity.theoreticalCapacity.toFixed(2)} (MISLEADING)`)
-  console.log(`   Min Equity if all SL hit: $${trueSafeCapacity.scenarios.ifAllSLHit.minEquityTouched.toFixed(2)}`)
-  console.log(`   Would violate on sequential losses: ${trueSafeCapacity.scenarios.ifAllSLHit.wouldViolate ? 'YES 🚨' : 'NO ✅'}`)
-  console.log(`   Risk Level: ${trueSafeCapacity.riskLevel}`)
-  if (trueSafeCapacity.warning) {
-    console.log(`   ⚠️ WARNING: ${trueSafeCapacity.warning}`)
-  }
-
-  // Save critical alerts to database
-  if (alerts.some(alert => alert.severity === 'CRITICAL')) {
-    try {
-      await saveCriticalAlerts(accountId, alerts.filter(a => a.severity === 'CRITICAL'))
-    } catch (error) {
-      console.error('Failed to save critical alerts:', error)
-    }
-  }
-
-  return {
-    totalExposurePercent,
-    totalExposureUSD,
-    maxAdditionalRisk, // ⚠️ DEPRECATED - keeping for backward compatibility
-    tradesWithoutSL,
-    correlatedPairs,
-    riskLevel,
-    worstCaseScenario,
-    trueSafeCapacity, // 🚨 CRITICAL: Use this instead of maxAdditionalRisk
-    alerts
-  }
-}
-
-async function saveCriticalAlerts(accountId: string, criticalAlerts: any[]) {
-  console.log('🚨 Saving', criticalAlerts.length, 'critical alerts')
-  
-  for (const alert of criticalAlerts) {
-    // Check if similar alert already exists and is unresolved
-    const existingAlert = await db.riskAlert.findFirst({
-      where: {
-        accountId,
-        severity: 'CRITICAL',
-        message: alert.message,
-        resolved: false
-      }
-    })
-
-    if (!existingAlert) {
-      await db.riskAlert.create({
-        data: {
-          accountId,
-          severity: 'CRITICAL',
-          type: alert.message.includes('Stop Loss') ? 'NO_SL' : 'HIGH_RISK',
-          message: alert.message,
-          data: { action: alert.action },
-          resolved: false
-        }
-      })
-    }
-  }
-}
-
-//+------------------------------------------------------------------+
-//| Calculate Worst Case Scenario - CRITICAL RISK ASSESSMENT        |
-//+------------------------------------------------------------------+
-function calculateWorstCaseScenario(openTrades: any[], currentBalance: number): WorstCaseScenario {
-  console.log('💥 Calculating Worst Case Scenario for', openTrades.length, 'trades...')
-  
-  let totalPotentialLoss = 0
-  let tradesWithSLCount = 0
-  let tradesWithSLLoss = 0
-  let tradesWithoutSLCount = 0
-  let tradesWithoutSLLoss = 0
-  let tradesInProfitCount = 0
-  let protectedProfit = 0
-  
-  openTrades.forEach(trade => {
-    const tradePnL = (trade.pnlGross || 0) + (trade.commission || 0) + (trade.swap || 0)
-    const currentPrice = trade.openPrice // Fallback if no current price available
-    const volume = trade.volume || 0
-    
-    console.log(`💥 Analyzing ${trade.symbol} #${trade.ticketId}:`)
-    
-    if (trade.sl && trade.sl !== 0) {
-      // HAS STOP LOSS: Calculate exact potential loss
-      const stopLoss = trade.sl
-      let potentialLoss = 0
-      
-      // Calculate price difference to SL
-      let priceDifference = 0
-      if (trade.side === 'BUY') {
-        priceDifference = Math.max(0, currentPrice - stopLoss)
-      } else {
-        priceDifference = Math.max(0, stopLoss - currentPrice)
-      }
-      
-      // Calculate precise potential loss in USD
-      potentialLoss = calculatePreciseRiskExposure(trade.symbol, priceDifference, volume, currentPrice)
-      
-      // Check if SL is in profit (protective stop)
-      const isProtectiveStop = (trade.side === 'BUY' && stopLoss > trade.openPrice) || 
-                               (trade.side === 'SELL' && stopLoss < trade.openPrice)
-      
-      if (isProtectiveStop) {
-        // Protective stop - count as locked profit instead of loss
-        tradesInProfitCount++
-        protectedProfit += Math.abs(tradePnL) // Current profit is protected
-        console.log(`   ✅ PROTECTIVE STOP: +$${Math.abs(tradePnL).toFixed(2)} profit locked`)
-      } else {
-        // Normal stop loss - potential loss
-        tradesWithSLCount++
-        tradesWithSLLoss += potentialLoss
-        totalPotentialLoss += potentialLoss
-        console.log(`   📊 SL RISK: -$${potentialLoss.toFixed(2)} if SL hit`)
-      }
-      
-    } else {
-      // NO STOP LOSS: Use worst case estimate
-      tradesWithoutSLCount++
-      
-      // Calculate worst case loss estimate based on instrument type and typical volatility
-      let estimatedLoss = calculateWorstCaseEstimate(trade.symbol, volume, currentPrice, tradePnL, currentBalance)
-      
-      tradesWithoutSLLoss += estimatedLoss
-      totalPotentialLoss += estimatedLoss
-      console.log(`   🚨 NO SL: Estimated worst case -$${estimatedLoss.toFixed(2)}`)
-    }
-  })
-  
-  const totalPotentialLossPercent = (totalPotentialLoss / currentBalance) * 100
-  const dailyLimitUSD = currentBalance * 0.05 // 5% daily limit
-  const wouldViolateDailyLimit = totalPotentialLoss > dailyLimitUSD
-  const marginToViolation = Math.max(0, dailyLimitUSD - totalPotentialLoss)
-  
-  console.log('💥 WORST CASE BREAKDOWN:')
-  console.log(`   📊 Trades with SL: ${tradesWithSLCount} (risk: -$${tradesWithSLLoss.toFixed(2)})`)
-  console.log(`   🚨 Trades without SL: ${tradesWithoutSLCount} (risk: -$${tradesWithoutSLLoss.toFixed(2)})`)
-  console.log(`   ✅ Protected trades: ${tradesInProfitCount} (profit: +$${protectedProfit.toFixed(2)})`)
-  console.log(`   💥 TOTAL RISK: -$${totalPotentialLoss.toFixed(2)} (${totalPotentialLossPercent.toFixed(1)}%)`)
-  console.log(`   ⚖️ Would violate 5% limit: ${wouldViolateDailyLimit ? 'YES' : 'NO'}`)
-  console.log(`   📈 Margin to violation: $${marginToViolation.toFixed(2)}`)
-  
-  return {
-    totalPotentialLoss,
-    totalPotentialLossPercent,
-    breakdown: {
-      tradesWithSL: {
-        count: tradesWithSLCount,
-        potentialLoss: tradesWithSLLoss
-      },
-      tradesWithoutSL: {
-        count: tradesWithoutSLCount,
-        estimatedLoss: tradesWithoutSLLoss
-      },
-      tradesInProfit: {
-        count: tradesInProfitCount,
-        protectedProfit: protectedProfit
-      }
-    },
-    wouldViolateDailyLimit,
-    marginToViolation
-  }
-}
-
-//+------------------------------------------------------------------+
-//| Calculate Precise Risk Exposure in USD - ACCURATE PIP VALUES    |
-//+------------------------------------------------------------------+
-function calculatePreciseRiskExposure(symbol: string, priceDifference: number, volume: number, currentPrice: number): number {
-  if (!symbol || priceDifference === 0 || volume === 0) {
-    return 0
-  }
-
-  // Clean symbol name
-  const cleanSymbol = symbol.replace('.p', '').replace('.', '').toUpperCase()
-  
-  console.log(`🔧 Calculating precise risk for ${cleanSymbol}: price diff=${priceDifference}, volume=${volume}, current=${currentPrice}`)
-
-  // Standard lot size
-  const standardLot = 100000
-  const contractSize = volume * standardLot
-
-  let riskInUSD = 0
-
-  if (cleanSymbol.includes('XAU') || cleanSymbol.includes('GOLD')) {
-    // GOLD (XAUUSD): Price difference is directly in USD per ounce
-    // Each lot = 100 ounces, so risk = priceDifference * volume * 100
-    riskInUSD = priceDifference * volume * 100
-    console.log(`   🥇 GOLD calculation: ${priceDifference} * ${volume} * 100 = $${riskInUSD.toFixed(2)}`)
-    
-  } else if (cleanSymbol.includes('XAG') || cleanSymbol.includes('SILVER')) {
-    // SILVER (XAGUSD): Price difference is directly in USD per ounce  
-    // Each lot = 5000 ounces, so risk = priceDifference * volume * 5000
-    riskInUSD = priceDifference * volume * 5000
-    console.log(`   🥈 SILVER calculation: ${priceDifference} * ${volume} * 5000 = $${riskInUSD.toFixed(2)}`)
-    
-  } else if (cleanSymbol.startsWith('USD')) {
-    // USD is base currency (e.g., USDCAD, USDCHF, USDJPY)
-    // Risk = (priceDifference / current price) * contract size
-    if (currentPrice > 0) {
-      riskInUSD = (priceDifference / currentPrice) * contractSize
-      console.log(`   💱 USD base: (${priceDifference} / ${currentPrice}) * ${contractSize} = $${riskInUSD.toFixed(2)}`)
-    } else {
-      // Fallback if no current price
-      riskInUSD = priceDifference * contractSize * 0.01
-      console.log(`   💱 USD base (fallback): ${priceDifference} * ${contractSize} * 0.01 = $${riskInUSD.toFixed(2)}`)
-    }
-    
-  } else if (cleanSymbol.endsWith('USD')) {
-    // USD is quote currency (e.g., EURUSD, GBPUSD, AUDUSD)
-    // Risk = priceDifference * contract size (direct USD calculation)
-    riskInUSD = priceDifference * contractSize
-    console.log(`   💱 USD quote: ${priceDifference} * ${contractSize} = $${riskInUSD.toFixed(2)}`)
-    
-  } else if (cleanSymbol.includes('JPY')) {
-    // Japanese Yen pairs (e.g., EURJPY, GBPJPY)
-    // JPY pip value is different, need to convert to USD
-    // Approximate conversion: assume USDJPY ≈ 150 for rough calculation
-    const usdJpyRate = 150 // This should ideally be fetched from current rates
-    riskInUSD = (priceDifference * contractSize) / usdJpyRate
-    console.log(`   🇯🇵 JPY pair: (${priceDifference} * ${contractSize}) / ${usdJpyRate} = $${riskInUSD.toFixed(2)}`)
-    
-  } else {
-    // Cross pairs (e.g., EURGBP, AUDCAD, etc.)
-    // Use conservative estimate: assume average pip value of $10 per standard lot
-    const conservativePipValue = 10
-    const pips = priceDifference * 10000 // Convert price difference to pips
-    riskInUSD = pips * volume * conservativePipValue
-    console.log(`   ⚖️ Cross pair: ${pips} pips * ${volume} lots * $${conservativePipValue} = $${riskInUSD.toFixed(2)}`)
-  }
-
-  // Apply reasonable limits to prevent unrealistic calculations
-  const maxRiskPerTrade = 5000 // Max $5000 risk per trade calculation
-  riskInUSD = Math.min(Math.abs(riskInUSD), maxRiskPerTrade)
-  
-  console.log(`   ✅ Final calculated risk: $${riskInUSD.toFixed(2)}`)
-  
-  return riskInUSD
-}
-
-//+------------------------------------------------------------------+
-//| Calculate Worst Case Estimate for Trades WITHOUT Stop Loss      |
-//+------------------------------------------------------------------+
-function calculateWorstCaseEstimate(symbol: string, volume: number, currentPrice: number, currentPnL: number, accountBalance: number): number {
-  if (!symbol || volume === 0) {
-    return 0
-  }
-
-  const cleanSymbol = symbol.replace('.p', '').replace('.', '').toUpperCase()
-  console.log(`💀 Calculating worst case estimate for ${cleanSymbol} (NO SL): volume=${volume}, price=${currentPrice}`)
-
-  let worstCaseDistance = 0
-  let estimatedLoss = 0
-
-  if (cleanSymbol.includes('XAU') || cleanSymbol.includes('GOLD')) {
-    // GOLD: Can move $50-100 in extreme conditions
-    worstCaseDistance = 50 // $50 per ounce worst case
-    estimatedLoss = worstCaseDistance * volume * 100 // 100 ounces per lot
-    console.log(`   🥇 GOLD worst case: $${worstCaseDistance} * ${volume} * 100 = $${estimatedLoss.toFixed(2)}`)
-    
-  } else if (cleanSymbol.includes('XAG') || cleanSymbol.includes('SILVER')) {
-    // SILVER: Can move $2-5 in extreme conditions  
-    worstCaseDistance = 3 // $3 per ounce worst case
-    estimatedLoss = worstCaseDistance * volume * 5000 // 5000 ounces per lot
-    console.log(`   🥈 SILVER worst case: $${worstCaseDistance} * ${volume} * 5000 = $${estimatedLoss.toFixed(2)}`)
-    
-  } else if (cleanSymbol.includes('USD')) {
-    // FOREX pairs: 100-200 pips worst case depending on pair volatility
-    let worstCasePips = 150 // Default 150 pips
-    
-    // Adjust based on pair volatility
-    if (cleanSymbol.includes('GBP')) {
-      worstCasePips = 200 // GBP pairs more volatile
-    } else if (cleanSymbol.includes('JPY')) {
-      worstCasePips = 300 // JPY pairs can move more pips (but smaller pip value)
-    } else if (cleanSymbol.includes('CHF')) {
-      worstCasePips = 100 // CHF pairs more stable
-    }
-    
-    // Convert pips to price difference
-    let pipValue = 0.0001 // Standard pip for most pairs
-    if (cleanSymbol.includes('JPY')) {
-      pipValue = 0.01 // JPY pip is 2 decimal places
-    }
-    
-    worstCaseDistance = worstCasePips * pipValue
-    estimatedLoss = calculatePreciseRiskExposure(symbol, worstCaseDistance, volume, currentPrice)
-    console.log(`   💱 FOREX worst case: ${worstCasePips} pips (${worstCaseDistance}) = $${estimatedLoss.toFixed(2)}`)
-    
-  } else {
-    // Cross pairs or other instruments: Use conservative percentage
-    const conservativePercentage = 0.02 // 2% worst case
-    estimatedLoss = Math.abs(currentPnL) * 5 // 5x current P&L as extreme scenario
-    console.log(`   ⚖️ Other instrument worst case: ${Math.abs(currentPnL)} * 5 = $${estimatedLoss.toFixed(2)}`)
-  }
-
-  // Apply caps to prevent unrealistic numbers
-  const maxWorstCasePerTrade = accountBalance * 0.05 // Max 5% of account per trade
-  estimatedLoss = Math.min(Math.abs(estimatedLoss), maxWorstCasePerTrade)
-  
-  console.log(`   💀 Final worst case estimate: $${estimatedLoss.toFixed(2)}`)
-  
-  return estimatedLoss
-}
-
-//+------------------------------------------------------------------+
-//| 🚨 CRITICAL: Calculate TRUE Safe Capacity (Sequential Risk)     |
-//+------------------------------------------------------------------+
-function calculateTrueSafeCapacity(
-  openTrades: any[], 
-  startingBalance: number, 
-  currentEquity: number, 
-  floatingPL: number,
-  dailyLimitUSD: number,
-  account: any
-): TrueSafeCapacity {
-  
-  console.log('🚨 CRITICAL: Calculating TRUE Safe Capacity...')
+  console.log(`💰 Account Status:`)
   console.log(`   Starting Balance: $${startingBalance}`)
-  console.log(`   Current Equity: $${currentEquity.toFixed(2)}`)
   console.log(`   Floating P&L: $${floatingPL.toFixed(2)}`)
-  console.log(`   Daily Limit: $${dailyLimitUSD} (5%)`)
+  console.log(`   Current Equity: $${currentEquity.toFixed(2)}`)
   
-  // 🎯 CRITICAL FIX: Calculate PropFirm-specific risk limits
-  let effectiveDailyLossLimit = dailyLimitUSD  // Default 5% daily loss limit ($2500)
-  let effectiveOverallLossLimit = startingBalance * 0.1  // Default 10% overall loss limit ($5000)
+  // 🎯 STEP 1: GET REAL PROPFIRM LIMITS
+  let dailyLossLimitUSD = startingBalance * 0.05  // Default 5%
+  let overallLossLimitUSD = startingBalance * 0.10  // Default 10%
   
   if (account?.propFirmTemplate?.rulesJson && account.currentPhase) {
     const rules = account.propFirmTemplate.rulesJson
     const phase = account.currentPhase
+    const propFirmName = account.propFirmTemplate.propFirm?.name || 'Unknown'
     
-    console.log(`🏢 PropFirm: ${account.propFirmTemplate.propFirm?.name || 'Unknown'}`)
+    console.log(`🏢 PropFirm: ${propFirmName}`)
     console.log(`📋 Template: ${account.propFirmTemplate.name}`)
     console.log(`🎯 Phase: ${phase}`)
-    console.log(`📊 Starting Balance: $${startingBalance}`)
     
-    // Get daily loss limit for current phase
-    const dailyLossRules = rules.dailyLossLimits?.[phase] || rules.dailyLossLimits?.PHASE_1
-    if (dailyLossRules?.percentage) {
-      const propFirmDailyLossLimit = startingBalance * (dailyLossRules.percentage / 100)
-      effectiveDailyLossLimit = propFirmDailyLossLimit  // USE PropFirm limit, not minimum!
-      console.log(`📊 PropFirm Daily Loss Limit: ${dailyLossRules.percentage}% = $${propFirmDailyLossLimit} max loss`)
+    // Daily loss limit
+    const dailyRules = rules.dailyLossLimits?.[phase] || rules.dailyLossLimits?.PHASE_1
+    if (dailyRules?.percentage) {
+      dailyLossLimitUSD = startingBalance * (dailyRules.percentage / 100)
+      console.log(`📊 PropFirm Daily Limit: ${dailyRules.percentage}% = $${dailyLossLimitUSD}`)
     }
     
-    // 🚨 SPECIAL CASE: Futura Funding has very low daily limits in early phases
-    if (account.propFirmTemplate.propFirm?.name?.includes('FUTURA') && phase === 'PHASE_1') {
-      // Futura Funding Phase 1: typically 1.5% daily limit
-      effectiveDailyLossLimit = Math.min(effectiveDailyLossLimit, startingBalance * 0.015)  // 1.5%
-      console.log(`🎯 FUTURA FUNDING Phase 1: Ultra-conservative $${effectiveDailyLossLimit} daily limit`)
+    // Overall loss limit  
+    const overallRules = rules.overallLossLimits?.[phase] || rules.overallLossLimits?.PHASE_1
+    if (overallRules?.percentage) {
+      overallLossLimitUSD = startingBalance * (overallRules.percentage / 100)
+      console.log(`📊 PropFirm Overall Limit: ${overallRules.percentage}% = $${overallLossLimitUSD}`)
     }
     
-    // Get overall drawdown limit for current phase
-    const overallLossRules = rules.overallLossLimits?.[phase] || rules.overallLossLimits?.PHASE_1
-    if (overallLossRules?.percentage) {
-      const propFirmOverallLossLimit = startingBalance * (overallLossRules.percentage / 100)
-      effectiveOverallLossLimit = propFirmOverallLossLimit
-      console.log(`📊 PropFirm Overall Loss Limit: ${overallLossRules.percentage}% = $${propFirmOverallLossLimit} max loss`)
+    // Special cases
+    if (propFirmName.includes('FUTURA') && phase === 'PHASE_1') {
+      dailyLossLimitUSD = Math.min(dailyLossLimitUSD, startingBalance * 0.015) // 1.5%
+      console.log(`🎯 FUTURA FUNDING Phase 1 Special: $${dailyLossLimitUSD} daily limit`)
     }
   }
   
-  // 🧠 SMART LOGIC: Determine which limit is more restrictive and why
+  // 🎯 STEP 2: CALCULATE DAILY LOSSES (CONSERVATIVE)
+  let dailyLossesRealized = 0 // TODO: Calculate from today's closed trades
+  let dailyLossesFloating = Math.max(0, -floatingPL) // Only count losses, not profits
   
-  // OVERALL MARGIN: How much we can lose before hitting overall drawdown limit
-  const overallMinEquity = startingBalance - effectiveOverallLossLimit
-  const overallMarginAvailable = Math.max(0, currentEquity - overallMinEquity)
+  // 🎯 STEP 3: CALCULATE MAXIMUM RISK FROM OPEN POSITIONS (CONSERVATIVE)
+  let maxRiskFromSL = 0
+  let maxRiskFromNoSL = 0
+  const alerts: string[] = []
   
-  // DAILY MARGIN: How much we can lose TODAY considering:
-  // 1. Daily loss limit from PropFirm rules
-  // 2. Current floating P&L (could become realized losses if trades close badly)
-  // 3. Maximum risk from SL hits
+  console.log(`📊 Analyzing ${openTrades.length} open positions (CONSERVATIVE):`)
   
-  // Calculate REAL risk from open positions if ALL stop losses hit
-  const totalSLRisk = openTrades.reduce((total, trade) => {
+  for (const trade of openTrades) {
     const tradePnL = (trade.pnlGross || 0) + (trade.commission || 0) + (trade.swap || 0)
+    const symbol = trade.symbol
+    const volume = trade.volume || 0
+    const side = trade.side
+    const openPrice = trade.openPrice
+    const stopLoss = trade.sl
     
-    if (trade.sl && trade.sl !== 0) {
-      const isProtectiveStop = (trade.side === 'BUY' && trade.sl > trade.openPrice) || 
-                               (trade.side === 'SELL' && trade.sl < trade.openPrice)
+    console.log(`🔍 Trade ${trade.ticketId}: ${symbol} ${side} ${volume} lots, P&L: $${tradePnL.toFixed(2)}`)
+    
+    if (stopLoss && stopLoss !== 0) {
+      // HAS STOP LOSS: Count as CERTAIN LOSS (conservative)
+      const priceDifference = Math.abs(openPrice - stopLoss)
+      const riskUSD = calculateGoldRiskUSD(symbol, priceDifference, volume)
       
-      if (!isProtectiveStop) {
-        // Real stop loss - calculate potential loss from current price to SL
-        const priceDifference = Math.abs(trade.openPrice - trade.sl)
-        const potentialRisk = calculatePreciseRiskExposure(trade.symbol, priceDifference, trade.volume || 0, trade.openPrice)
-        return total + potentialRisk
-      }
-    } else if (tradePnL < 0) {
-      // No SL and losing trade - could lose much more
-      return total + Math.abs(tradePnL) * 3  // Triple the current loss as worst case
+      // 🚨 CONSERVATIVE: Always count SL as a loss that WILL happen
+      maxRiskFromSL += riskUSD
+      
+      console.log(`   ✅ HAS SL at ${stopLoss}: CONSERVATIVE RISK = $${riskUSD.toFixed(2)}`)
+      
+    } else {
+      // NO STOP LOSS: Maximum possible loss
+      const worstCaseRisk = calculateWorstCaseRisk(symbol, volume, tradePnL)
+      maxRiskFromNoSL += worstCaseRisk
+      
+      alerts.push(`🚨 CRITICAL: ${symbol} has no Stop Loss! Risk: $${worstCaseRisk.toFixed(0)}`)
+      console.log(`   🚨 NO SL: WORST CASE RISK = $${worstCaseRisk.toFixed(2)}`)
     }
-    return total
-  }, 0)
+  }
   
-  // Current floating losses (negative P&L that could be realized today)
-  const currentFloatingLosses = Math.max(0, -floatingPL)  // Only count actual losses
+  // 🎯 STEP 4: CALCULATE MARGINS AVAILABLE
+  const dailyMarginLeft = Math.max(0, dailyLossLimitUSD - dailyLossesRealized - dailyLossesFloating - maxRiskFromSL - maxRiskFromNoSL)
+  const overallMarginLeft = Math.max(0, currentEquity - (startingBalance - overallLossLimitUSD))
   
-  // Daily margin = daily limit - current floating losses - additional SL risk
-  const dailyMarginAvailable = Math.max(0, effectiveDailyLossLimit - currentFloatingLosses - totalSLRisk)
+  // 🎯 STEP 5: INTELLIGENT CONTROL
+  let controllingLimit: 'DAILY' | 'OVERALL' = 'DAILY'
+  let finalSafeCapacity = dailyMarginLeft
   
-  // 🎯 INTELLIGENT DECISION: Which limit is more restrictive?
-  let controllingLimit = 'DAILY'
-  let finalSafeCapacity = dailyMarginAvailable
-  
-  if (overallMarginAvailable < dailyMarginAvailable) {
-    // Overall limit is more restrictive - we're close to account termination
+  if (overallMarginLeft < dailyMarginLeft) {
     controllingLimit = 'OVERALL'
-    finalSafeCapacity = overallMarginAvailable
+    finalSafeCapacity = overallMarginLeft
   }
   
-  console.log(`🧠 INTELLIGENT RISK ASSESSMENT:`)
-  console.log(`   Current Equity: $${currentEquity.toFixed(2)}`)
-  console.log(`   Overall Min Equity: $${overallMinEquity.toFixed(2)}`)
-  console.log(`   Overall Margin Available: $${overallMarginAvailable.toFixed(2)}`)
-  console.log(`   📊 DAILY RISK BREAKDOWN:`)
-  console.log(`   - Daily Loss Limit (PropFirm): $${effectiveDailyLossLimit}`)
-  console.log(`   - Current Floating Losses: $${currentFloatingLosses.toFixed(2)}`)
-  console.log(`   - Total SL Risk: $${totalSLRisk.toFixed(2)}`)
-  console.log(`   - Daily Margin Available: $${dailyMarginAvailable.toFixed(2)}`)
-  console.log(`   🎯 CONTROLLING LIMIT: ${controllingLimit}`)
-  console.log(`   📊 FINAL SAFE CAPACITY: $${finalSafeCapacity.toFixed(2)}`)
+  // 🎯 STEP 6: RISK LEVEL DETERMINATION
+  let riskLevel: 'SAFE' | 'CAUTION' | 'DANGER' | 'CRITICAL'
   
-  // Use the intelligent calculation result
-  const realSafeCapacity = finalSafeCapacity
-  
-  
-  // Calculate the old (misleading) theoretical capacity for comparison
-  const theoreticalCapacity = Math.max(0, dailyLimitUSD - Math.abs(floatingPL))
-  
-  // Prepare trades with their potential Stop Loss losses
-  const tradesWithLossPotential = openTrades.map(trade => {
-    const tradePnL = (trade.pnlGross || 0) + (trade.commission || 0) + (trade.swap || 0)
-    let slLoss = 0
-    
-    if (trade.sl && trade.sl !== 0) {
-      // 🚨 CRITICAL FIX: Proper Stop Loss vs Stop Profit detection
-      const openPrice = trade.openPrice
-      const stopLoss = trade.sl
-      const isBuy = (trade.side === 'BUY' || trade.side === 'buy')
-      
-      console.log(`🔍 DEBUGGING ${trade.symbol}: Open=${openPrice}, SL=${stopLoss}, Side=${trade.side}, P&L=$${tradePnL.toFixed(2)}`)
-      
-      // Determine if this is a PROTECTIVE STOP (stop profit) or RISK STOP (stop loss)
-      const isStopProfit = isBuy ? (stopLoss > openPrice) : (stopLoss < openPrice)
-      
-      console.log(`🔍 Is Stop Profit? ${isStopProfit} (Buy: ${isBuy}, SL > Open: ${stopLoss > openPrice}, SL < Open: ${stopLoss < openPrice})`)
-      
-      if (isStopProfit && tradePnL > 0) {
-        // ✅ PROTECTIVE STOP: SL protects profits - use current P&L as protected profit
-        slLoss = tradePnL // Simply use current profit as the protected amount
-        
-        console.log(`✅ PROTECTIVE STOP confirmed for ${trade.symbol}: +$${slLoss.toFixed(2)} profit protected`)
-      } else {
-        // 🚨 RISK STOP: Real stop loss - calculate potential loss from current price to SL
-        const priceDifference = Math.abs(openPrice - stopLoss)
-        const potentialRisk = -calculatePreciseRiskExposure(trade.symbol, priceDifference, trade.volume || 0, openPrice)
-        
-        if (tradePnL > 0) {
-          // Trade in profit but SL would cause loss: net effect = SL loss - current profit
-          slLoss = potentialRisk + tradePnL // tradePnL is positive, potentialRisk is negative
-        } else {
-          // Trade already in loss: total loss = current loss + additional SL loss  
-          slLoss = potentialRisk + tradePnL // both negative = bigger loss
-        }
-        
-        console.log(`🚨 RISK STOP confirmed for ${trade.symbol}: ${slLoss.toFixed(2)} potential loss`)
-      }
-    } else {
-      // No SL: use worst case estimate as potential loss
-      slLoss = -calculateWorstCaseEstimate(trade.symbol, trade.volume || 0, trade.openPrice, tradePnL, startingBalance)
-    }
-    
-    return {
-      ...trade,
-      potentialSLLoss: slLoss,
-      currentPnL: tradePnL,
-      symbol: trade.symbol,
-      ticketId: trade.ticketId || 'N/A'
-    }
-  })
-  
-  // Sort trades: RISK STOPS first (worst losses), then PROTECTIVE STOPS 
-  const sortedTrades = [...tradesWithLossPotential].sort((a, b) => {
-    // Negative values (losses) come first, then positive values (profits)
-    if (a.potentialSLLoss < 0 && b.potentialSLLoss >= 0) return -1
-    if (a.potentialSLLoss >= 0 && b.potentialSLLoss < 0) return 1
-    // Within same category, sort by magnitude
-    return a.potentialSLLoss - b.potentialSLLoss
-  })
-  
-  console.log('🔄 Simulating sequential SL hits (worst first):')
-  
-  // Simulate sequential closure starting from worst trades
-  let runningEquity = currentEquity
-  let minEquityTouched = currentEquity
-  const sequence: any[] = []
-  let violationFound = false
-  let violationAtStep = -1
-  
-  for (let i = 0; i < sortedTrades.length; i++) {
-    const trade = sortedTrades[i]
-    
-    // 🚨 CRITICAL FIX: Proper handling of Stop Profit vs Stop Loss
-    if (trade.potentialSLLoss > 0) {
-      // PROTECTIVE STOP: SL would lock in profits - IMPROVE equity
-      runningEquity = runningEquity - trade.currentPnL + trade.potentialSLLoss
-      console.log(`   ${i + 1}. ${trade.symbol}: ✅ PROFIT PROTECTED +$${trade.potentialSLLoss.toFixed(2)} → Equity: $${runningEquity.toFixed(2)}`)
-    } else {
-      // RISK STOP: SL would cause loss - DECREASE equity  
-      runningEquity = runningEquity - trade.currentPnL + trade.potentialSLLoss
-      minEquityTouched = Math.min(minEquityTouched, runningEquity)
-      
-      const drawdownAtThisPoint = startingBalance - runningEquity
-      const violatesHere = runningEquity < overallMinEquity  // Use overall limit for simulation
-      
-      if (violatesHere && !violationFound) {
-        violationFound = true
-        violationAtStep = i
-      }
-      
-      console.log(`   ${i + 1}. ${trade.symbol}: 🚨 RISK LOSS ${trade.potentialSLLoss.toFixed(2)} → Equity: $${runningEquity.toFixed(2)} ${violatesHere ? '🚨 VIOLATION!' : ''}`)
-    }
-    
-    // Always track minimum equity (even with protective stops)
-    minEquityTouched = Math.min(minEquityTouched, runningEquity)
-    
-    const drawdownAtThisPoint = startingBalance - runningEquity
-    const violatesHere = runningEquity < overallMinEquity  // Use overall limit for simulation
-    
-    sequence.push({
-      trade: `${trade.symbol} #${trade.ticketId}`,
-      slLoss: trade.potentialSLLoss,
-      runningEquity: runningEquity,
-      violatesHere: violatesHere,
-      isProtectiveStop: trade.potentialSLLoss > 0
-    })
-  }
-  
-  // Use the REAL safe capacity calculated above (already considers most restrictive limit)
-  const finalTrueSafeCapacity = realSafeCapacity
-  
-  // Determine risk level
-  let riskLevel: 'SAFE' | 'DANGER' | 'CRITICAL'
-  if (violationFound || finalTrueSafeCapacity === 0) {
+  if (finalSafeCapacity <= 0) {
     riskLevel = 'CRITICAL'
-  } else if (finalTrueSafeCapacity < 500) {
+    alerts.unshift('🚨 CRITICAL: No safe capacity left!')
+  } else if (finalSafeCapacity < 500) {
     riskLevel = 'DANGER' 
+    alerts.unshift('⚠️ DANGER: Very low safe capacity!')
+  } else if (finalSafeCapacity < 1000) {
+    riskLevel = 'CAUTION'
   } else {
     riskLevel = 'SAFE'
   }
   
-  // Generate warning message
-  let warning: string | null = null
-  if (violationFound) {
-    warning = `⚠️ DANGER: Sequential SL hits would violate PropFirm limit at step ${violationAtStep + 1}!`
-  } else if (finalTrueSafeCapacity === 0) {
-    warning = `⚠️ CRITICAL: Zero safe capacity - any loss will violate PropFirm limits!`
-  } else if (finalTrueSafeCapacity < 200) {
-    warning = `⚠️ WARNING: Only $${finalTrueSafeCapacity.toFixed(2)} real capacity remaining!`
-  }
-  
-  console.log('🚨 TRUE SAFE CAPACITY RESULTS:')
-  console.log(`   Minimum Equity Touched: $${minEquityTouched.toFixed(2)}`)
-  console.log(`   FINAL TRUE Safe Capacity: $${finalTrueSafeCapacity.toFixed(2)} (REAL)`)
-  console.log(`   Theoretical Capacity: $${theoreticalCapacity.toFixed(2)} (MISLEADING)`)
-  console.log(`   Sequential Violation Risk: ${violationFound ? 'YES 🚨' : 'NO ✅'}`)
+  console.log(`🧠 CONSERVATIVE DECISION:`)
+  console.log(`   Daily Margin Left: $${dailyMarginLeft.toFixed(2)}`)
+  console.log(`   Overall Margin Left: $${overallMarginLeft.toFixed(2)}`)
+  console.log(`   Controlling Limit: ${controllingLimit}`)
+  console.log(`   Final Safe Capacity: $${finalSafeCapacity.toFixed(2)}`)
   console.log(`   Risk Level: ${riskLevel}`)
   
   return {
-    trueSafeCapacity: finalTrueSafeCapacity,
-    theoreticalCapacity, 
-    floatingPL,
-    startingBalance,
     currentEquity,
-    dailyLimitUSD: effectiveOverallLossLimit, // Use the actual effective limit
-    scenarios: {
-      ifAllSLHit: {
-        minEquityTouched,
-        wouldViolate: violationFound,
-        marginToViolation: Math.max(0, currentEquity - overallMinEquity),
-        sequence
-      },
-      ifWorstFirst: {
-        sequence: sortedTrades.map(t => `${t.symbol}: ${t.potentialSLLoss.toFixed(2)}`),
-        minEquityReached: minEquityTouched,
-        wouldViolate: violationFound
-      }
-    },
-    warning,
-    riskLevel
+    startingBalance,
+    dailyLossLimitUSD,
+    overallLossLimitUSD,
+    dailyLossesRealized,
+    dailyLossesFloating,
+    maxRiskFromSL,
+    maxRiskFromNoSL,
+    dailyMarginLeft,
+    overallMarginLeft,
+    controllingLimit,
+    finalSafeCapacity,
+    riskLevel,
+    alerts
   }
+}
+
+function calculateGoldRiskUSD(symbol: string, priceDifference: number, volume: number): number {
+  const cleanSymbol = symbol.replace('.p', '').replace('.', '').toUpperCase()
+  
+  if (cleanSymbol.includes('XAU') || cleanSymbol.includes('GOLD')) {
+    // GOLD: 100 ounces per lot, price difference is direct USD
+    const riskUSD = priceDifference * volume * 100
+    return Math.min(riskUSD, 5000) // Cap at $5000 per trade
+  }
+  
+  // For other instruments, use conservative estimate
+  const standardLot = 100000
+  const riskUSD = priceDifference * volume * standardLot * 0.0001 * 10 // ~$10 per pip
+  return Math.min(riskUSD, 2000) // Cap at $2000 per trade
+}
+
+function calculateWorstCaseRisk(symbol: string, volume: number, currentPnL: number): number {
+  const cleanSymbol = symbol.replace('.p', '').replace('.', '').toUpperCase()
+  
+  if (cleanSymbol.includes('XAU') || cleanSymbol.includes('GOLD')) {
+    // GOLD: Can move $50-100 in extreme conditions
+    const worstCaseMove = 50 // $50 per ounce
+    return worstCaseMove * volume * 100 // 100 ounces per lot
+  }
+  
+  // Other instruments: Use current P&L * 5 as worst case
+  return Math.abs(currentPnL) * 5
 }
