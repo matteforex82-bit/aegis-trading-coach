@@ -867,6 +867,10 @@ export default function AccountDashboard() {
           </div>
         )}
 
+            </div>
+          </div>
+        )}
+
         {/* 🔥 PRIORITY: Risk Exposure Scanner */}
         {openTrades.length > 0 && (
           <RiskExposureScanner 
