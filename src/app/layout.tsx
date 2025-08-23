@@ -14,21 +14,20 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Z.ai Code Scaffold - AI-Powered Development",
-  description: "Modern Next.js scaffold optimized for AI-powered development with Z.ai. Built with TypeScript, Tailwind CSS, and shadcn/ui.",
-  keywords: ["Z.ai", "Next.js", "TypeScript", "Tailwind CSS", "shadcn/ui", "AI development", "React"],
-  authors: [{ name: "Z.ai Team" }],
+  title: "PROP CONTROL - Trading Dashboard",
+  description: "Professional PropFirm trading dashboard with MT5 integration, risk management, and performance analytics.",
+  keywords: ["PropFirm", "Trading", "MT5", "Risk Management", "Trading Dashboard", "Performance Analytics"],
+  authors: [{ name: "PROP CONTROL Team" }],
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
   openGraph: {
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
-    url: "https://chat.z.ai",
-    siteName: "Z.ai",
+    title: "PROP CONTROL - Trading Dashboard",
+    description: "Professional PropFirm trading dashboard with MT5 integration",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
+    title: "PROP CONTROL - Trading Dashboard",
+    description: "Professional PropFirm trading dashboard with MT5 integration",
   },
 };
 
