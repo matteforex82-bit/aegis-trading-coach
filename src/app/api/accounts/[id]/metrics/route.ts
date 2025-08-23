@@ -36,11 +36,11 @@ export async function GET(
     // Calculate metrics from real trades (using net P&L like MT5)
     const totalTrades = trades.length
     const winningTrades = trades.filter(t => {
-      const netPnL = (t.pnlGross || 0) + (t.swap || 0) + (t.commission || 0)
+      const netPnL = (t.pnlGross || 0)
       return netPnL > 0
     }).length
     const losingTrades = trades.filter(t => {
-      const netPnL = (t.pnlGross || 0) + (t.swap || 0) + (t.commission || 0)
+      const netPnL = (t.pnlGross || 0)
       return netPnL < 0
     }).length
     const winRate = totalTrades > 0 ? (winningTrades / totalTrades) * 100 : 0
@@ -48,12 +48,10 @@ export async function GET(
     const totalVolume = trades.reduce((sum, t) => sum + (t.volume || 0), 0)
     const totalCommission = trades.reduce((sum, t) => sum + (t.commission || 0), 0)
     const totalSwap = trades.reduce((sum, t) => sum + (t.swap || 0), 0)
-    // Calculate total P&L including swap and commission (like MT5)
+    // Calculate total P&L (pnlGross is already net from import)
     const totalPnL = trades.reduce((sum, t) => {
-      const grossPnL = t.pnlGross || 0
-      const swap = t.swap || 0
-      const commission = t.commission || 0
-      return sum + grossPnL + swap + commission
+      const netPnL = t.pnlGross || 0
+      return sum + netPnL
     }, 0)
 
     // Calculate drawdown (simplified - from start balance)
@@ -64,10 +62,10 @@ export async function GET(
     // Find max/min losses (using net P&L)
     const dailyLosses = trades
       .filter(t => {
-        const netPnL = (t.pnlGross || 0) + (t.swap || 0) + (t.commission || 0)
+        const netPnL = (t.pnlGross || 0)
         return netPnL < 0
       })
-      .map(t => (t.pnlGross || 0) + (t.swap || 0) + (t.commission || 0))
+      .map(t => (t.pnlGross || 0))
     
     const maxDailyLoss = dailyLosses.length > 0 ? Math.min(...dailyLosses) : 0
     const totalMaxLoss = Math.min(0, totalPnL)
@@ -105,7 +103,7 @@ export async function GET(
         volume: t.volume,
         openPrice: t.openPrice,
         openTime: t.openTime,
-        currentPnL: (t.pnlGross || 0) + (t.swap || 0) + (t.commission || 0), // Use latest unrealized P&L from MT5
+        currentPnL: (t.pnlGross || 0), // pnlGross is already net from import
         comment: t.comment
       }))
     })

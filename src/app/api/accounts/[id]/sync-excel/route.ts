@@ -344,7 +344,7 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
               closePrice: closePrice || openPrice,
               openTime,
               closeTime: finalCloseTime,
-              pnlGross: pnlGross - swap - commission,
+              pnlGross: pnlGross + swap + commission,
               swap,
               commission,
               comment: ''
@@ -374,7 +374,7 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
   let totalNetProfit = 0
   
   // Calculate total P&L from closed trades
-  totalNetProfit = closedTrades.reduce((sum, trade) => sum + trade.pnlGross + trade.swap + trade.commission, 0)
+  totalNetProfit = closedTrades.reduce((sum, trade) => sum + trade.pnlGross, 0)
   
   // For historical reports, balance and equity are often the same as final P&L
   balance = totalNetProfit

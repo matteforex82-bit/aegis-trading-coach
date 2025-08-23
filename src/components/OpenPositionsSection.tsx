@@ -36,7 +36,7 @@ export function OpenPositionsSection({ openTrades, account }: OpenPositionsSecti
   const grossTotal = openTrades.reduce((sum, t) => sum + (t.pnlGross || 0), 0)
   const commissionTotal = openTrades.reduce((sum, t) => sum + (t.commission || 0), 0)  
   const swapTotal = openTrades.reduce((sum, t) => sum + (t.swap || 0), 0)
-  const netTotal = grossTotal + commissionTotal + swapTotal
+  const netTotal = grossTotal
 
   const formatCurrency = (amount: number) => 
     new Intl.NumberFormat('en-US', {
@@ -99,7 +99,7 @@ export function OpenPositionsSection({ openTrades, account }: OpenPositionsSecti
       {/* Individual Position Cards */}
       <div className="space-y-4">
         {openTrades.map((trade, index) => {
-          const tradePnL = (trade.pnlGross || 0) + (trade.commission || 0) + (trade.swap || 0)
+          const tradePnL = trade.pnlGross || 0
           const isProfit = tradePnL >= 0
           
           return (

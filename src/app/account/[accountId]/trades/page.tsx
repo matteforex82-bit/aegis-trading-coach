@@ -111,8 +111,8 @@ export default function AccountTrades() {
           setTrades(closedTrades)
           
           // Calculate stats
-          const winningTrades = closedTrades.filter((t: any) => (t.pnlGross + t.commission + t.swap) > 0).length
-          const totalPnL = closedTrades.reduce((sum: number, t: any) => sum + (t.pnlGross + t.commission + t.swap), 0)
+          const winningTrades = closedTrades.filter((t: any) => t.pnlGross > 0).length
+          const totalPnL = closedTrades.reduce((sum: number, t: any) => sum + t.pnlGross, 0)
           
           setStats({
             totalTrades: closedTrades.length,
@@ -180,7 +180,7 @@ export default function AccountTrades() {
   }
 
   const getTotalPnL = (trade: Trade) => {
-    return trade.pnlGross + (trade.commission || 0) + (trade.swap || 0)
+    return trade.pnlGross
   }
 
   if (loading) {

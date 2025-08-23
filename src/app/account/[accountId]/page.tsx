@@ -333,12 +333,12 @@ export default function AccountDashboard() {
           
           // Calculate total P&L for open positions
           const openPositionsTotal = openTradesData.reduce((sum: number, t: any) => {
-            return sum + (t.pnlGross + (t.commission || 0) + (t.swap || 0))
+            return sum + t.pnlGross
           }, 0)
           setOpenPositionsTotal(openPositionsTotal)
           
           const winningTrades = closedTrades.filter((t: any) => t.pnlGross > 0).length
-          const totalPnL = closedTrades.reduce((sum: number, t: any) => sum + (t.pnlGross + t.commission + t.swap), 0)
+          const totalPnL = closedTrades.reduce((sum: number, t: any) => sum + t.pnlGross, 0)
           
           setStats({
             totalTrades: trades.length,
@@ -369,7 +369,7 @@ export default function AccountDashboard() {
             
             const closeDate = new Date(trade.closeTime).toISOString().split('T')[0]
             const openDate = new Date(trade.openTime).toISOString().split('T')[0]
-            const tradeProfit = trade.pnlGross + trade.commission + trade.swap
+            const tradeProfit = trade.pnlGross
             
             // 🔍 DEBUG: Log trades with large profits
             if (Math.abs(tradeProfit) > 500) {
@@ -415,7 +415,7 @@ export default function AccountDashboard() {
           // Add today's open positions to projection
           let todayOpenPnL = 0
           openTradesData.forEach(trade => {
-            const tradeProfit = trade.pnlGross + trade.commission + trade.swap
+            const tradeProfit = trade.pnlGross
             todayOpenPnL += tradeProfit
             
             // Track best single trade including open positions
@@ -459,7 +459,7 @@ export default function AccountDashboard() {
             const closeDate = new Date(t.closeTime).toISOString().split('T')[0]
             return closeDate === today
           })
-          const dailyPnL = todayClosedTrades.reduce((sum, t) => sum + (t.pnlGross + t.commission + t.swap), 0)
+          const dailyPnL = todayClosedTrades.reduce((sum, t) => sum + t.pnlGross, 0)
           const dailyDrawdownAmount = Math.min(0, dailyPnL) // Only negative values count as drawdown
           const dailyDrawdownLimit = accountSize * 0.05 // 5% limit
           
@@ -474,7 +474,7 @@ export default function AccountDashboard() {
           )
           
           sortedTrades.forEach(trade => {
-            const pnl = trade.pnlGross + trade.commission + trade.swap
+            const pnl = trade.pnlGross
             runningBalance += pnl
             if (runningBalance > maxBalance) {
               maxBalance = runningBalance
