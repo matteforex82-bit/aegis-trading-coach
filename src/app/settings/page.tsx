@@ -738,6 +738,25 @@ Check console for detailed data structure`)
                               <div className="text-xs text-gray-600">P&L Totale</div>
                             </div>
                           </div>
+                          
+                          {syncResult.data.debug && (
+                            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                              <div className="text-sm text-yellow-800">
+                                <div className="font-semibold mb-2">🔍 Debug P&L Analysis:</div>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  <div>Trade processati: {syncResult.data.debug.tradeCount}</div>
+                                  <div>Swap totale dai trade: {syncResult.data.debug.totalSwapFromTrades?.toFixed(2)}€</div>
+                                  <div>Commission totali: {syncResult.data.debug.totalCommissionFromTrades?.toFixed(2)}€</div>
+                                  <div>Profit totale (lordo): {syncResult.data.debug.totalProfitFromTrades?.toFixed(2)}€</div>
+                                  <div>P&L calcolato: {syncResult.data.debug.calculatedTotal?.toFixed(2)}€</div>
+                                  <div>P&L dal report: {syncResult.data.debug.totalFromReport?.toFixed(2)}€</div>
+                                  <div className="col-span-2 font-semibold text-red-600">
+                                    🎯 Differenza: {syncResult.data.debug.difference?.toFixed(2)}€
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                       
