@@ -167,3 +167,39 @@
     font-size: clamp(1.5rem, 4vw, 2rem);
   }
 }
+
+/* Performance optimizations for mobile */
+@layer utilities {
+  /* GPU acceleration for animations */
+  .gpu-accelerated {
+    transform: translateZ(0);
+    will-change: transform;
+  }
+  
+  /* Optimize scrolling on iOS */
+  .ios-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  /* Prevent text adjustment on iOS */
+  .ios-text-size-adjust {
+    -webkit-text-size-adjust: 100%;
+  }
+}
+
+/* Mobile-first performance optimizations */
+@media (max-width: 768px) {
+  /* Reduce animations on mobile for better performance */
+  .reduce-motion {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  /* Optimize font rendering for mobile */
+  body {
+    text-rendering: optimizeSpeed;
+    -webkit-font-smoothing: subpixel-antialiased;
+  }
+}
