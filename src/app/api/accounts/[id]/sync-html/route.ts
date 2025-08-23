@@ -117,6 +117,7 @@ export async function POST(
               equity: parsedData.summary.equity,
               floatingPnL: parsedData.summary.floatingPnL
             },
+            debug: parsedData.debug, // Include debug info in response
             trades: parsedData.closedTrades.slice(0, 5), // First 5 for preview
             positions: parsedData.openPositions
           }
@@ -380,6 +381,15 @@ function parseHtmlReport($: cheerio.CheerioAPI) {
       equity,
       floatingPnL,
       totalNetProfit
+    },
+    debug: {
+      totalSwapFromTrades,
+      totalCommissionFromTrades,
+      totalProfitFromTrades,
+      calculatedTotal,
+      totalFromReport: totalNetProfit,
+      difference: totalNetProfit - calculatedTotal,
+      tradeCount: closedTrades.length
     }
   }
 }

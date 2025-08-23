@@ -742,13 +742,34 @@ Check console for detailed data structure`)
                       )}
                       
                       {syncResult.result && (
-                        <div className="mt-3 p-3 bg-green-100 rounded">
-                          <div className="text-sm text-green-800">
-                            <div>✅ Importate: {syncResult.result.imported.closedTrades} operazioni, {syncResult.result.imported.openPositions} posizioni</div>
-                            {syncResult.result.cleared.trades > 0 && (
-                              <div>🧹 Puliti: {syncResult.result.cleared.trades} operazioni precedenti</div>
-                            )}
+                        <div className="mt-3 space-y-3">
+                          <div className="p-3 bg-green-100 rounded">
+                            <div className="text-sm text-green-800">
+                              <div>✅ Importate: {syncResult.result.imported.closedTrades} operazioni, {syncResult.result.imported.openPositions} posizioni</div>
+                              {syncResult.result.cleared.trades > 0 && (
+                                <div>🧹 Puliti: {syncResult.result.cleared.trades} operazioni precedenti</div>
+                              )}
+                            </div>
                           </div>
+                          
+                          {syncResult.preview?.debug && (
+                            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded">
+                              <div className="text-sm text-yellow-800">
+                                <div className="font-semibold mb-2">🔍 Debug P&L Analysis:</div>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  <div>Trade processati: {syncResult.preview.debug.tradeCount}</div>
+                                  <div>Swap totale dai trade: {syncResult.preview.debug.totalSwapFromTrades?.toFixed(2)}€</div>
+                                  <div>Commission totali: {syncResult.preview.debug.totalCommissionFromTrades?.toFixed(2)}€</div>
+                                  <div>Profit totale (lordo): {syncResult.preview.debug.totalProfitFromTrades?.toFixed(2)}€</div>
+                                  <div>P&L calcolato: {syncResult.preview.debug.calculatedTotal?.toFixed(2)}€</div>
+                                  <div>P&L dal report: {syncResult.preview.debug.totalFromReport?.toFixed(2)}€</div>
+                                  <div className="col-span-2 font-semibold text-red-600">
+                                    🎯 Differenza: {syncResult.preview.debug.difference?.toFixed(2)}€
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
