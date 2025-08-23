@@ -702,7 +702,7 @@ export default function AccountDashboard() {
   // }
 
   return (
-    <DashboardLayout title="Dashboard" subtitle={account?.login || "Account"}>
+    <DashboardLayout title="Dashboard" subtitle="Account Dashboard">
       <div className="p-6">
         {/* Professional Account Header */}
         <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
