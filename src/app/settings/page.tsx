@@ -57,9 +57,6 @@ export default function SettingsPage() {
   const [currentPhase, setCurrentPhase] = useState<string>('PHASE_1')
   const [loading, setLoading] = useState(true)
   const [assigning, setAssigning] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [deleteConfirmText, setDeleteConfirmText] = useState('')
 
   useEffect(() => {
     fetchData()
@@ -144,37 +141,6 @@ export default function SettingsPage() {
     }
   }
 
-  const handleDeleteAccount = async () => {
-    if (!selectedAccount) {
-      alert('Please select an account to delete')
-      return
-    }
-
-    setDeleting(true)
-    try {
-      const response = await fetch(`/api/accounts/${selectedAccount.id}/delete`, {
-        method: 'DELETE'
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        alert(`✅ Account eliminato con successo!\n\n• Account: ${result.deletedData.accountLogin}\n• Trades: ${result.deletedData.tradesDeleted}\n• Challenges: ${result.deletedData.challengesDeleted}\n• Metrics: ${result.deletedData.metricsDeleted}`)
-        
-        // Refresh data and reset selection
-        await fetchData()
-        setSelectedAccount(null)
-        setShowDeleteConfirm(false)
-      } else {
-        const error = await response.json()
-        alert(`❌ Errore: ${error.error}`)
-      }
-    } catch (error) {
-      console.error('Error deleting account:', error)
-      alert('❌ Errore durante l\'eliminazione')
-    } finally {
-      setDeleting(false)
-    }
-  }
 
   // Helper functions for smart template selection
   const getTemplateById = (templateId: string): PropFirmTemplate | null => {
@@ -222,6 +188,7 @@ export default function SettingsPage() {
       maximumFractionDigits: 0
     }).format(amount)
   }
+
 
   if (loading) {
     return (
@@ -647,6 +614,7 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+
       </div>
 
     </div>
