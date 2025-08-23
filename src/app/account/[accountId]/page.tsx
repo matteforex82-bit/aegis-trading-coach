@@ -38,6 +38,7 @@ import { OpenPositionsSection } from '@/components/OpenPositionsSection'
 import ConnectionStatus from '@/components/ConnectionStatus'
 import DynamicRuleRenderer from '@/components/DynamicRuleRenderer'
 import SimpleRiskWidget from '@/components/SimpleRiskWidget'
+import AegisAssistant from '@/components/AegisAssistant'
 
 interface Account {
   id: string
@@ -1089,6 +1090,14 @@ export default function AccountDashboard() {
             
           </div>
         )}
+
+        {/* 🤖 AEGIS AI ASSISTANT */}
+        <AegisAssistant 
+          account={account}
+          stats={stats}
+          rules={rules}
+          openTrades={openTrades}
+        />
 
         {/* 📊 Trading Performance Summary */}
         {stats && (
