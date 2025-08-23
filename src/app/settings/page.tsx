@@ -63,6 +63,7 @@ export default function SettingsPage() {
   const [assigning, setAssigning] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
   
   // MT5 Sync states
   const [reportFile, setReportFile] = useState<File | null>(null)
@@ -397,6 +398,43 @@ Check console for detailed data structure`)
           </div>
         </div>
       </header>
+
+      {/* 🎯 Account Info Header - NEW */}
+      {selectedAccount && (
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-3">
+                  <div className="p-3 bg-white/20 rounded-full">
+                    <DollarSign className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold">
+                      {selectedAccount.name || `Account ${selectedAccount.login}`}
+                    </h2>
+                    <div className="flex items-center space-x-4 text-blue-100 text-sm">
+                      <span>🆔 Login: {selectedAccount.login}</span>
+                      {selectedAccount.propFirmTemplate && (
+                        <>
+                          <span>•</span>
+                          <span>🏢 {selectedAccount.propFirmTemplate.propFirm.name}</span>
+                          <span>•</span>
+                          <span>💰 {formatCurrency(selectedAccount.propFirmTemplate.accountSize)}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm text-blue-100">Account attivo per le configurazioni</div>
+                <div className="text-xs text-blue-200">Tutte le impostazioni si applicano a questo account</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="p-6 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -842,47 +880,124 @@ Check console for detailed data structure`)
                 </CardHeader>
                 <CardContent className="p-6">
                   {!showDeleteConfirm ? (
-                    <Button
-                      onClick={() => setShowDeleteConfirm(true)}
-                      variant="destructive"
-                      className="w-full h-12 text-lg"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Elimina Account
-                    </Button>
-                  ) : (
                     <div className="space-y-4">
-                      <div className="p-4 bg-red-100 rounded-lg border border-red-300">
-                        <h4 className="font-semibold text-red-800 mb-2">
-                          ⚠️ Conferma Eliminazione
-                        </h4>
-                        <p className="text-red-700 text-sm mb-2">
-                          Stai per eliminare l'account <strong>{selectedAccount.login}</strong> 
-                          e tutti i suoi dati:
-                        </p>
-                        <ul className="text-red-700 text-sm list-disc list-inside space-y-1">
-                          <li>Tutte le operazioni di trading</li>
-                          <li>Storico delle performance</li>
-                          <li>Configurazioni PropFirm</li>
-                          <li>Challenge e metriche</li>
-                        </ul>
-                        <p className="text-red-800 font-semibold text-sm mt-2">
-                          ⚠️ Questa azione NON può essere annullata!
-                        </p>
+                      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="flex items-start space-x-3">
+                          <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <h4 className="font-semibold text-red-800 text-sm mb-1">Eliminazione Permanente</h4>
+                            <p className="text-red-600 text-xs">
+                              Questa azione eliminerà l'account <strong>{selectedAccount.login}</strong> e tutti i suoi dati permanentemente.
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex space-x-2">
+                      <Button
+                        onClick={() => {
+                          setShowDeleteConfirm(true)
+                          setDeleteConfirmText('') // Reset text
+                        }}
+                        variant="destructive"
+                        className="w-full h-11 text-base hover:bg-red-600"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Elimina Account
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Enhanced warning section */}
+                      <div className="p-5 bg-red-100 rounded-lg border-2 border-red-300">
+                        <div className="flex items-center space-x-2 mb-3">
+                          <AlertCircle className="h-5 w-5 text-red-600" />
+                          <h4 className="font-bold text-red-800 text-base">
+                            ⚠️ ATTENZIONE: Eliminazione Permanente
+                          </h4>
+                        </div>
+                        
+                        <div className="bg-white p-4 rounded border border-red-200 mb-4">
+                          <div className="text-center mb-2">
+                            <div className="text-lg font-bold text-red-700">
+                              Account: {selectedAccount.login}
+                            </div>
+                            {selectedAccount.name && (
+                              <div className="text-sm text-red-600">{selectedAccount.name}</div>
+                            )}
+                          </div>
+                        </div>
+
+                        <p className="text-red-700 text-sm font-medium mb-3">
+                          Questi dati verranno eliminati PERMANENTEMENTE:
+                        </p>
+                        <div className="grid grid-cols-2 gap-2 mb-4">
+                          <div className="flex items-center space-x-2 text-red-700 text-xs">
+                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                            <span>Tutte le operazioni di trading</span>
+                          </div>
+                          <div className="flex items-center space-x-2 text-red-700 text-xs">
+                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                            <span>Storico performance</span>
+                          </div>
+                          <div className="flex items-center space-x-2 text-red-700 text-xs">
+                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                            <span>Configurazioni PropFirm</span>
+                          </div>
+                          <div className="flex items-center space-x-2 text-red-700 text-xs">
+                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                            <span>Challenge e metriche</span>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-red-200 p-3 rounded border border-red-300">
+                          <p className="text-red-800 font-bold text-sm text-center">
+                            🚨 QUESTA AZIONE NON PUÒ ESSERE ANNULLATA! 🚨
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Type "delete" confirmation */}
+                      <div className="space-y-3">
+                        <Label className="text-red-800 font-semibold text-sm">
+                          Per confermare, digita esattamente: <code className="bg-red-100 px-1 rounded text-red-700">delete</code>
+                        </Label>
+                        <Input
+                          type="text"
+                          value={deleteConfirmText}
+                          onChange={(e) => setDeleteConfirmText(e.target.value)}
+                          placeholder="Digita 'delete' per confermare..."
+                          className="border-red-300 focus:border-red-500 focus:ring-red-200"
+                          autoComplete="off"
+                        />
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex space-x-3">
                         <Button
                           onClick={handleDeleteAccount}
-                          disabled={deleting}
+                          disabled={deleting || deleteConfirmText !== 'delete'}
                           variant="destructive"
-                          className="flex-1"
+                          className="flex-1 h-11 text-base font-semibold"
                         >
-                          {deleting ? 'Eliminando...' : 'SÌ, ELIMINA'}
+                          {deleting ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Eliminando...
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              ELIMINA DEFINITIVAMENTE
+                            </>
+                          )}
                         </Button>
                         <Button
-                          onClick={() => setShowDeleteConfirm(false)}
+                          onClick={() => {
+                            setShowDeleteConfirm(false)
+                            setDeleteConfirmText('')
+                          }}
                           variant="outline"
-                          className="flex-1"
+                          className="px-6 h-11 text-base"
+                          disabled={deleting}
                         >
                           Annulla
                         </Button>
