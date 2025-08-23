@@ -1,12 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { ArrowLeft, CheckCircle, AlertCircle, DollarSign, Target, Shield, Trash2, Upload, RotateCcw, ChevronRight, Home, Award, ArrowRight, Check } from 'lucide-react'
+import { ArrowLeft, CheckCircle, AlertCircle, DollarSign, Upload, ChevronRight, Home, Check } from 'lucide-react'
 import Link from 'next/link'
 
 interface PropFirmTemplate {
@@ -64,13 +61,7 @@ export default function SettingsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   
-  // MT5 Sync states
-  const [reportFile, setReportFile] = useState<File | null>(null)
-  const [fileType, setFileType] = useState<'html' | 'excel'>('html')
-  const [syncMode, setSyncMode] = useState<'preview' | 'import'>('preview')
-  const [clearBeforeSync, setClearBeforeSync] = useState(true)
-  const [syncing, setSyncing] = useState(false)
-  const [syncResult, setSyncResult] = useState<any>(null)
+  // MT5 Sync states - Removed for now
 
   useEffect(() => {
     fetchData()
@@ -224,132 +215,7 @@ export default function SettingsPage() {
     return errors
   }
 
-  // MT5 Sync functions (unchanged from original)
-  const handleFileUpload = (file: File) => {
-    const isHtml = file.type === 'text/html' || file.name.endsWith('.html')
-    const isExcel = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || file.name.endsWith('.xlsx')
-    
-    if (isHtml || isExcel) {
-      setReportFile(file)
-      setFileType(isHtml ? 'html' : 'excel')
-      setSyncResult(null)
-      console.log(`📄 File uploaded: ${file.name} (${isHtml ? 'HTML' : 'Excel'})`)
-    } else {
-      alert('Please select an HTML (.html) or Excel (.xlsx) file')
-    }
-  }
-
-  const handleTestExcel = async () => {
-    if (!selectedAccount || !reportFile || fileType !== 'excel') {
-      alert('Please select an Excel file first')
-      return
-    }
-
-    setSyncing(true)
-    try {
-      const formData = new FormData()
-      formData.append('excelFile', reportFile)
-
-      const response = await fetch(`/api/accounts/${selectedAccount.id}/test-excel`, {
-        method: 'POST',
-        body: formData
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        console.log('🔬 EXCEL TEST RESULTS:', result.debug)
-        
-        alert(`Excel Test Results:
-
-File: ${result.debug.fileName}
-Total Rows: ${result.debug.totalRows}
-Account Found: ${result.debug.accountFound ? 'YES' : 'NO'} (${result.debug.accountLogin})
-Positions Section: ${result.debug.positionsFound ? 'YES' : 'NO'} (row ${result.debug.positionsRowIndex})
-Trade Rows Found: ${result.debug.tradeRowsFound}
-
-Check console for detailed data structure`)
-      } else {
-        const error = await response.json()
-        alert(`Test failed: ${error.error}`)
-      }
-    } catch (error) {
-      console.error('Error testing Excel:', error)
-      alert('Test failed')
-    } finally {
-      setSyncing(false)
-    }
-  }
-
-  const handleSyncReport = async () => {
-    if (!selectedAccount || !reportFile) {
-      alert('Please select an account and report file')
-      return
-    }
-
-    setSyncing(true)
-    try {
-      const formData = new FormData()
-      const fileKey = fileType === 'html' ? 'htmlFile' : 'excelFile'
-      formData.append(fileKey, reportFile)
-      formData.append('options', JSON.stringify({
-        clearExisting: clearBeforeSync,
-        mode: syncMode
-      }))
-
-      const endpoint = fileType === 'html' ? 'sync-html' : 'sync-excel'
-      const response = await fetch(`/api/accounts/${selectedAccount.id}/${endpoint}`, {
-        method: 'POST',
-        body: formData
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        setSyncResult(result)
-        
-        if (syncMode === 'import') {
-          alert('✅ Sincronizzazione completata con successo!')
-          await fetchData() // Refresh data
-        }
-      } else {
-        const error = await response.json()
-        console.error('❌ Detailed error from API:', error)
-        
-        let errorMessage = `❌ Errore: ${error.error}`
-        
-        if (error.details) {
-          errorMessage += `\n\n🔍 Dettagli: ${error.details}`
-        }
-        
-        if (error.errorType) {
-          errorMessage += `\n\n🏷️ Tipo: ${error.errorType}`
-        }
-        
-        if (error.stack) {
-          errorMessage += `\n\n📋 Stack: ${error.stack}`
-        }
-        
-        if (error.partialResult) {
-          errorMessage += `\n\n📊 Risultati parziali:`
-          errorMessage += `\n• Importati: ${error.partialResult.imported?.closedTrades || 0} trades`
-          errorMessage += `\n• Errori: ${error.partialResult.errors?.length || 0}`
-          if (error.partialResult.errors?.length > 0) {
-            errorMessage += `\n• Primi errori: ${error.partialResult.errors.slice(0, 3).join('; ')}`
-          }
-        }
-        
-        if (error.debug) {
-          errorMessage += `\n\n🐛 Debug: ${JSON.stringify(error.debug, null, 2)}`
-        }
-        
-        alert(errorMessage)
-      }
-    } catch (error) {
-      console.error('Error syncing report:', error)
-      alert('❌ Errore durante la sincronizzazione')
-    } finally {
-      setSyncing(false)
-    }
-  }
+  // Legacy sync functions removed for now
 
   const formatCurrency = (amount: number, currency: string = 'USD') => {
     return new Intl.NumberFormat('en-US', {
@@ -368,8 +234,8 @@ Check console for detailed data structure`)
     )
   }
 
-  const selectedTemplateData = getSelectedTemplateData()
-  const validationErrors = getValidationErrors()
+  // const selectedTemplateData = getSelectedTemplateData()
+  // const validationErrors = getValidationErrors()
 
   const steps = [
     { number: 1, title: 'Seleziona Account', description: 'Scegli l\'account MT5 da configurare' },
