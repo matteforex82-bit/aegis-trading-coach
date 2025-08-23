@@ -811,7 +811,7 @@ export default function AccountDashboard() {
   return (
     <DashboardLayout 
       title={account.name || 'Unknown Account'} 
-      subtitle={`Account: ${account.login || 'N/A'} | ${account.broker || 'N/A'} | ${account.server || 'N/A'}`}
+      subtitle="Account Dashboard"
     >
       <div className="p-6 space-y-6">
         {/* Professional Account Header */}
