@@ -262,7 +262,7 @@ function parseHtmlReport($: cheerio.CheerioAPI) {
             closePrice,
             openTime: convertMT5DateTime(openTime),
             closeTime: convertMT5DateTime(closeTime),
-            pnlGross: profit, // In MT4/5 HTML reports, profit is already net
+            pnlGross: profit + swap + commission, // Same logic as Excel: profit + commission + swap
             swap,
             commission,
             comment: $(cells[0]).attr('title') || '' // Get comment from title attribute
@@ -467,7 +467,7 @@ async function importDataToDatabase(accountId: string, parsedData: any, clearExi
           openTime: position.openTime,
           closePrice: null,
           closeTime: null,
-          pnlGross: position.currentPnL - position.swap, // Exclude swap from gross
+          pnlGross: position.currentPnL + position.swap + 0, // Same logic: profit + swap + commission
           swap: position.swap,
           commission: 0, // Open positions usually don't have commission yet
           comment: position.comment || ''
