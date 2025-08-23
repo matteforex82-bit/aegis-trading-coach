@@ -4,11 +4,9 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
-import { ArrowLeft, Settings, CheckCircle, AlertCircle, DollarSign, Target, Shield, Trash2, Upload, FileText, RotateCcw, Zap, Star, Award, TrendingUp } from 'lucide-react'
+import { ArrowLeft, Settings, CheckCircle, AlertCircle, DollarSign, Target, Shield, Trash2, Upload, FileText, RotateCcw, ChevronRight, Home, Award, ArrowRight, Check, Building2 } from 'lucide-react'
 import Link from 'next/link'
 
 interface PropFirmTemplate {
@@ -54,7 +52,8 @@ export default function SettingsPage() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
   
-  // 🚀 NEW: Smart template selection system
+  // Wizard state
+  const [currentStep, setCurrentStep] = useState(1)
   const [selectedPropFirm, setSelectedPropFirm] = useState<string>('')
   const [selectedTemplate, setSelectedTemplate] = useState<string>('')
   const [initialBalance, setInitialBalance] = useState<string>('')
@@ -372,69 +371,109 @@ Check console for detailed data structure`)
   const selectedTemplateData = getSelectedTemplateData()
   const validationErrors = getValidationErrors()
 
+  const steps = [
+    { number: 1, title: 'Seleziona Account', description: 'Scegli l\'account MT5 da configurare' },
+    { number: 2, title: 'PropFirm Challenge', description: 'Seleziona la tua PropFirm' },
+    { number: 3, title: 'Account Size', description: 'Definisci la size del challenge' },
+    { number: 4, title: 'Conferma', description: 'Rivedi e conferma la configurazione' }
+  ]
+
+  const handleAccountSelect = (account: Account) => {
+    setSelectedAccount(account)
+    setCurrentStep(2)
+  }
+
+  const handlePropFirmSelect = (propFirmId: string) => {
+    setSelectedPropFirm(propFirmId)
+    setSelectedTemplate('') // Reset template
+    setCurrentStep(3)
+  }
+
+  const handleTemplateSelect = (templateId: string) => {
+    setSelectedTemplate(templateId)
+    const template = getTemplateById(templateId)
+    if (template) {
+      setInitialBalance(template.accountSize.toString())
+    }
+    setCurrentStep(4)
+  }
+
+  const canGoToStep = (step: number): boolean => {
+    switch (step) {
+      case 1: return true
+      case 2: return !!selectedAccount
+      case 3: return !!selectedAccount && !!selectedPropFirm
+      case 4: return !!selectedAccount && !!selectedPropFirm && !!selectedTemplate
+      default: return false
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
-      {/* 🎨 Enhanced Header with Gradient */}
-      <header className="bg-white/80 backdrop-blur border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Link href="/">
-              <Button variant="ghost" size="sm" className="hover:bg-blue-50">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Dashboard
-              </Button>
-            </Link>
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg">
-                <Settings className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                  PropFirm Settings
-                </h1>
-                <p className="text-sm text-gray-500">Configure templates e gestisci i tuoi account</p>
-              </div>
-            </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Enhanced Header */}
+      <header className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Breadcrumb */}
+          <div className="flex items-center space-x-2 text-sm text-gray-500 mb-4">
+            <Home className="h-4 w-4" />
+            <Link href="/" className="hover:text-blue-600 transition-colors">Dashboard</Link>
+            <ChevronRight className="h-4 w-4" />
+            <span className="text-gray-900 font-medium">Template Configuration</span>
+          </div>
+          
+          {/* Title & Description */}
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Configurazione Account Trading
+            </h1>
+            <p className="text-lg text-gray-600 max-w-2xl">
+              Collega il tuo account MT5 a un template PropFirm per monitorare le regole
+            </p>
           </div>
         </div>
       </header>
 
-      {/* 🎯 Account Info Header - NEW */}
-      {selectedAccount && (
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
+      {/* Progress Bar */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
+            {steps.map((step, index) => (
+              <div key={step.number} className="flex items-center">
                 <div className="flex items-center space-x-3">
-                  <div className="p-3 bg-white/20 rounded-full">
-                    <DollarSign className="h-6 w-6" />
+                  <div className={`
+                    w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-colors
+                    ${currentStep > step.number 
+                      ? 'bg-green-500 text-white' 
+                      : currentStep === step.number 
+                        ? 'bg-blue-600 text-white' 
+                        : canGoToStep(step.number) 
+                          ? 'bg-gray-200 text-gray-600 hover:bg-blue-100 cursor-pointer' 
+                          : 'bg-gray-100 text-gray-400'
+                    }
+                  `}
+                  onClick={() => canGoToStep(step.number) && setCurrentStep(step.number)}
+                  >
+                    {currentStep > step.number ? <Check className="h-5 w-5" /> : step.number}
                   </div>
-                  <div>
-                    <h2 className="text-xl font-bold">
-                      {selectedAccount.name || `Account ${selectedAccount.login}`}
-                    </h2>
-                    <div className="flex items-center space-x-4 text-blue-100 text-sm">
-                      <span>🆔 Login: {selectedAccount.login}</span>
-                      {selectedAccount.propFirmTemplate && (
-                        <>
-                          <span>•</span>
-                          <span>🏢 {selectedAccount.propFirmTemplate.propFirm.name}</span>
-                          <span>•</span>
-                          <span>💰 {formatCurrency(selectedAccount.propFirmTemplate.accountSize)}</span>
-                        </>
-                      )}
+                  <div className="hidden sm:block">
+                    <div className={`text-sm font-medium ${
+                      currentStep >= step.number ? 'text-gray-900' : 'text-gray-400'
+                    }`}>
+                      {step.title}
                     </div>
+                    <div className="text-xs text-gray-500">{step.description}</div>
                   </div>
                 </div>
+                {index < steps.length - 1 && (
+                  <div className={`hidden sm:block w-16 h-0.5 mx-4 ${
+                    currentStep > step.number ? 'bg-green-500' : 'bg-gray-200'
+                  }`} />
+                )}
               </div>
-              <div className="text-right">
-                <div className="text-sm text-blue-100">Account attivo per le configurazioni</div>
-                <div className="text-xs text-blue-200">Tutte le impostazioni si applicano a questo account</div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
-      )}
+      </div>
 
       <div className="p-6 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
