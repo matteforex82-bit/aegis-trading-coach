@@ -132,6 +132,17 @@ export async function POST(
 
       case 'import':
         const importResult = await importDataToDatabase(accountId, parsedData, options.clearExisting)
+        // Check if there were any errors during import
+        if (importResult.errors && importResult.errors.length > 0) {
+          console.error('❌ Import completed with errors:', importResult.errors)
+          return NextResponse.json({
+            success: false,
+            error: 'Import completed with errors',
+            details: importResult.errors.join('; '),
+            partialResult: importResult
+          }, { status: 500 })
+        }
+
         return NextResponse.json({
           success: true,
           result: importResult
@@ -143,9 +154,18 @@ export async function POST(
 
   } catch (error: any) {
     console.error('❌ Error syncing HTML:', error)
+    console.error('❌ Error stack:', error.stack)
+    console.error('❌ Error details:', {
+      name: error.name,
+      message: error.message,
+      cause: error.cause
+    })
+    
     return NextResponse.json({ 
       error: 'Failed to sync HTML report',
-      details: error.message 
+      details: error.message,
+      errorType: error.name,
+      stack: error.stack?.split('\n')[0] // First line of stack trace
     }, { status: 500 })
   }
 }
@@ -509,19 +529,26 @@ async function importDataToDatabase(accountId: string, parsedData: any, clearExi
   }
 
   // Update account with correct balance from HTML report
-  const startingBalance = 50000 // Default starting balance
-  const finalBalance = startingBalance + parsedData.summary.totalNetProfit
-  
-  console.log(`💰 Updating account balance: Starting ${startingBalance} + P&L ${parsedData.summary.totalNetProfit} = Final ${finalBalance}`)
-  
-  await db.account.update({
-    where: { id: accountId },
-    data: {
-      currentBalance: finalBalance,
-      // Also update any equity field if it exists
-      currentEquity: parsedData.summary.equity || finalBalance
-    }
-  })
+  try {
+    const startingBalance = 50000 // Default starting balance
+    const finalBalance = startingBalance + parsedData.summary.totalNetProfit
+    
+    console.log(`💰 Updating account balance: Starting ${startingBalance} + P&L ${parsedData.summary.totalNetProfit} = Final ${finalBalance}`)
+    
+    await db.account.update({
+      where: { id: accountId },
+      data: {
+        currentBalance: finalBalance,
+        // Also update any equity field if it exists
+        currentEquity: parsedData.summary.equity || finalBalance
+      }
+    })
+    
+    console.log(`✅ Account balance updated successfully`)
+  } catch (balanceError: any) {
+    console.error('❌ Error updating account balance:', balanceError)
+    results.errors.push(`Failed to update account balance: ${balanceError.message}`)
+  }
 
   console.log(`✅ Import completed: ${results.imported.closedTrades} trades, ${results.imported.openPositions} positions, balance updated`)
   return results
