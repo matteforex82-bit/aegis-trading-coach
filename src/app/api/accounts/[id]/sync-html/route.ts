@@ -347,7 +347,12 @@ function parseHtmlReport($: cheerio.CheerioAPI) {
   const balance = parseFloat($('td:contains("Balance:")').next().text().replace(/[^0-9.-]/g, '')) || 0
   const equity = parseFloat($('td:contains("Equity:")').next().text().replace(/[^0-9.-]/g, '')) || 0
   const floatingPnL = parseFloat($('td:contains("Floating P/L:")').next().text().replace(/[^0-9.-]/g, '')) || 0
-  const totalNetProfit = parseFloat($('td:contains("Total Net Profit:")').next().text().replace(/[^0-9.-]/g, '')) || 0
+  
+  // Use Total Net Profit directly from HTML report (includes all fees and swaps)
+  const totalNetProfit = parseFloat($('td:contains("Total Net Profit:")').next().text().replace(/[^0-9.-]/g, '')) || 
+                         parseFloat($('td:contains("Closed Trade P/L:")').next().text().replace(/[^0-9.-]/g, '')) || 0
+  
+  console.log(`💰 Using Total Net Profit from HTML report: ${totalNetProfit}`)
 
   return {
     accountLogin,

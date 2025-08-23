@@ -278,7 +278,7 @@ function parseExcelReport(workbook: XLSX.WorkBook) {
     console.log(`🔍 Looking for trade data after position row ${positionsHeaderIndex}`)
     
     // Look for data rows after positions header (EXPANDED range for complete import)
-    for (let i = positionsHeaderIndex + 1; i < Math.min(positionsHeaderIndex + 100, mainData.length); i++) {
+    for (let i = positionsHeaderIndex + 1; i < Math.min(positionsHeaderIndex + 200, mainData.length); i++) {
       const row = mainData[i] || []
       
       console.log(`🔍 Checking potential trade row ${i}:`, row.slice(0, 8))
