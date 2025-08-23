@@ -312,7 +312,36 @@ Check console for detailed data structure`)
         }
       } else {
         const error = await response.json()
-        alert(`❌ Errore: ${error.error}${error.debug ? '\n\nDebug: ' + JSON.stringify(error.debug, null, 2) : ''}`)
+        console.error('❌ Detailed error from API:', error)
+        
+        let errorMessage = `❌ Errore: ${error.error}`
+        
+        if (error.details) {
+          errorMessage += `\n\n🔍 Dettagli: ${error.details}`
+        }
+        
+        if (error.errorType) {
+          errorMessage += `\n\n🏷️ Tipo: ${error.errorType}`
+        }
+        
+        if (error.stack) {
+          errorMessage += `\n\n📋 Stack: ${error.stack}`
+        }
+        
+        if (error.partialResult) {
+          errorMessage += `\n\n📊 Risultati parziali:`
+          errorMessage += `\n• Importati: ${error.partialResult.imported?.closedTrades || 0} trades`
+          errorMessage += `\n• Errori: ${error.partialResult.errors?.length || 0}`
+          if (error.partialResult.errors?.length > 0) {
+            errorMessage += `\n• Primi errori: ${error.partialResult.errors.slice(0, 3).join('; ')}`
+          }
+        }
+        
+        if (error.debug) {
+          errorMessage += `\n\n🐛 Debug: ${JSON.stringify(error.debug, null, 2)}`
+        }
+        
+        alert(errorMessage)
       }
     } catch (error) {
       console.error('Error syncing report:', error)
