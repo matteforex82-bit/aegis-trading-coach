@@ -46,8 +46,8 @@ export function OpenPositionsSection({ openTrades, account }: OpenPositionsSecti
     }).format(amount)
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3 sm:gap-0">
         <h2 className="text-lg font-semibold text-slate-800">🔴 Posizioni Aperte</h2>
         <Badge variant="outline">{openTrades.length} posizioni</Badge>
       </div>
@@ -55,44 +55,44 @@ export function OpenPositionsSection({ openTrades, account }: OpenPositionsSecti
       {/* Debug Panel */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4 text-sm">
         <div className="font-medium text-yellow-800 mb-2">🔍 Debug Info:</div>
-        <div className="grid grid-cols-2 gap-4 text-yellow-700">
-          <div>📊 Posizioni trovate: {openTrades.length}</div>
-          <div>🎯 Tickets: {openTrades.map(t => `#${t.ticketId}`).join(', ')}</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-yellow-700">
+          <div>📊 Posizioni: {openTrades.length}</div>
+          <div className="text-xs sm:text-sm break-all">🎯 Tickets: {openTrades.map(t => `#${t.ticketId}`).slice(0, 3).join(', ')}{openTrades.length > 3 ? '...' : ''}</div>
           <div>⏰ Aggiornato: {new Date().toLocaleTimeString('it-IT')}</div>
-          <div>🧮 P&L Calcolato: {formatCurrency(netTotal)}</div>
+          <div>🧮 P&L: {formatCurrency(netTotal)}</div>
         </div>
       </div>
 
       {/* P&L Summary Card */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4 gap-2 sm:gap-0">
           <div className="flex items-center space-x-2">
-            <Activity className="h-5 w-5 text-blue-600" />
-            <span className="font-semibold text-blue-800">P&L Totale Posizioni Aperte</span>
+            <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+            <span className="text-sm sm:text-base font-semibold text-blue-800">P&L Totale Posizioni</span>
           </div>
-          <div className={`text-2xl font-bold ${netTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <div className={`text-xl sm:text-2xl font-bold ${netTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
             {formatCurrency(netTotal)}
           </div>
         </div>
         
         {/* Breakdown dettagliato */}
-        <div className="grid grid-cols-3 gap-4 text-sm">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 text-xs sm:text-sm">
           <div className="text-center p-2 bg-white rounded border">
             <div className="text-gray-600">P&L Lordo</div>
-            <div className="font-bold text-green-700">{formatCurrency(grossTotal)}</div>
+            <div className="font-bold text-green-700 text-xs sm:text-sm">{formatCurrency(grossTotal)}</div>
           </div>
           <div className="text-center p-2 bg-white rounded border">
             <div className="text-gray-600">Commissioni</div>
-            <div className="font-bold text-orange-700">{formatCurrency(commissionTotal)}</div>
+            <div className="font-bold text-orange-700 text-xs sm:text-sm">{formatCurrency(commissionTotal)}</div>
           </div>
           <div className="text-center p-2 bg-white rounded border">
             <div className="text-gray-600">Swap</div>
-            <div className="font-bold text-red-700">{formatCurrency(swapTotal)}</div>
+            <div className="font-bold text-red-700 text-xs sm:text-sm">{formatCurrency(swapTotal)}</div>
           </div>
         </div>
 
-        <div className="text-sm text-blue-700 mt-3 pt-3 border-t border-blue-200 text-center">
-          {openTrades.length} posizioni attualmente attive • Aggiornamento real-time dall'Expert Advisor
+        <div className="text-xs sm:text-sm text-blue-700 mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-blue-200 text-center">
+          {openTrades.length} posizioni attive • Real-time EA
         </div>
       </div>
 
@@ -103,13 +103,13 @@ export function OpenPositionsSection({ openTrades, account }: OpenPositionsSecti
           const isProfit = tradePnL >= 0
           
           return (
-            <div key={trade.id || `position-${index}`} className="border rounded-lg p-4 bg-gray-50">
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+            <div key={trade.id || `position-${index}`} className="border rounded-lg p-3 sm:p-4 bg-gray-50">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 items-center">
                 
                 {/* Symbol & Ticket */}
-                <div>
-                  <div className="font-bold text-lg text-slate-800">{trade.symbol}</div>
-                  <div className="text-sm text-gray-500">#{trade.ticketId}</div>
+                <div className="text-center sm:text-left">
+                  <div className="font-bold text-base sm:text-lg text-slate-800">{trade.symbol}</div>
+                  <div className="text-xs sm:text-sm text-gray-500">#{trade.ticketId}</div>
                 </div>
 
                 {/* Direction & Volume */}
@@ -125,19 +125,18 @@ export function OpenPositionsSection({ openTrades, account }: OpenPositionsSecti
                       <>📉 SELL</>
                     )}
                   </div>
-                  <div className="text-sm text-gray-600 mt-1">
+                  <div className="text-xs sm:text-sm text-gray-600 mt-1">
                     {trade.volume} lots
                   </div>
                 </div>
 
                 {/* Entry Price & Date */}
-                <div className="text-center">
-                  <div className="text-sm text-gray-600">Entry:{trade.openPrice}</div>
+                <div className="text-center lg:block hidden">
+                  <div className="text-xs sm:text-sm text-gray-600">Entry: {trade.openPrice}</div>
                   <div className="text-xs text-gray-500">
-                    Aperta: {new Date(trade.openTime).toLocaleDateString('it-IT', {
+                    {new Date(trade.openTime).toLocaleDateString('it-IT', {
                       day: '2-digit',
                       month: '2-digit', 
-                      year: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit'
                     })}
@@ -145,8 +144,8 @@ export function OpenPositionsSection({ openTrades, account }: OpenPositionsSecti
                 </div>
 
                 {/* P&L */}
-                <div className="text-center">
-                  <div className={`text-lg font-bold ${isProfit ? 'text-green-600' : 'text-red-600'}`}>
+                <div className="text-center sm:col-span-2 lg:col-span-1">
+                  <div className={`text-base sm:text-lg font-bold ${isProfit ? 'text-green-600' : 'text-red-600'}`}>
                     {formatCurrency(tradePnL)}
                   </div>
                   <div className={`text-xs ${isProfit ? 'text-green-600' : 'text-red-600'}`}>
