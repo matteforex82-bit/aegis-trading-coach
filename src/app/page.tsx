@@ -48,10 +48,10 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Caricamento account...</p>
+          <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-sm sm:text-base">Caricamento account...</p>
         </div>
       </div>
     )
@@ -59,50 +59,50 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout subtitle="Seleziona un account per visualizzare la dashboard">
-      <div className="p-6">
         <div className="max-w-4xl mx-auto">
-          <Card className="text-center py-12 shadow-sm">
-            <CardContent>
-              <div className="mx-auto flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-6">
-                <Users className="h-8 w-8 text-slate-600" />
+          <Card className="text-center py-8 sm:py-12 shadow-sm mx-4 sm:mx-0">
+            <CardContent className="px-4 sm:px-6">
+              <div className="mx-auto flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-slate-100 rounded-full mb-4 sm:mb-6">
+                <Users className="h-6 w-6 sm:h-8 sm:w-8 text-slate-600" />
               </div>
-              <h2 className="text-2xl font-bold text-slate-800 mb-4">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-3 sm:mb-4">
                 Seleziona un Account
               </h2>
-              <p className="text-gray-600 mb-8 max-w-md mx-auto">
+              <p className="text-sm sm:text-base text-gray-600 mb-6 sm:mb-8 max-w-md mx-auto leading-relaxed">
                 Scegli un account dalla sidebar per accedere alla dashboard con KPI PropFirm e analisi delle operazioni.
               </p>
               
               {accounts.length === 0 ? (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
-                  <p className="text-yellow-800 font-medium">Nessun account configurato</p>
-                  <p className="text-yellow-700 mt-2">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 mx-2 sm:mx-0">
+                  <p className="text-yellow-800 font-medium text-sm sm:text-base">Nessun account configurato</p>
+                  <p className="text-yellow-700 mt-2 text-sm">
                     Vai nelle impostazioni per aggiungere il tuo primo account MT5.
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8 px-2 sm:px-0">
                   {accounts.slice(0, 4).map((account) => (
                     <Link
                       key={account.id}
                       href={`/account/${account.id}`}
                       className="group p-4 border border-gray-200 rounded-lg 
                                bg-white hover:bg-gray-50 hover:border-gray-300
-                               shadow-sm hover:shadow-md transition-all duration-200"
+                               shadow-sm hover:shadow-md transition-all duration-200
+                               touch-target no-select active:scale-98"
                     >
                       <div className="flex items-center justify-between">
-                        <div className="text-left">
-                          <div className="font-semibold text-slate-800 mb-1">
+                        <div className="text-left min-w-0 flex-1">
+                          <div className="font-semibold text-slate-800 mb-1 text-sm sm:text-base truncate">
                             {account.name || account.broker}
                           </div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-xs sm:text-sm text-gray-600 truncate">
                             {account.login}
                           </div>
-                          <div className="text-xs text-gray-500 mt-2">
+                          <div className="text-xs text-gray-500 mt-1 sm:mt-2">
                             {account._count?.trades || 0} operazioni
                           </div>
                         </div>
-                        <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-gray-600 transition-colors" />
+                        <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 group-hover:text-gray-600 transition-colors flex-shrink-0 ml-2" />
                       </div>
                     </Link>
                   ))}
@@ -110,14 +110,13 @@ export default function Dashboard() {
               )}
 
               <Link href="/settings">
-                <Button variant="outline" className="px-6 py-2">
+                <Button variant="outline" className="px-4 sm:px-6 py-2 text-sm sm:text-base touch-target">
                   Impostazioni
                 </Button>
               </Link>
             </CardContent>
           </Card>
         </div>
-      </div>
     </DashboardLayout>
   )
 }

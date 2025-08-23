@@ -905,16 +905,16 @@ export default function AccountDashboard() {
 
         {/* 🆕 Account Information Overview */}
         <div className="mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-slate-50">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-blue-800">
-                  <DollarSign className="h-5 w-5" />
+              <CardHeader className="pb-2 sm:pb-3">
+                <CardTitle className="flex items-center gap-2 text-blue-800 text-sm sm:text-base">
+                  <DollarSign className="h-4 w-4 sm:h-5 sm:w-5" />
                   Account Balance
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-blue-900 mb-2">
+                <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-900 mb-2">
                   {(() => {
                     // BALANCE CORRETTO = Starting Balance + P&L di tutte le posizioni CHIUSE
                     const startingBalance = account.propFirmTemplate?.accountSize || account.initialBalance || 50000
@@ -928,7 +928,7 @@ export default function AccountDashboard() {
                     }).format(currentBalance)
                   })()}
                 </div>
-                <div className="text-sm text-blue-600">
+                <div className="text-xs sm:text-sm text-blue-600">
                   Starting: {new Intl.NumberFormat('en-US', {
                     style: 'currency',
                     currency: account.currency || 'USD',
@@ -948,14 +948,14 @@ export default function AccountDashboard() {
             </Card>
 
             <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-slate-50">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-green-800">
-                  <Activity className="h-5 w-5" />
+              <CardHeader className="pb-2 sm:pb-3">
+                <CardTitle className="flex items-center gap-2 text-green-800 text-sm sm:text-base">
+                  <Activity className="h-4 w-4 sm:h-5 sm:w-5" />
                   Current Equity
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-green-900 mb-2">
+                <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-900 mb-2">
                   {(() => {
                     // EQUITY REAL-TIME = Balance corrente + P&L posizioni APERTE
                     const startingBalance = account.propFirmTemplate?.accountSize || account.initialBalance || 50000
@@ -970,7 +970,7 @@ export default function AccountDashboard() {
                     }).format(equity)
                   })()}
                 </div>
-                <div className="flex items-center gap-2 text-sm text-green-600">
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-green-600">
                   <span>P&L Live:</span>
                   <span className={`font-semibold ${openPositionsTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {openPositionsTotal >= 0 ? '+' : ''}{new Intl.NumberFormat('en-US', {
@@ -987,14 +987,14 @@ export default function AccountDashboard() {
             </Card>
 
             <Card className="border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-slate-50">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-orange-800">
-                  <Target className="h-5 w-5" />
+              <CardHeader className="pb-2 sm:pb-3">
+                <CardTitle className="flex items-center gap-2 text-orange-800 text-sm sm:text-base">
+                  <Target className="h-4 w-4 sm:h-5 sm:w-5" />
                   P&L Daily (Oggi)
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className={`text-3xl font-bold mb-2 ${rules?.dailyPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <div className={`text-xl sm:text-2xl lg:text-3xl font-bold mb-2 ${rules?.dailyPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {(() => {
                     // P&L DAILY = Solo posizioni chiuse oggi (incluso commissioni + swap)
                     const dailyPnL = rules?.dailyPnL || 0
@@ -1006,7 +1006,7 @@ export default function AccountDashboard() {
                   })()}
                 </div>
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-sm text-orange-600">
+                  <div className="flex items-center gap-2 text-xs sm:text-sm text-orange-600">
                     <span>Solo trades chiusi oggi</span>
                     <Badge variant="outline" className="text-xs text-orange-700">
                       Reset @ 00:00
@@ -1058,8 +1058,8 @@ export default function AccountDashboard() {
               </Badge>
             </div>
             
-            {/* 3 CARD COMPATTE IN RIGA SINGOLA */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">{getCompactRulesCards()}</div>
+            {/* 3 CARD COMPATTE RESPONSIVE */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">{getCompactRulesCards()}</div>
             
           </div>
         )}
@@ -1071,92 +1071,92 @@ export default function AccountDashboard() {
               <BarChart3 className="h-6 w-6 text-blue-600" />
               Trading Performance
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
               
               {/* P&L Chiuse TOTALI */}
               <Card className="border border-slate-200 hover:shadow-lg transition-shadow">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-slate-600">P&L Chiuse Totali</CardTitle>
-                  <DollarSign className="h-4 w-4 text-slate-400" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+                  <CardTitle className="text-xs sm:text-sm font-medium text-slate-600">P&L Chiuse Totali</CardTitle>
+                  <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 text-slate-400" />
                 </CardHeader>
                 <CardContent>
-                  <div className={`text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <div className={`text-sm sm:text-lg lg:text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {new Intl.NumberFormat('en-US', {
                       style: 'currency',
                       currency: account.currency,
                       minimumFractionDigits: 2
                     }).format(stats.totalPnL)}
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">
-                    {stats.closedTrades} operazioni totali
+                  <p className="text-xs text-slate-500 mt-0.5 sm:mt-1">
+                    {stats.closedTrades} op.
                   </p>
                 </CardContent>
               </Card>
 
               {/* P&L Aperte */}
               <Card className="border border-slate-200 hover:shadow-lg transition-shadow">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-slate-600">P&L Aperte</CardTitle>
-                  <Activity className="h-4 w-4 text-slate-400" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+                  <CardTitle className="text-xs sm:text-sm font-medium text-slate-600">P&L Aperte</CardTitle>
+                  <Activity className="h-3 w-3 sm:h-4 sm:w-4 text-slate-400" />
                 </CardHeader>
                 <CardContent>
-                  <div className={`text-2xl font-bold ${openPositionsTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <div className={`text-sm sm:text-lg lg:text-2xl font-bold ${openPositionsTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {new Intl.NumberFormat('en-US', {
                       style: 'currency',
                       currency: account.currency,
                       minimumFractionDigits: 2
                     }).format(openPositionsTotal)}
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">
-                    {stats.openPositions} posizioni live
+                  <p className="text-xs text-slate-500 mt-0.5 sm:mt-1">
+                    {stats.openPositions} live
                   </p>
                 </CardContent>
               </Card>
 
               {/* Win Rate */}
               <Card className="border border-slate-200 hover:shadow-lg transition-shadow">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-slate-600">Win Rate</CardTitle>
-                  <Target className="h-4 w-4 text-slate-400" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+                  <CardTitle className="text-xs sm:text-sm font-medium text-slate-600">Win Rate</CardTitle>
+                  <Target className="h-3 w-3 sm:h-4 sm:w-4 text-slate-400" />
                 </CardHeader>
                 <CardContent>
-                  <div className={`text-2xl font-bold ${stats.winRate >= 50 ? 'text-green-600' : 'text-orange-600'}`}>
+                  <div className={`text-sm sm:text-lg lg:text-2xl font-bold ${stats.winRate >= 50 ? 'text-green-600' : 'text-orange-600'}`}>
                     {stats.winRate.toFixed(1)}%
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">
-                    {stats.winningTrades}W / {stats.losingTrades}L
+                  <p className="text-xs text-slate-500 mt-0.5 sm:mt-1">
+                    {stats.winningTrades}W/{stats.losingTrades}L
                   </p>
                 </CardContent>
               </Card>
 
               {/* Total Volume */}
               <Card className="border border-slate-200 hover:shadow-lg transition-shadow">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-slate-600">Volume Totale</CardTitle>
-                  <BarChart3 className="h-4 w-4 text-slate-400" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+                  <CardTitle className="text-xs sm:text-sm font-medium text-slate-600">Volume</CardTitle>
+                  <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4 text-slate-400" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-blue-600">
+                  <div className="text-sm sm:text-lg lg:text-2xl font-bold text-blue-600">
                     {stats.totalVolume.toFixed(2)}
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">
-                    lots scambiati
+                  <p className="text-xs text-slate-500 mt-0.5 sm:mt-1">
+                    lots
                   </p>
                 </CardContent>
               </Card>
 
               {/* Trading Days */}
               <Card className="border border-slate-200 hover:shadow-lg transition-shadow">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-slate-600">Trading Days</CardTitle>
-                  <Calendar className="h-4 w-4 text-slate-400" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+                  <CardTitle className="text-xs sm:text-sm font-medium text-slate-600">Days</CardTitle>
+                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-slate-400" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-purple-600">
+                  <div className="text-sm sm:text-lg lg:text-2xl font-bold text-purple-600">
                     {rules?.tradingDays || 0}
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">
-                    di {rules?.minTradingDays || 5} minimi
+                  <p className="text-xs text-slate-500 mt-0.5 sm:mt-1">
+                    /{rules?.minTradingDays || 5}
                   </p>
                 </CardContent>
               </Card>
@@ -1323,19 +1323,19 @@ export default function AccountDashboard() {
 
 
         {/* Action Buttons */}
-        <div className="flex justify-center gap-4 pt-6">
+        <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 pt-6">
           <Link href={`/account/${accountId}/trades`}>
-            <Button size="lg" className="bg-slate-800 hover:bg-slate-700 text-white px-8 py-3">
-              <Eye className="h-5 w-5 mr-2" />
+            <Button size="lg" className="bg-slate-800 hover:bg-slate-700 text-white px-6 sm:px-8 py-3 w-full sm:w-auto touch-target">
+              <Eye className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
               Vedi Operazioni
-              <ArrowRight className="h-5 w-5 ml-2" />
+              <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 ml-2" />
             </Button>
           </Link>
           
           <Button 
             size="lg" 
             variant="outline"
-            className="border-2 border-orange-500 text-orange-600 hover:bg-orange-50 px-6 py-3"
+            className="border-2 border-orange-500 text-orange-600 hover:bg-orange-50 px-4 sm:px-6 py-3 w-full sm:w-auto touch-target"
             onClick={async () => {
               const confirmed = confirm('🧹 ATTENZIONE: Questa operazione cancellerà TUTTE le posizioni live dal database per preparare la sincronizzazione fresca con l\'EA. Procedere?')
               if (confirmed) {
