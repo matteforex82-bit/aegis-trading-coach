@@ -538,9 +538,7 @@ async function importDataToDatabase(accountId: string, parsedData: any, clearExi
     await db.account.update({
       where: { id: accountId },
       data: {
-        currentBalance: finalBalance,
-        // Also update any equity field if it exists
-        currentEquity: parsedData.summary.equity || finalBalance
+        currentBalance: finalBalance
       }
     })
     
