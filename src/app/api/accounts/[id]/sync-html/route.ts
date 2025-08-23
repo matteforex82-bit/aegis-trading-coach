@@ -251,7 +251,7 @@ function parseHtmlReport($: cheerio.CheerioAPI) {
 
         // Only process buy/sell transactions with valid close times
         if ((type === 'buy' || type === 'sell') && closeTime && closeTime !== 'Time' && closeTime !== '') {
-          console.log(`🔍 Processing trade: ${ticketId} - ${symbol} ${type} - Profit: ${profit}`)
+          console.log(`🔍 Processing trade: ${ticketId} - ${symbol} ${type} - Profit: ${profit}, Commission: ${commission}, Swap: ${swap}`)
           
           closedTrades.push({
             ticketId,
@@ -353,6 +353,20 @@ function parseHtmlReport($: cheerio.CheerioAPI) {
                          parseFloat($('td:contains("Closed Trade P/L:")').next().text().replace(/[^0-9.-]/g, '')) || 0
   
   console.log(`💰 Using Total Net Profit from HTML report: ${totalNetProfit}`)
+  
+  // 🔍 DEBUGGING: Verify swap parsing
+  const totalSwapFromTrades = closedTrades.reduce((sum, trade) => sum + (trade.swap || 0), 0)
+  const totalCommissionFromTrades = closedTrades.reduce((sum, trade) => sum + (trade.commission || 0), 0)
+  const totalProfitFromTrades = closedTrades.reduce((sum, trade) => sum + (trade.pnlGross - trade.swap - trade.commission), 0)
+  const calculatedTotal = totalProfitFromTrades + totalSwapFromTrades + totalCommissionFromTrades
+  
+  console.log(`🔍 SWAP DEBUGGING:`)
+  console.log(`   Total Swap from individual trades: ${totalSwapFromTrades}`)
+  console.log(`   Total Commission from individual trades: ${totalCommissionFromTrades}`) 
+  console.log(`   Total Profit (before swap/comm) from trades: ${totalProfitFromTrades}`)
+  console.log(`   Calculated Total: ${totalProfitFromTrades} + ${totalSwapFromTrades} + ${totalCommissionFromTrades} = ${calculatedTotal}`)
+  console.log(`   Total from HTML Summary: ${totalNetProfit}`)
+  console.log(`   Difference: ${totalNetProfit - calculatedTotal}`)
 
   return {
     accountLogin,
@@ -484,6 +498,21 @@ async function importDataToDatabase(accountId: string, parsedData: any, clearExi
     }
   }
 
-  console.log(`✅ Import completed: ${results.imported.closedTrades} trades, ${results.imported.openPositions} positions`)
+  // Update account with correct balance from HTML report
+  const startingBalance = 50000 // Default starting balance
+  const finalBalance = startingBalance + parsedData.summary.totalNetProfit
+  
+  console.log(`💰 Updating account balance: Starting ${startingBalance} + P&L ${parsedData.summary.totalNetProfit} = Final ${finalBalance}`)
+  
+  await db.account.update({
+    where: { id: accountId },
+    data: {
+      currentBalance: finalBalance,
+      // Also update any equity field if it exists
+      currentEquity: parsedData.summary.equity || finalBalance
+    }
+  })
+
+  console.log(`✅ Import completed: ${results.imported.closedTrades} trades, ${results.imported.openPositions} positions, balance updated`)
   return results
 }
