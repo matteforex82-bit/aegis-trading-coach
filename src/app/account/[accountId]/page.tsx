@@ -266,12 +266,38 @@ export default function AccountDashboard() {
   const [openPositionsTotal, setOpenPositionsTotal] = useState<number>(0)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [showAdvancedRules, setShowAdvancedRules] = useState(true)
 
   useEffect(() => {
     if (accountId) {
       loadDashboardData()
     }
   }, [accountId])
+
+  // Auto-detect PropFirm and set default visibility for Advanced Protection Rules
+  useEffect(() => {
+    if (account?.propFirmTemplate?.propFirm?.name) {
+      const propFirmName = account.propFirmTemplate.propFirm.name.toLowerCase()
+      
+      // Hide Advanced Protection Rules by default for PropFirms that don't use them
+      if (propFirmName.includes('futura') || propFirmName.includes('funding')) {
+        setShowAdvancedRules(false)
+      }
+      
+      // Load user preference from localStorage
+      const savedPreference = localStorage.getItem(`advancedRules_${accountId}`)
+      if (savedPreference !== null) {
+        setShowAdvancedRules(savedPreference === 'true')
+      }
+    }
+  }, [account, accountId])
+
+  // Save user preference when changed
+  const toggleAdvancedRules = () => {
+    const newValue = !showAdvancedRules
+    setShowAdvancedRules(newValue)
+    localStorage.setItem(`advancedRules_${accountId}`, newValue.toString())
+  }
 
   // Auto-refresh for live updates from Expert Advisor
   useEffect(() => {
@@ -1177,19 +1203,39 @@ export default function AccountDashboard() {
               </Badge>
             </div>
 
-            {/* 🚀 ENHANCED PROTECTION RULES - PHASE 2 (COLLAPSIBLE) */}
-            <details className="group">
-              <summary className="cursor-pointer list-none">
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border hover:bg-gray-100 transition-colors">
-                  <h3 className="text-md font-semibold text-slate-700">🛡️ Advanced Protection Rules (Phase 2)</h3>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant="outline" className="text-xs">Optional Details</Badge>
-                    <svg className="w-4 h-4 text-slate-500 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+            {/* Toggle button for Advanced Protection Rules */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <h3 className="text-lg font-semibold text-slate-700">🛡️ Advanced Protection Rules</h3>
+                {account?.propFirmTemplate?.propFirm?.name?.toLowerCase().includes('futura') && (
+                  <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-300">
+                    Non utilizzate da Futura Funding
+                  </Badge>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleAdvancedRules}
+                className={`${showAdvancedRules ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-gray-50 text-gray-600'}`}
+              >
+                {showAdvancedRules ? 'Nascondi' : 'Mostra'}
+              </Button>
+            </div>
+
+            {showAdvancedRules ? (
+              <details className="group">
+                <summary className="cursor-pointer list-none">
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border hover:bg-gray-100 transition-colors">
+                    <h3 className="text-md font-semibold text-slate-700">📊 Dettagli Calcoli (Phase 2)</h3>
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="text-xs">Optional Details</Badge>
+                      <svg className="w-4 h-4 text-slate-500 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
                   </div>
-                </div>
-              </summary>
+                </summary>
               <div className="mt-4 p-4 bg-gray-50/50 rounded-lg border border-gray-200">
                 
                 {/* Simple 50% Daily Protection */}
@@ -1307,8 +1353,19 @@ export default function AccountDashboard() {
                 </div>
               </div>
             </details>
-          </div>
-        )}
+          ) : (
+            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 text-center">
+              <div className="text-gray-600 mb-2">
+                <span className="text-sm">🛡️ Advanced Protection Rules nascoste</span>
+              </div>
+              <div className="text-xs text-gray-500">
+                {account?.propFirmTemplate?.propFirm?.name?.toLowerCase().includes('futura') ? 
+                  'Queste regole non si applicano a Futura Funding' : 
+                  'Clicca "Mostra" per vedere i calcoli dettagliati'
+                }
+              </div>
+            </div>
+          )}
 
         {/* NEW: Open Positions Section - PRIORITY */}
         <OpenPositionsSection openTrades={openTrades} account={account} />
