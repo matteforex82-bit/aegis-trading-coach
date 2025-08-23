@@ -1310,16 +1310,33 @@ export default function AccountDashboard() {
           </div>
         )}
 
-        {/* Complete Risk Widget - Include posizioni aperte */}
-        <SimpleRiskWidget 
-          account={account} 
-          rules={rules} 
-          stats={stats}
-          openTrades={openTrades} 
-        />
-
-        {/* NEW: Open Positions Section */}
+        {/* NEW: Open Positions Section - PRIORITY */}
         <OpenPositionsSection openTrades={openTrades} account={account} />
+
+        {/* Complete Risk Widget - Include posizioni aperte - COLLAPSIBLE */}
+        <details className="group">
+          <summary className="cursor-pointer list-none">
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border hover:bg-gray-100 transition-colors mb-4">
+              <h3 className="text-lg font-semibold text-slate-700 flex items-center gap-2">
+                🛡️ Risk Manager Avanzato
+              </h3>
+              <div className="flex items-center space-x-2">
+                <Badge variant="outline" className="text-xs">Sezione Avanzata</Badge>
+                <svg className="w-4 h-4 text-slate-500 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          </summary>
+          <div className="mt-2">
+            <SimpleRiskWidget 
+              account={account} 
+              rules={rules} 
+              stats={stats}
+              openTrades={openTrades} 
+            />
+          </div>
+        </details>
 
 
         {/* Action Buttons */}
