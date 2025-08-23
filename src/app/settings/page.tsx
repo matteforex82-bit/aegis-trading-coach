@@ -60,14 +60,12 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
-  
-  // MT5 Sync states - Removed for now
 
   useEffect(() => {
     fetchData()
   }, [])
 
-  // 🚀 Auto-configure balance when template changes
+  // Auto-configure balance when template changes
   useEffect(() => {
     if (selectedTemplate) {
       const template = getTemplateById(selectedTemplate)
@@ -133,6 +131,7 @@ export default function SettingsPage() {
         setSelectedPropFirm('')
         setInitialBalance('')
         setCurrentPhase('PHASE_1')
+        setCurrentStep(1)
       } else {
         const error = await response.json()
         alert(`❌ Errore: ${error.error}`)
@@ -177,7 +176,7 @@ export default function SettingsPage() {
     }
   }
 
-  // 🚀 NEW: Helper functions for smart template selection
+  // Helper functions for smart template selection
   const getTemplateById = (templateId: string): PropFirmTemplate | null => {
     for (const firm of propFirms) {
       const template = firm.templates.find(t => t.id === templateId)
@@ -202,7 +201,7 @@ export default function SettingsPage() {
     return null
   }
 
-  // 🚀 NEW: Validation helpers
+  // Validation helpers
   const isFormValid = (): boolean => {
     return !!(selectedAccount && selectedTemplate && initialBalance && parseFloat(initialBalance) > 0)
   }
@@ -214,8 +213,6 @@ export default function SettingsPage() {
     if (!initialBalance || parseFloat(initialBalance) <= 0) errors.push('Inserisci un saldo iniziale valido')
     return errors
   }
-
-  // Legacy sync functions removed for now
 
   const formatCurrency = (amount: number, currency: string = 'USD') => {
     return new Intl.NumberFormat('en-US', {
@@ -233,9 +230,6 @@ export default function SettingsPage() {
       </div>
     )
   }
-
-  // const selectedTemplateData = getSelectedTemplateData()
-  // const validationErrors = getValidationErrors()
 
   const steps = [
     { number: 1, title: 'Seleziona Account', description: 'Scegli l\'account MT5 da configurare' },
@@ -445,64 +439,211 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Step 2: PropFirm Selection - TODO: Will be updated next */}
+        {/* Step 2: PropFirm Selection */}
         {currentStep === 2 && (
           <div className="space-y-6">
             <div className="text-center">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Scegli la PropFirm Challenge</h2>
               <p className="text-gray-600">Seleziona la PropFirm per l'account {selectedAccount?.login}</p>
             </div>
-            <div className="text-center py-8">
-              <p className="text-gray-600">Implementazione PropFirm selector - Coming next...</p>
-              <Button 
-                onClick={() => setCurrentStep(1)}
-                variant="outline" 
-                className="mt-4"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Torna indietro
-              </Button>
+
+            {propFirms && propFirms.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {propFirms.filter(firm => firm.templates && firm.templates.length > 0).map(firm => (
+                  <div
+                    key={firm.id}
+                    onClick={() => handlePropFirmSelect(firm.id)}
+                    className={`
+                      relative cursor-pointer rounded-xl border-2 p-6 transition-all duration-200 hover:shadow-lg
+                      ${selectedPropFirm === firm.id
+                        ? 'border-blue-500 bg-blue-50 shadow-md'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                      }
+                    `}
+                  >
+                    {selectedPropFirm === firm.id && (
+                      <div className="absolute top-4 right-4">
+                        <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                          <Check className="h-4 w-4 text-white" />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-2xl">🏢</span>
+                        </div>
+                        <div>
+                          <div className="text-lg font-bold text-gray-900">{firm.name}</div>
+                          <div className="text-sm text-gray-600">{firm.templates?.length || 0} sizes disponibili</div>
+                        </div>
+                      </div>
+
+                      <p className="text-sm text-gray-600">{firm.description}</p>
+
+                      <div className="flex flex-wrap gap-2">
+                        {firm.name === 'FUTURA FUNDING' && (
+                          <Badge variant="outline" className="text-green-700 border-green-300">
+                            No Consistency
+                          </Badge>
+                        )}
+                        {firm.name === 'PROP NUMBER ONE' && (
+                          <Badge variant="outline" className="text-blue-700 border-blue-300">
+                            50/50 Rules
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-gray-600">Nessuna PropFirm disponibile</div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Step 3: Account Size Selection - TODO */}
+        {/* Step 3: Account Size Selection */}
         {currentStep === 3 && (
           <div className="space-y-6">
             <div className="text-center">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Seleziona Account Size</h2>
-              <p className="text-gray-600">Definisci la size del challenge</p>
+              <p className="text-gray-600">Scegli la size per {propFirms.find(f => f.id === selectedPropFirm)?.name}</p>
             </div>
-            <div className="text-center py-8">
-              <p className="text-gray-600">Implementazione Account Size selector - Coming next...</p>
-              <Button 
-                onClick={() => setCurrentStep(2)}
-                variant="outline" 
-                className="mt-4"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Torna indietro
-              </Button>
-            </div>
+
+            {(() => {
+              const selectedFirm = propFirms.find(f => f.id === selectedPropFirm)
+              return selectedFirm?.templates ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {selectedFirm.templates.map(template => (
+                    <button
+                      key={template.id}
+                      onClick={() => handleTemplateSelect(template.id)}
+                      className={`
+                        p-4 rounded-xl text-center transition-all duration-200 hover:shadow-lg
+                        ${selectedTemplate === template.id
+                          ? 'bg-blue-500 text-white shadow-lg transform scale-105'
+                          : 'bg-white border-2 border-gray-200 text-gray-900 hover:border-blue-300'
+                        }
+                      `}
+                    >
+                      <div className="text-lg font-bold">
+                        {formatCurrency(template.accountSize, template.currency)}
+                      </div>
+                      <div className="text-xs mt-1 opacity-75">
+                        {template.name}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="text-gray-600">Nessun template disponibile</div>
+                </div>
+              )
+            })()}
           </div>
         )}
 
-        {/* Step 4: Confirmation - TODO */}
+        {/* Step 4: Phase Selection & Confirmation */}
         {currentStep === 4 && (
-          <div className="space-y-6">
+          <div className="space-y-8">
+            {/* Phase Selection */}
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Conferma Configurazione</h2>
-              <p className="text-gray-600">Rivedi e conferma la tua configurazione</p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Seleziona la Fase</h2>
+              <p className="text-gray-600">In quale fase ti trovi attualmente?</p>
             </div>
-            <div className="text-center py-8">
-              <p className="text-gray-600">Implementazione Confirmation step - Coming next...</p>
-              <Button 
-                onClick={() => setCurrentStep(3)}
-                variant="outline" 
-                className="mt-4"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Torna indietro
-              </Button>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                { value: 'PHASE_1', title: 'Phase 1', icon: '🎯', description: 'Valutazione iniziale' },
+                { value: 'PHASE_2', title: 'Phase 2', icon: '🚀', description: 'Verifica avanzata' },
+                { value: 'FUNDED', title: 'Funded', icon: '🏆', description: 'Account finanziato' }
+              ].map(phase => (
+                <div
+                  key={phase.value}
+                  onClick={() => setCurrentPhase(phase.value)}
+                  className={`
+                    cursor-pointer rounded-xl border-2 p-6 text-center transition-all duration-200 hover:shadow-lg
+                    ${currentPhase === phase.value
+                      ? 'border-blue-500 bg-blue-50 shadow-md'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                    }
+                  `}
+                >
+                  <div className="text-4xl mb-2">{phase.icon}</div>
+                  <div className="text-lg font-bold text-gray-900">{phase.title}</div>
+                  <div className="text-sm text-gray-600 mt-1">{phase.description}</div>
+                  {currentPhase === phase.value && (
+                    <div className="mt-3">
+                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center mx-auto">
+                        <Check className="h-4 w-4 text-white" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Confirmation Summary */}
+            <div className="bg-gray-50 rounded-xl p-6 space-y-4">
+              <h3 className="text-lg font-bold text-gray-900 text-center">Riepilogo Configurazione</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white rounded-lg p-4 text-center">
+                  <div className="text-sm text-gray-600">Account</div>
+                  <div className="font-bold">{selectedAccount?.login}</div>
+                </div>
+                <div className="bg-white rounded-lg p-4 text-center">
+                  <div className="text-sm text-gray-600">PropFirm</div>
+                  <div className="font-bold">{propFirms.find(f => f.id === selectedPropFirm)?.name}</div>
+                </div>
+                <div className="bg-white rounded-lg p-4 text-center">
+                  <div className="text-sm text-gray-600">Size</div>
+                  <div className="font-bold">
+                    {(() => {
+                      const firm = propFirms.find(f => f.id === selectedPropFirm)
+                      const template = firm?.templates.find(t => t.id === selectedTemplate)
+                      return template ? formatCurrency(template.accountSize, template.currency) : 'N/A'
+                    })()}
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg p-4 text-center">
+                  <div className="text-sm text-gray-600">Fase</div>
+                  <div className="font-bold">{currentPhase}</div>
+                </div>
+              </div>
+
+              <div className="flex space-x-4 pt-4">
+                <Button 
+                  onClick={() => setCurrentStep(3)}
+                  variant="outline" 
+                  className="flex-1"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Indietro
+                </Button>
+                <Button 
+                  onClick={handleAssignTemplate}
+                  disabled={assigning}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                >
+                  {assigning ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Configurando...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4" />
+                      <span>Conferma Configurazione</span>
+                    </div>
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         )}
