@@ -171,6 +171,8 @@ export default function AegisAssistant({ account, stats, rules, openTrades = [] 
       const result = await response.json()
       
       console.log('🤖 AEGIS Response from N8N:', result)
+      console.log('🔍 Response structure:', JSON.stringify(result, null, 2))
+      console.log('🔍 Response keys:', Object.keys(result))
       
       // Handle N8N response format: array with output property
       let responseContent = 'Ho ricevuto la tua richiesta, ma c\'è stato un problema nella risposta.'
@@ -178,6 +180,9 @@ export default function AegisAssistant({ account, stats, rules, openTrades = [] 
       if (Array.isArray(result) && result.length > 0 && result[0].output) {
         responseContent = result[0].output
         console.log('✅ Using N8N array[0].output format')
+      } else if (result.output) {
+        responseContent = result.output
+        console.log('✅ Using result.output format')
       } else if (result.response) {
         responseContent = result.response
         console.log('✅ Using result.response format')
@@ -188,7 +193,14 @@ export default function AegisAssistant({ account, stats, rules, openTrades = [] 
         responseContent = result
         console.log('✅ Using string result format')
       } else {
-        console.log('❌ Unknown response format:', typeof result, result)
+        console.log('❌ Unknown response format:', typeof result)
+        console.log('❌ Available properties:', Object.keys(result))
+        // Try to find any text content in the object
+        const firstKey = Object.keys(result)[0]
+        if (firstKey && typeof result[firstKey] === 'string') {
+          responseContent = result[firstKey]
+          console.log('✅ Using first string property:', firstKey)
+        }
       }
       
       const aegisMessage: Message = {
