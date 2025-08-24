@@ -35,7 +35,7 @@ interface AegisAssistantProps {
   openTrades?: any[]
 }
 
-const WEBHOOK_URL = 'https://n8n-jw98k-u48054.vm.elestio.app/webhook-test/20fbd8d6-69f9-4b4c-82e9-c0c6497e10a2'
+const WEBHOOK_URL = 'https://n8n-jw98k-u48054.vm.elestio.app/webhook/20fbd8d6-69f9-4b4c-82e9-c0c6497e10a2'
 
 export default function AegisAssistant({ account, stats, rules, openTrades = [] }: AegisAssistantProps) {
   const [messages, setMessages] = useState<Message[]>([])
