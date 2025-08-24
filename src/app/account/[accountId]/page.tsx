@@ -977,88 +977,67 @@ export default function AccountDashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
               
               {/* PROFIT TARGET CARD */}
-              {(() => {
-                const profitData = calculateProfitTarget()
-                if (!profitData) return null
-                
-                return (
-                  <Card className={`border-2 ${profitData.color === 'green' ? 'border-green-300 bg-green-50' : profitData.color === 'blue' ? 'border-blue-300 bg-blue-50' : 'border-gray-300 bg-gray-50'}`}>
-                    <CardHeader className="pb-2">
-                      <CardTitle className={`text-sm font-semibold flex items-center gap-2 ${profitData.color === 'green' ? 'text-green-700' : profitData.color === 'blue' ? 'text-blue-700' : 'text-gray-700'}`}>
-                        <Target className="h-4 w-4" />
-                        Profit Target
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className={`text-lg font-bold mb-1 ${profitData.color === 'green' ? 'text-green-600' : profitData.color === 'blue' ? 'text-blue-600' : 'text-gray-600'}`}>
-                        {profitData.percentage.toFixed(1)}%
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        {formatCurrency(profitData.current)} / {formatCurrency(profitData.target)}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        Rimanenti: {formatCurrency(profitData.remaining)}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              })()}
+              <Card className="border-2 border-blue-300 bg-blue-50">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2 text-blue-700">
+                    <Target className="h-4 w-4" />
+                    Profit Target
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-lg font-bold mb-1 text-blue-600">
+                    {(() => {
+                      const profitData = calculateProfitTarget()
+                      return profitData ? profitData.percentage.toFixed(1) : '0.0'
+                    })()}%
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    Calcolo in corso...
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* DAILY MARGIN CARD */}
-              {(() => {
-                const dailyData = calculateDailyMargin()
-                if (!dailyData) return null
-                
-                return (
-                  <Card className={`border-2 ${dailyData.color === 'green' ? 'border-green-300 bg-green-50' : dailyData.color === 'orange' ? 'border-orange-300 bg-orange-50' : 'border-red-300 bg-red-50'}`}>
-                    <CardHeader className="pb-2">
-                      <CardTitle className={`text-sm font-semibold flex items-center gap-2 ${dailyData.color === 'green' ? 'text-green-700' : dailyData.color === 'orange' ? 'text-orange-700' : 'text-red-700'}`}>
-                        <Calendar className="h-4 w-4" />
-                        Daily Risk
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className={`text-lg font-bold mb-1 ${dailyData.color === 'green' ? 'text-green-600' : dailyData.color === 'orange' ? 'text-orange-600' : 'text-red-600'}`}>
-                        {dailyData.percentage.toFixed(1)}%
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        Usato: {formatCurrency(dailyData.used)} / {formatCurrency(dailyData.limit)}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        Margine: {formatCurrency(dailyData.margin)}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              })()}
+              <Card className="border-2 border-orange-300 bg-orange-50">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2 text-orange-700">
+                    <Calendar className="h-4 w-4" />
+                    Daily Risk
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-lg font-bold mb-1 text-orange-600">
+                    {(() => {
+                      const dailyData = calculateDailyMargin()
+                      return dailyData ? dailyData.percentage.toFixed(1) : '0.0'
+                    })()}%
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    Calcolo in corso...
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* OVERALL MARGIN CARD */}
-              {(() => {
-                const overallData = calculateOverallMargin()
-                if (!overallData) return null
-                
-                return (
-                  <Card className={`border-2 ${overallData.color === 'green' ? 'border-green-300 bg-green-50' : overallData.color === 'orange' ? 'border-orange-300 bg-orange-50' : 'border-red-300 bg-red-50'}`}>
-                    <CardHeader className="pb-2">
-                      <CardTitle className={`text-sm font-semibold flex items-center gap-2 ${overallData.color === 'green' ? 'text-green-700' : overallData.color === 'orange' ? 'text-orange-700' : 'text-red-700'}`}>
-                        <Shield className="h-4 w-4" />
-                        Overall Risk
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className={`text-lg font-bold mb-1 ${overallData.color === 'green' ? 'text-green-600' : overallData.color === 'orange' ? 'text-orange-600' : 'text-red-600'}`}>
-                        {overallData.percentage.toFixed(1)}%
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        Equity: {formatCurrency(overallData.currentEquity)}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        Min: {formatCurrency(overallData.minimumAllowed)}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              })()}
+              <Card className="border-2 border-green-300 bg-green-50">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2 text-green-700">
+                    <Shield className="h-4 w-4" />
+                    Overall Risk
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-lg font-bold mb-1 text-green-600">
+                    {(() => {
+                      const overallData = calculateOverallMargin()
+                      return overallData ? overallData.percentage.toFixed(1) : '0.0'
+                    })()}%
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    Calcolo in corso...
+                  </div>
+                </CardContent>
+              </Card>
 
             </div>
             
