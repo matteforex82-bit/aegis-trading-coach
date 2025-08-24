@@ -170,9 +170,30 @@ export default function AegisAssistant({ account, stats, rules, openTrades = [] 
 
       const result = await response.json()
       
+      console.log('🤖 AEGIS Response from N8N:', result)
+      
+      // Handle N8N response format: array with output property
+      let responseContent = 'Ho ricevuto la tua richiesta, ma c\'è stato un problema nella risposta.'
+      
+      if (Array.isArray(result) && result.length > 0 && result[0].output) {
+        responseContent = result[0].output
+        console.log('✅ Using N8N array[0].output format')
+      } else if (result.response) {
+        responseContent = result.response
+        console.log('✅ Using result.response format')
+      } else if (result.message) {
+        responseContent = result.message
+        console.log('✅ Using result.message format')
+      } else if (typeof result === 'string') {
+        responseContent = result
+        console.log('✅ Using string result format')
+      } else {
+        console.log('❌ Unknown response format:', typeof result, result)
+      }
+      
       const aegisMessage: Message = {
         id: `aegis_${Date.now()}`,
-        content: result.response || result.message || 'Ho ricevuto la tua richiesta, ma c\'è stato un problema nella risposta.',
+        content: responseContent,
         sender: 'aegis',
         timestamp: new Date()
       }
