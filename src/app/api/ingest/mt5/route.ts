@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     // Handle different types of requests with SAFE versions
     if (trades && Array.isArray(trades)) {
       console.log('📈 Processing trade sync with', trades.length, 'trades')
-      return await handleTradeSyncSafe(account, trades)
+      return await handleTradeSyncSafe(account, trades, requestId)
     } else if (metrics) {
       console.log('📊 Processing metrics sync')
       
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
 //+------------------------------------------------------------------+
 //| Handle Trade Synchronization - SAFE VERSION                    |
 //+------------------------------------------------------------------+
-async function handleTradeSyncSafe(account: any, trades: any[]) {
+async function handleTradeSyncSafe(account: any, trades: any[], requestId: string) {
   try {
     console.log('🚀 Starting FULL trade sync...')
     
@@ -181,7 +181,12 @@ async function handleTradeSyncSafe(account: any, trades: any[]) {
         }
         
         const existingTrade = await db.trade.findUnique({
-          where: { ticketId: ticketId }
+          where: { 
+            accountId_ticketId: {
+              accountId: accountRecord.id,
+              ticketId: ticketId
+            }
+          }
         })
 
         if (!existingTrade) {
