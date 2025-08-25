@@ -37,6 +37,11 @@ interface AegisAssistantProps {
 
 const WEBHOOK_URL = 'https://n8n-jw98k-u48054.vm.elestio.app/webhook/20fbd8d6-69f9-4b4c-82e9-c0c6497e10a2'
 
+// Image optimization constants
+const MAX_WIDTH = 1024
+const MAX_HEIGHT = 768  
+const IMAGE_QUALITY = 0.8
+
 export default function AegisAssistant({ account, stats, rules, openTrades = [] }: AegisAssistantProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [inputMessage, setInputMessage] = useState('')
@@ -45,6 +50,7 @@ export default function AegisAssistant({ account, stats, rules, openTrades = [] 
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [isExpanded, setIsExpanded] = useState(false)
   const [pasteSuccess, setPasteSuccess] = useState(false)
+  const [imageInfo, setImageInfo] = useState<string>('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -145,6 +151,7 @@ export default function AegisAssistant({ account, stats, rules, openTrades = [] 
     setIsLoading(true)
     setInputMessage('')
     setUploadedImage(null)
+    setImageInfo('')
 
     try {
       // Prepare payload for n8n webhook
@@ -235,14 +242,25 @@ export default function AegisAssistant({ account, stats, rules, openTrades = [] 
   }
 
   // Handle file upload for screenshots
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setUploadedImage(e.target?.result as string)
+      try {
+        console.log('📁 File uploaded, starting optimization...')
+        
+        // Convert to base64
+        const base64 = await blobToBase64(file)
+        
+        // Auto-resize for optimal API performance
+        const { resized, info } = await resizeImage(base64)
+        
+        setUploadedImage(resized)
+        setImageInfo(info)
+        
+        console.log(`📁 File optimized: ${info}`)
+      } catch (error) {
+        console.error('Error processing uploaded image:', error)
       }
-      reader.readAsDataURL(file)
     }
   }
 
@@ -252,6 +270,77 @@ export default function AegisAssistant({ account, stats, rules, openTrades = [] 
       const reader = new FileReader()
       reader.onload = () => resolve(reader.result as string)
       reader.readAsDataURL(blob)
+    })
+  }
+
+  // Calculate optimal size maintaining aspect ratio
+  const calculateOptimalSize = (originalWidth: number, originalHeight: number) => {
+    // If image is already smaller than max dimensions, keep original
+    if (originalWidth <= MAX_WIDTH && originalHeight <= MAX_HEIGHT) {
+      return { width: originalWidth, height: originalHeight, wasResized: false }
+    }
+
+    // Calculate scaling factor to fit within max dimensions
+    const widthRatio = MAX_WIDTH / originalWidth
+    const heightRatio = MAX_HEIGHT / originalHeight
+    const scaleFactor = Math.min(widthRatio, heightRatio)
+
+    return {
+      width: Math.round(originalWidth * scaleFactor),
+      height: Math.round(originalHeight * scaleFactor),
+      wasResized: true
+    }
+  }
+
+  // Resize image using Canvas HTML5
+  const resizeImage = (base64: string): Promise<{resized: string, info: string}> => {
+    return new Promise((resolve) => {
+      const img = new Image()
+      
+      img.onload = () => {
+        const { width, height, wasResized } = calculateOptimalSize(img.width, img.height)
+        
+        if (!wasResized) {
+          // Image is already optimal size
+          const sizeKB = Math.round((base64.length * 0.75) / 1024)
+          resolve({
+            resized: base64,
+            info: `${img.width}x${img.height}, ${sizeKB}KB (originale)`
+          })
+          return
+        }
+
+        // Create canvas and resize
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        
+        if (!ctx) {
+          resolve({ resized: base64, info: 'resize fallback' })
+          return
+        }
+
+        canvas.width = width
+        canvas.height = height
+        
+        // Draw resized image
+        ctx.drawImage(img, 0, 0, width, height)
+        
+        // Convert to optimized JPEG
+        const resized = canvas.toDataURL('image/jpeg', IMAGE_QUALITY)
+        const sizeKB = Math.round((resized.length * 0.75) / 1024)
+        
+        resolve({
+          resized,
+          info: `${width}x${height}, ${sizeKB}KB (ottimizzato da ${img.width}x${img.height})`
+        })
+      }
+      
+      img.onerror = () => {
+        // Fallback to original if resize fails
+        resolve({ resized: base64, info: 'resize failed, usando originale' })
+      }
+      
+      img.src = base64
     })
   }
 
@@ -271,15 +360,24 @@ export default function AegisAssistant({ account, stats, rules, openTrades = [] 
         const blob = item.getAsFile()
         if (blob) {
           try {
-            const base64 = await blobToBase64(blob)
-            setUploadedImage(base64)
-            setPasteSuccess(true)
-            console.log('📸 Screenshot pasted and converted to base64')
+            console.log('📸 Screenshot pasted, starting optimization...')
             
-            // Hide success message after 2 seconds
-            setTimeout(() => setPasteSuccess(false), 2000)
+            // Convert to base64
+            const base64 = await blobToBase64(blob)
+            
+            // Auto-resize for optimal API performance
+            const { resized, info } = await resizeImage(base64)
+            
+            setUploadedImage(resized)
+            setImageInfo(info)
+            setPasteSuccess(true)
+            
+            console.log(`📸 Screenshot optimized: ${info}`)
+            
+            // Hide success message after 3 seconds (longer for resize info)
+            setTimeout(() => setPasteSuccess(false), 3000)
           } catch (error) {
-            console.error('Error converting pasted image:', error)
+            console.error('Error processing pasted image:', error)
           }
         }
         break
@@ -432,7 +530,10 @@ export default function AegisAssistant({ account, stats, rules, openTrades = [] 
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setUploadedImage(null)}
+                    onClick={() => {
+                      setUploadedImage(null)
+                      setImageInfo('')
+                    }}
                     className="h-6 w-6 p-0"
                   >
                     <X className="h-3 w-3" />
@@ -448,8 +549,15 @@ export default function AegisAssistant({ account, stats, rules, openTrades = [] 
 
             {/* Paste Success Indicator */}
             {pasteSuccess && (
-              <div className="mb-2 p-2 bg-green-100 border border-green-300 rounded-lg text-green-800 text-sm flex items-center gap-2">
-                ✅ Screenshot incollato con successo! Pronto per essere inviato.
+              <div className="mb-2 p-2 bg-green-100 border border-green-300 rounded-lg text-green-800 text-sm">
+                <div className="flex items-center gap-2 mb-1">
+                  ✅ Screenshot ottimizzato con successo!
+                </div>
+                {imageInfo && (
+                  <div className="text-xs text-green-700">
+                    📸 {imageInfo}
+                  </div>
+                )}
               </div>
             )}
 
