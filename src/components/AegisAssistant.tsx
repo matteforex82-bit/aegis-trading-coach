@@ -44,8 +44,10 @@ export default function AegisAssistant({ account, stats, rules, openTrades = [] 
   const [sessionId, setSessionId] = useState('')
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [isExpanded, setIsExpanded] = useState(false)
+  const [pasteSuccess, setPasteSuccess] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Initialize session ID
   useEffect(() => {
@@ -244,6 +246,47 @@ export default function AegisAssistant({ account, stats, rules, openTrades = [] 
     }
   }
 
+  // Convert blob to base64
+  const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.readAsDataURL(blob)
+    })
+  }
+
+  // Handle paste events for screenshot upload
+  const handlePaste = async (event: React.ClipboardEvent) => {
+    const items = event.clipboardData?.items
+    
+    if (!items) return
+    
+    // Look for image items in clipboard
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]
+      
+      if (item.type.indexOf('image') !== -1) {
+        event.preventDefault()
+        
+        const blob = item.getAsFile()
+        if (blob) {
+          try {
+            const base64 = await blobToBase64(blob)
+            setUploadedImage(base64)
+            setPasteSuccess(true)
+            console.log('📸 Screenshot pasted and converted to base64')
+            
+            // Hide success message after 2 seconds
+            setTimeout(() => setPasteSuccess(false), 2000)
+          } catch (error) {
+            console.error('Error converting pasted image:', error)
+          }
+        }
+        break
+      }
+    }
+  }
+
   // Quick action buttons
   const quickActions = [
     { text: "Analizza le mie posizioni aperte", icon: TrendingUp },
@@ -403,14 +446,23 @@ export default function AegisAssistant({ account, stats, rules, openTrades = [] 
               </div>
             )}
 
+            {/* Paste Success Indicator */}
+            {pasteSuccess && (
+              <div className="mb-2 p-2 bg-green-100 border border-green-300 rounded-lg text-green-800 text-sm flex items-center gap-2">
+                ✅ Screenshot incollato con successo! Pronto per essere inviato.
+              </div>
+            )}
+
             {/* Input Area */}
             <div className="flex items-end gap-2">
               <div className="flex-1">
                 <Textarea
+                  ref={textareaRef}
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Scrivi la tua domanda ad AEGIS..."
+                  onPaste={handlePaste}
+                  placeholder="Scrivi la tua domanda ad AEGIS o incolla screenshot con Ctrl+V..."
                   className="min-h-[2.5rem] resize-none"
                   disabled={isLoading}
                 />
