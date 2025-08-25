@@ -265,7 +265,8 @@ export default function AccountDashboard() {
   const [rules, setRules] = useState<RuleMetrics | null>(null)
   const [openTrades, setOpenTrades] = useState<any[]>([])
   const [openPositionsTotal, setOpenPositionsTotal] = useState<number>(0)
-  const [loading, setLoading] = useState(true)
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [backgroundRefresh, setBackgroundRefresh] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
@@ -280,16 +281,21 @@ export default function AccountDashboard() {
 
     const interval = setInterval(() => {
       // Only refresh if not currently refreshing to avoid conflicts
-      if (!refreshing) {
-        loadDashboardData()
+      if (!refreshing && !backgroundRefresh) {
+        loadDashboardData(true) // isAutoRefresh = true for background updates
       }
     }, 30000) // Refresh every 30 seconds
 
     return () => clearInterval(interval)
-  }, [accountId, refreshing])
+  }, [accountId, refreshing, backgroundRefresh])
 
-  const loadDashboardData = async () => {
-    setLoading(true)
+  const loadDashboardData = async (isAutoRefresh = false) => {
+    if (isAutoRefresh) {
+      setBackgroundRefresh(true)
+    } else {
+      setInitialLoading(true)
+    }
+    
     try {
       // Load account details
       const accountResponse = await fetch(`/api/accounts`)
@@ -544,7 +550,8 @@ export default function AccountDashboard() {
     } catch (error) {
       console.error('Error loading dashboard data:', error)
     } finally {
-      setLoading(false)
+      setInitialLoading(false)
+      setBackgroundRefresh(false)
     }
   }
 
@@ -554,7 +561,7 @@ export default function AccountDashboard() {
     setRefreshing(false)
   }
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -787,6 +794,14 @@ export default function AccountDashboard() {
       title={account.name || 'Unknown Account'} 
       subtitle={`Account: ${account.login || 'N/A'} | ${account.broker || 'N/A'} | ${account.server || 'N/A'}`}
     >
+      {/* Background Refresh Indicator */}
+      {backgroundRefresh && (
+        <div className="fixed top-4 right-4 bg-blue-100 border border-blue-300 text-blue-800 px-3 py-2 rounded-lg shadow-lg text-sm z-50 flex items-center gap-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+          🔄 Aggiornamento dati...
+        </div>
+      )}
+      
       <div className="p-6 space-y-6">
         {/* Professional Account Header */}
         <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
