@@ -185,13 +185,15 @@ async function handleTradeSyncSafe(account: any, trades: any[]) {
         })
 
         if (!existingTrade) {
-          // Create trade with safe error handling
+          // Create new trade
           await createTradeSafe(trade, accountRecord.id)
           processedTrades++
-          console.log('✅ Trade processed:', ticketId)
+          console.log('✅ Trade created:', ticketId)
         } else {
-          skippedTrades++
-          console.log('⏭️ Trade exists, skipping:', ticketId)
+          // Update existing trade (this fixes the bug!)
+          await updateTradeSafe(existingTrade, trade)
+          processedTrades++
+          console.log('🔄 Trade updated:', ticketId)
         }
       } catch (tradeError: any) {
         console.error('❌ Error processing trade (continuing):', tradeError.message)
@@ -199,16 +201,16 @@ async function handleTradeSyncSafe(account: any, trades: any[]) {
       }
     }
 
-    console.log(`🎉 Trade sync completed: ${processedTrades} processed, ${skippedTrades} skipped`)
+    console.log(`🎉 Trade sync completed: ${processedTrades} processed (created + updated), ${skippedTrades} skipped`)
     
     return NextResponse.json({
       success: true,
-      message: 'Trades processed successfully',
+      message: 'Trades processed successfully with updates',
       processedTrades: processedTrades,
       skippedTrades: skippedTrades,
       accountLogin: account.login,
       requestId: requestId,
-      mode: 'full',
+      mode: 'full_with_updates',
       dashboardUrl: process.env.NEXTAUTH_URL || 'https://new2dash.vercel.app'
     })
   } catch (error: any) {
@@ -550,6 +552,68 @@ async function createTradeSafe(trade: any, accountId: string) {
   } catch (error: any) {
     console.error('❌ Error creating trade safely:', error.message)
     console.error('❌ Trade data:', JSON.stringify(trade, null, 2))
+    throw error
+  }
+}
+
+//+------------------------------------------------------------------+
+//| Update Trade Safely                                            |
+//+------------------------------------------------------------------+
+async function updateTradeSafe(existingTrade: any, incomingTrade: any) {
+  try {
+    console.log('🔄 Updating existing trade:', existingTrade.ticketId)
+    
+    // Parse incoming trade data safely
+    let closeTime = existingTrade.closeTime // Keep existing closeTime
+    if (incomingTrade.close_time) {
+      try {
+        closeTime = new Date(incomingTrade.close_time)
+        console.log('📅 Setting closeTime:', closeTime)
+      } catch (dateError) {
+        console.log('Warning: Invalid close_time in update, keeping existing')
+      }
+    }
+    
+    // Handle numeric fields safely - update only if provided
+    const closePrice = incomingTrade.close_price ? Number(incomingTrade.close_price) : existingTrade.closePrice
+    const pnlGross = incomingTrade.pnl_gross !== undefined ? Number(incomingTrade.pnl_gross) : 
+                     incomingTrade.pnl !== undefined ? Number(incomingTrade.pnl) : existingTrade.pnlGross
+    const commission = incomingTrade.commission !== undefined ? Number(incomingTrade.commission) : existingTrade.commission
+    const swap = incomingTrade.swap !== undefined ? Number(incomingTrade.swap) : existingTrade.swap
+    const taxes = incomingTrade.taxes !== undefined ? Number(incomingTrade.taxes) : existingTrade.taxes
+    
+    // Update trade in database
+    const updatedTrade = await db.trade.update({
+      where: { id: existingTrade.id },
+      data: {
+        // Update fields that can change
+        closeTime: closeTime,
+        closePrice: closePrice,
+        pnlGross: pnlGross,
+        commission: commission,
+        swap: swap,
+        taxes: taxes,
+        closeReason: incomingTrade.close_reason || existingTrade.closeReason,
+        
+        // PropFirm extensions that can be updated
+        equityAtClose: incomingTrade.equityAtClose ? Number(incomingTrade.equityAtClose) : existingTrade.equityAtClose,
+        drawdownAtClose: incomingTrade.drawdownAtClose ? Number(incomingTrade.drawdownAtClose) : existingTrade.drawdownAtClose,
+        dailyPnLAtClose: incomingTrade.dailyPnLAtClose ? Number(incomingTrade.dailyPnLAtClose) : existingTrade.dailyPnLAtClose,
+        holdingTime: incomingTrade.holdingTime ? Number(incomingTrade.holdingTime) : existingTrade.holdingTime,
+        riskReward: incomingTrade.riskReward ? Number(incomingTrade.riskReward) : existingTrade.riskReward,
+        
+        // Update timestamp
+        updatedAt: new Date()
+      }
+    })
+    
+    console.log('✅ Trade updated successfully:', existingTrade.ticketId, closeTime ? '(CLOSED)' : '(UPDATED)')
+    return updatedTrade
+    
+  } catch (error: any) {
+    console.error('❌ Error updating trade safely:', error.message)
+    console.error('❌ Existing trade:', JSON.stringify(existingTrade, null, 2))
+    console.error('❌ Incoming trade:', JSON.stringify(incomingTrade, null, 2))
     throw error
   }
 }
