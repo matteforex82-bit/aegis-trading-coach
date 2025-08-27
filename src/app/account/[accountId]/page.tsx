@@ -38,7 +38,12 @@ import { OpenPositionsSection } from '@/components/OpenPositionsSection'
 import ConnectionStatus from '@/components/ConnectionStatus'
 import DynamicRuleRenderer from '@/components/DynamicRuleRenderer'
 import SimpleRiskWidget from '@/components/SimpleRiskWidget'
-import AegisAssistant from '@/components/AegisAssistant'
+import AegisCoach from '@/components/AegisCoach'
+import TradingInsights from '@/components/TradingInsights'
+import TradingPerformanceMetrics from '@/components/TradingPerformanceMetrics'
+import TradingAlerts from '@/components/TradingAlerts'
+import LearningResources from '@/components/LearningResources'
+import TradingGoals from '@/components/TradingGoals'
 
 interface Account {
   id: string
@@ -1080,12 +1085,62 @@ export default function AccountDashboard() {
           </div>
         )}
 
-        {/* 🤖 AEGIS AI ASSISTANT */}
-        <AegisAssistant 
+        {/* 🤖 AEGIS AI COACH */}
+        <AegisCoach 
           account={account}
           stats={stats}
           rules={rules}
           openTrades={openTrades}
+        />
+        
+        {/* 📊 TRADING INSIGHTS */}
+        <TradingInsights
+          account={account}
+          stats={stats}
+          openTrades={openTrades}
+          onInsightClick={(insight) => {
+            // Scroll to AEGIS Coach and set the input message
+            const aegisElement = document.querySelector('.aegis-coach-container');
+            if (aegisElement) {
+              aegisElement.scrollIntoView({ behavior: 'smooth' });
+              // This would ideally trigger the input in AegisCoach
+              // For now, this is a placeholder for future integration
+            }
+          }}
+        />
+        
+        {/* 📈 TRADING PERFORMANCE METRICS */}
+        <TradingPerformanceMetrics
+          account={account}
+          stats={stats}
+        />
+        
+        {/* 🔔 TRADING ALERTS */}
+        <TradingAlerts
+          account={account}
+          stats={stats}
+          openTrades={openTrades}
+          onAlertClick={(alertAction) => {
+            // Scroll to AEGIS Coach and set the input message
+            const aegisElement = document.querySelector('.aegis-coach-container');
+            if (aegisElement) {
+              aegisElement.scrollIntoView({ behavior: 'smooth' });
+              // This would ideally trigger the input in AegisCoach
+              // For now, this is a placeholder for future integration
+            }
+          }}
+        />
+        
+        {/* 📚 LEARNING RESOURCES */}
+        <LearningResources
+          account={account}
+          stats={stats}
+        />
+        
+        {/* 🎯 TRADING GOALS */}
+        <TradingGoals
+          account={account}
+          stats={stats}
         />
 
         {/* 📊 Trading Performance Summary */}

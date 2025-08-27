@@ -22,17 +22,21 @@ input group "=== SYNC CONFIGURATION ==="
 input int      SYNC_INTERVAL = 30;                                         // Intervallo sync live (secondi)
 input bool     ENABLE_DETAILED_LOGGING = true;                             // Log dettagliati
 
-// Account Info
-input group "=== ACCOUNT INFO ==="
-input string   PROP_FIRM_NAME = "FTMO";                                    // Nome prop firm
-input string   ACCOUNT_PHASE = "PHASE_1";                                  // Fase account
-input double   START_BALANCE = 50000.0;                                    // Balance iniziale
-
 //+------------------------------------------------------------------+
 //| Global Variables                                                 |
 //+------------------------------------------------------------------+
 datetime g_LastSyncTime = 0;
 int g_LastKnownDealsCount = 0;
+
+// === SISTEMA RICONNESSIONE AUTOMATICA ===
+int g_RetryCount = 0;
+int g_MaxRetries = 3;
+int g_RetryDelay = 5000; // 5 secondi
+datetime g_LastSendTime = 0;
+int g_SendInterval = 30; // 30 secondi base
+int g_MinSendInterval = 30;
+int g_MaxSendInterval = 300;
+datetime g_LastHealthCheck = 0;
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -94,10 +98,21 @@ void OnTick()
 //+------------------------------------------------------------------+
 void OnTimer()
 {
+    // Controllo intervalli dinamici per evitare spam al server
+    if(TimeCurrent() - g_LastSendTime < g_SendInterval)
+    {
+        if(ENABLE_DETAILED_LOGGING)
+            Print("SKIP SYNC: Aspetto ", g_SendInterval, "s tra invii (ultimo: ", (TimeCurrent() - g_LastSendTime), "s fa)");
+        return;
+    }
+    
     if(ENABLE_DETAILED_LOGGING)
-        Print("LIVE SYNC: Invio posizioni aperte ogni ", SYNC_INTERVAL, "s");
+        Print("LIVE SYNC: Invio posizioni aperte ogni ", g_SendInterval, "s");
     
     SendLivePositions();
+    
+    // Health check periodico
+    MonitorConnection();
 }
 
 //+------------------------------------------------------------------+
@@ -243,6 +258,8 @@ void SendClosedTrade(ulong dealTicket)
     }
     
     SendHTTPRequest(payload);
+    g_LastSendTime = TimeCurrent();
+    g_LastSendTime = TimeCurrent();
 }
 
 //+------------------------------------------------------------------+
@@ -257,10 +274,7 @@ string BuildAccountJSON()
     accountJson += "\"server\":\"" + CleanJsonString(AccountInfoString(ACCOUNT_SERVER)) + "\",";
     accountJson += "\"currency\":\"" + AccountInfoString(ACCOUNT_CURRENCY) + "\",";
     accountJson += "\"balance\":" + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE), 2) + ",";
-    accountJson += "\"equity\":" + DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY), 2) + ",";
-    accountJson += "\"propFirm\":\"" + CleanJsonString(PROP_FIRM_NAME) + "\",";
-    accountJson += "\"phase\":\"" + CleanJsonString(ACCOUNT_PHASE) + "\",";
-    accountJson += "\"startBalance\":" + DoubleToString(START_BALANCE, 2);
+    accountJson += "\"equity\":" + DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY), 2);
     accountJson += "}";
     
     return accountJson;
@@ -284,8 +298,7 @@ string BuildClosedTradeJSON(ulong positionId, string symbol, string side, double
     tradeJson += "\"pnl\":" + DoubleToString(profit, 2) + ",";
     tradeJson += "\"commission\":" + DoubleToString(commission, 2) + ",";
     tradeJson += "\"swap\":" + DoubleToString(swap, 2) + ",";
-    tradeJson += "\"comment\":\"" + CleanJsonString(comment) + "\",";
-    tradeJson += "\"phase\":\"" + CleanJsonString(ACCOUNT_PHASE) + "\"";
+    tradeJson += "\"comment\":\"" + CleanJsonString(comment) + "\"";
     tradeJson += "}";
     
     return tradeJson;
@@ -304,7 +317,6 @@ void SendLivePositions()
     metricsJson += "\"equity\":" + DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY), 2) + ",";
     metricsJson += "\"balance\":" + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE), 2) + ",";
     metricsJson += "\"margin\":" + DoubleToString(AccountInfoDouble(ACCOUNT_MARGIN), 2) + ",";
-    metricsJson += "\"phase\":\"" + ACCOUNT_PHASE + "\",";
     metricsJson += "\"timestamp\":\"" + TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS) + "\"";
     metricsJson += "}";
     
@@ -404,8 +416,7 @@ string BuildCurrentOpenPositionsJSON()
         positionsJson += "\"profit\":" + DoubleToString(currentProfit, 2) + ",";
         positionsJson += "\"change_percent\":" + DoubleToString(changePercent, 2) + ",";
         positionsJson += "\"magic\":" + IntegerToString(magic) + ",";
-        positionsJson += "\"comment\":\"" + CleanJsonString(comment) + "\",";
-        positionsJson += "\"phase\":\"" + CleanJsonString(ACCOUNT_PHASE) + "\"";
+        positionsJson += "\"comment\":\"" + CleanJsonString(comment) + "\"";
         positionsJson += "}";
     }
     
@@ -419,33 +430,150 @@ string BuildCurrentOpenPositionsJSON()
 }
 
 //+------------------------------------------------------------------+
-//| Send HTTP Request                                              |
+//| Send HTTP Request with Automatic Retry                        |
 //+------------------------------------------------------------------+
 bool SendHTTPRequest(string payload)
 {
     string headers = "Content-Type: application/json\r\n";
     
+    for(int attempt = 1; attempt <= g_MaxRetries; attempt++)
+    {
+        if(ENABLE_DETAILED_LOGGING && attempt > 1)
+            Print("RETRY ", attempt, "/", g_MaxRetries, " - Tentativo riconnessione...");
+        
+        char data[];
+        char result[];
+        string resultString;
+        
+        int dataLength = StringToCharArray(payload, data, 0, -1, CP_UTF8) - 1;
+        if(dataLength < 0) dataLength = 0;
+        ArrayResize(data, dataLength);
+        
+        int res = WebRequest("POST", API_URL, headers, TIMEOUT_MS, data, result, resultString);
+        
+        if(res == 200 || res == 201)
+        {
+            if(ENABLE_DETAILED_LOGGING)
+            {
+                if(attempt > 1)
+                    Print("RICONNESSO! Successo al tentativo ", attempt);
+                else
+                    Print("Dati inviati con successo - Codice: ", res);
+            }
+            
+            // Reset parametri dopo successo
+            g_RetryCount = 0;
+            g_RetryDelay = 5000;
+            g_LastSendTime = TimeCurrent();
+            
+            // Riduci gradualmente intervallo se tutto va bene
+            if(g_SendInterval > g_MinSendInterval)
+            {
+                g_SendInterval = MathMax(g_MinSendInterval, g_SendInterval - 5);
+                if(ENABLE_DETAILED_LOGGING)
+                    Print("OTTIMIZZAZIONE: Intervallo ridotto a ", g_SendInterval, "s");
+            }
+            
+            return true;
+        }
+        else if(ShouldRetry(res) && attempt < g_MaxRetries)
+        {
+            g_RetryCount++;
+            Print("ERRORE ", res, " - Server temporaneamente non disponibile");
+            Print("RETRY automatico in ", g_RetryDelay/1000, " secondi...");
+            
+            Sleep(g_RetryDelay);
+            g_RetryDelay = g_RetryDelay * 2; // Backoff esponenziale
+        }
+        else
+        {
+            // Errore non recuperabile o tentativi esauriti
+            Print("ERRORE DEFINITIVO ", res, " - Impossibile connettersi");
+            break;
+        }
+    }
+    
+    // Tutti i tentativi falliti - aumenta intervallo
+    Print("DISCONNESSIONE: Tutti i ", g_MaxRetries, " tentativi falliti");
+    g_SendInterval = MathMin(g_MaxSendInterval, g_SendInterval * 2);
+    Print("PROTEZIONE: Intervallo aumentato a ", g_SendInterval, "s per ridurre carico server");
+    
+    return false;
+}
+
+//+------------------------------------------------------------------+
+//| Check if error should be retried                               |
+//+------------------------------------------------------------------+
+bool ShouldRetry(int errorCode)
+{
+    // Errori che giustificano un retry automatico
+    if(errorCode == 503) return true; // Server temporaneamente non disponibile
+    if(errorCode == 502) return true; // Bad Gateway
+    if(errorCode == 504) return true; // Gateway Timeout
+    if(errorCode == 429) return true; // Too Many Requests
+    if(errorCode == 0)   return true; // Errore di rete
+    
+    // Errori che NON devono essere ritentati
+    if(errorCode == 400) return false; // Bad Request (JSON malformato)
+    if(errorCode == 401) return false; // Unauthorized
+    if(errorCode == 403) return false; // Forbidden
+    if(errorCode == 404) return false; // Not Found
+    
+    return false; // Default: non ritentare
+}
+
+//+------------------------------------------------------------------+
+//| Monitor Connection Health                                       |
+//+------------------------------------------------------------------+
+void MonitorConnection()
+{
+    // Health check ogni 2 minuti
+    if(TimeCurrent() - g_LastHealthCheck < 120) return;
+    
+    g_LastHealthCheck = TimeCurrent();
+    
+    if(ENABLE_DETAILED_LOGGING)
+    {
+        Print("HEALTH CHECK:");
+        Print("  Terminal connesso: ", (TerminalInfoInteger(TERMINAL_CONNECTED) ? "SI" : "NO"));
+        Print("  Errori consecutivi: ", g_RetryCount);
+        Print("  Intervallo corrente: ", g_SendInterval, "s");
+        Print("  Ultimo invio: ", (TimeCurrent() - g_LastSendTime), "s fa");
+    }
+    
+    // Se troppi errori, testa la connessione base
+    if(g_RetryCount > 3)
+    {
+        Print("TROPPI ERRORI: Test connessione base...");
+        TestServerPing();
+    }
+}
+
+//+------------------------------------------------------------------+
+//| Test Server Ping                                              |
+//+------------------------------------------------------------------+
+void TestServerPing()
+{
+    string headers = "Content-Type: application/json\r\n";
     char data[];
     char result[];
     string resultString;
     
-    int dataLength = StringToCharArray(payload, data, 0, -1, CP_UTF8) - 1;
+    string pingPayload = "{\"ping\":true}";
+    int dataLength = StringToCharArray(pingPayload, data, 0, -1, CP_UTF8) - 1;
     if(dataLength < 0) dataLength = 0;
     ArrayResize(data, dataLength);
     
-    int res = WebRequest("POST", API_URL, headers, TIMEOUT_MS, data, result, resultString);
+    int res = WebRequest("POST", API_URL, headers, 5000, data, result, resultString);
     
-    if(res == 200 || res == 201)
+    if(res == 200 || res == 201 || res == 400)
     {
-        if(ENABLE_DETAILED_LOGGING)
-            Print("Dati inviati con successo - Codice: ", res);
-        return true;
+        Print("PING OK: Server raggiungibile (", res, ")");
+        g_RetryCount = 0; // Reset conteggio errori
     }
     else
     {
-        Print("Errore invio dati - Codice: ", res);
-        Print("Payload che ha fallito: ", payload);
-        return false;
+        Print("PING FAIL: Server non raggiungibile (", res, ")");
     }
 }
 

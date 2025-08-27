@@ -1,0 +1,440 @@
+{
+  "name": "Claude AI Multimodal Webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "claude-webhook",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*",
+          "rawBody": true
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 300],
+      "webhookId": "claude-multimodal-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input validation and parsing\ntry {\n  let inputData = {};\n  const contentType = $input.first().headers['content-type'] || '';\n  \n  // Handle different content types\n  if (contentType.includes('application/json')) {\n    inputData = $input.first().body;\n  } else if (contentType.includes('multipart/form-data')) {\n    inputData = $input.first().body;\n  } else {\n    inputData = $input.first().body;\n  }\n  \n  // Validate required fields\n  if (!inputData.text && !inputData.image) {\n    throw new Error('Either text or image field is required');\n  }\n  \n  // Clean and validate text\n  const text = inputData.text ? String(inputData.text).trim() : '';\n  if (text.length > 10000) {\n    throw new Error('Text too long (max 10000 characters)');\n  }\n  \n  // Process image field\n  let imageData = null;\n  let imageType = null;\n  \n  if (inputData.image) {\n    const image = inputData.image;\n    \n    // Check if it's a URL\n    if (typeof image === 'string' && (image.startsWith('http://') || image.startsWith('https://'))) {\n      imageData = {\n        type: 'url',\n        url: image\n      };\n    } \n    // Check if it's base64\n    else if (typeof image === 'string' && image.includes('base64')) {\n      // Clean base64 data\n      let base64Data = image;\n      if (image.includes(',')) {\n        const parts = image.split(',');\n        base64Data = parts[1];\n        // Extract media type from data URI\n        const mimeMatch = parts[0].match(/data:(image\\/(jpeg|jpg|png|webp));base64/);\n        if (mimeMatch) {\n          imageType = mimeMatch[1] === 'jpg' ? 'jpeg' : mimeMatch[1];\n        }\n      }\n      \n      // Validate base64\n      try {\n        atob(base64Data);\n        imageData = {\n          type: 'base64',\n          data: base64Data,\n          mediaType: imageType || 'jpeg'\n        };\n      } catch (e) {\n        throw new Error('Invalid base64 image data');\n      }\n    } else {\n      throw new Error('Image must be a URL or base64 encoded string');\n    }\n  }\n  \n  return [{\n    text: text,\n    image: imageData,\n    originalPayload: inputData,\n    timestamp: new Date().toISOString()\n  }];\n  \n} catch (error) {\n  return [{\n    error: true,\n    message: error.message,\n    timestamp: new Date().toISOString()\n  }];\n}"
+      },
+      "id": "input-validation",
+      "name": "Input Validation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "error-check",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "error-check-if",
+      "name": "Error Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"error\",\n  \"message\": \"{{ $json.message }}\",\n  \"timestamp\": \"{{ $json.timestamp }}\"\n}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "error-response",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [800, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "image-url-check",
+              "leftValue": "={{ $json.image && $json.image.type === 'url' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "image-url-check",
+      "name": "Image URL Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [800, 400]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.image.url }}",
+        "options": {
+          "timeout": 30000,
+          "retry": {
+            "enabled": true,
+            "maxTries": 3
+          },
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "arrayBuffer"
+            }
+          }
+        }
+      },
+      "id": "download-image",
+      "name": "Download Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 300],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Convert downloaded image to base64\ntry {\n  const response = $input.first();\n  \n  // Check if download was successful\n  if (!response.body || response.statusCode !== 200) {\n    throw new Error(`Failed to download image: ${response.statusCode || 'Unknown error'}`);\n  }\n  \n  // Get content type from headers\n  const contentType = response.headers['content-type'] || '';\n  let mediaType = 'jpeg'; // default\n  \n  if (contentType.includes('image/png')) {\n    mediaType = 'png';\n  } else if (contentType.includes('image/webp')) {\n    mediaType = 'webp';\n  } else if (contentType.includes('image/jpeg') || contentType.includes('image/jpg')) {\n    mediaType = 'jpeg';\n  } else {\n    throw new Error('Unsupported image format. Only JPEG, PNG, and WebP are supported.');\n  }\n  \n  // Convert ArrayBuffer to base64\n  const buffer = new Uint8Array(response.body);\n  let binary = '';\n  for (let i = 0; i < buffer.byteLength; i++) {\n    binary += String.fromCharCode(buffer[i]);\n  }\n  const base64Data = btoa(binary);\n  \n  // Validate base64 size (max ~10MB)\n  if (base64Data.length > 14000000) {\n    throw new Error('Image too large (max ~10MB)');\n  }\n  \n  // Get previous data and update image info\n  const prevData = $('Input Validation').first();\n  \n  return [{\n    ...prevData,\n    image: {\n      type: 'base64',\n      data: base64Data,\n      mediaType: mediaType\n    },\n    imageProcessed: true\n  }];\n  \n} catch (error) {\n  const prevData = $('Input Validation').first();\n  return [{\n    ...prevData,\n    error: true,\n    message: `Image processing failed: ${error.message}`,\n    imageProcessed: false\n  }];\n}"
+      },
+      "id": "convert-to-base64",
+      "name": "Convert to Base64",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "timestamp",
+              "field2": "timestamp"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "merge-data",
+      "name": "Merge Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1400, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare Claude API payload\ntry {\n  const inputData = $input.first();\n  \n  // Check for processing errors\n  if (inputData.error) {\n    throw new Error(inputData.message);\n  }\n  \n  // Build content array for Claude\n  const content = [];\n  \n  // Add text if present\n  if (inputData.text && inputData.text.trim()) {\n    content.push({\n      type: 'text',\n      text: inputData.text\n    });\n  }\n  \n  // Add image if present\n  if (inputData.image && inputData.image.type === 'base64') {\n    content.push({\n      type: 'image',\n      source: {\n        type: 'base64',\n        media_type: `image/${inputData.image.mediaType}`,\n        data: inputData.image.data\n      }\n    });\n  }\n  \n  // Validate content\n  if (content.length === 0) {\n    throw new Error('No valid content to send to Claude');\n  }\n  \n  // Prepare Claude API request\n  const claudePayload = {\n    model: 'claude-3-5-sonnet-20241022',\n    max_tokens: 1000,\n    messages: [\n      {\n        role: 'user',\n        content: content\n      }\n    ]\n  };\n  \n  return [{\n    claudePayload: claudePayload,\n    originalData: inputData,\n    contentCount: content.length,\n    hasImage: content.some(c => c.type === 'image'),\n    hasText: content.some(c => c.type === 'text')\n  }];\n  \n} catch (error) {\n  return [{\n    error: true,\n    message: `Claude payload preparation failed: ${error.message}`,\n    originalData: $input.first()\n  }];\n}"
+      },
+      "id": "prepare-claude-payload",
+      "name": "Prepare Claude Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1600, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "payload-error-check",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "payload-error-check",
+      "name": "Payload Error Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1800, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"error\",\n  \"message\": \"{{ $json.message }}\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "id": "payload-error-response",
+      "name": "Payload Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2000, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-api-key",
+              "value": "={{ $credentials.anthropic.api_key }}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "jsonParameters": "={{ JSON.stringify($json.claudePayload) }}",
+        "options": {
+          "timeout": 30000,
+          "retry": {
+            "enabled": true,
+            "maxTries": 3
+          },
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "call-claude-api",
+      "name": "Call Claude API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2000, 500],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process Claude API response\ntry {\n  const response = $input.first();\n  const originalData = $('Prepare Claude Payload').first().originalData;\n  \n  // Check HTTP status\n  if (response.statusCode !== 200) {\n    let errorMessage = `Claude API returned status ${response.statusCode}`;\n    \n    if (response.body && response.body.error) {\n      errorMessage += `: ${response.body.error.message || response.body.error.type}`;\n    }\n    \n    throw new Error(errorMessage);\n  }\n  \n  // Validate response structure\n  if (!response.body || !response.body.content || !Array.isArray(response.body.content)) {\n    throw new Error('Invalid response structure from Claude API');\n  }\n  \n  // Extract text content\n  const textContent = response.body.content\n    .filter(item => item.type === 'text')\n    .map(item => item.text)\n    .join(' ');\n  \n  if (!textContent) {\n    throw new Error('No text content found in Claude response');\n  }\n  \n  // Prepare success response\n  const successResponse = {\n    status: 'success',\n    response: textContent,\n    original_text: originalData.text || null,\n    image_processed: !!originalData.imageProcessed,\n    content_count: $('Prepare Claude Payload').first().contentCount,\n    has_image: $('Prepare Claude Payload').first().hasImage,\n    has_text: $('Prepare Claude Payload').first().hasText,\n    timestamp: new Date().toISOString(),\n    claude_model: 'claude-3-5-sonnet-20241022',\n    usage: response.body.usage || null\n  };\n  \n  return [successResponse];\n  \n} catch (error) {\n  // Prepare error response\n  const originalData = $('Prepare Claude Payload').first().originalData;\n  \n  const errorResponse = {\n    status: 'error',\n    message: error.message,\n    original_text: originalData ? originalData.text : null,\n    image_processed: originalData ? !!originalData.imageProcessed : false,\n    timestamp: new Date().toISOString(),\n    error_type: 'claude_api_error'\n  };\n  \n  return [errorResponse];\n}"
+      },
+      "id": "process-claude-response",
+      "name": "Process Claude Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2200, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": "={{ $json.status === 'success' ? 200 : 500 }}"
+        }
+      },
+      "id": "final-response",
+      "name": "Final Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2400, 500]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Input Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input Validation": {
+      "main": [
+        [
+          {
+            "node": "Error Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Check": {
+      "main": [
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Image URL Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image URL Check": {
+      "main": [
+        [
+          {
+            "node": "Download Image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Image": {
+      "main": [
+        [
+          {
+            "node": "Convert to Base64",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to Base64": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Data": {
+      "main": [
+        [
+          {
+            "node": "Prepare Claude Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Claude Payload": {
+      "main": [
+        [
+          {
+            "node": "Payload Error Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Payload Error Check": {
+      "main": [
+        [
+          {
+            "node": "Payload Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call Claude API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Claude API": {
+      "main": [
+        [
+          {
+            "node": "Process Claude Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Claude Response": {
+      "main": [
+        [
+          {
+            "node": "Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2025-08-25T15:00:00.000Z",
+      "updatedAt": "2025-08-25T15:00:00.000Z",
+      "id": "claude-multimodal",
+      "name": "Claude Multimodal"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-08-25T15:00:00.000Z",
+  "versionId": "2.0.0",
+  "active": false,
+  "id": "claude-multimodal-workflow"
+}
