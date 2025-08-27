@@ -6,7 +6,7 @@
 #property description "Test EA for payload analysis"
 
 // API Configuration
-input string   API_URL = "https://new2dash.vercel.app/api/ingest/test";
+input string   API_URL = "https://aegis-trading-coach.vercel.app/api/ingest/test";
 input int      TIMEOUT_MS = 10000;
 
 // Test parameters

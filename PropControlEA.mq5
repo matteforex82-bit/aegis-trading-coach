@@ -14,7 +14,7 @@
 //+------------------------------------------------------------------+
 // API Configuration
 input group "=== API CONFIGURATION ==="
-input string   API_URL = "https://new2dash.vercel.app/api/ingest/mt5";  // URL API Dashboard
+input string   API_URL = "https://aegis-trading-coach.vercel.app/api/ingest/mt5";  // URL API Dashboard
 input string   API_KEY = "";                                                // API Key (opzionale)
 input int      TIMEOUT_MS = 10000;                                         // Timeout richieste (ms)
 input bool     ENABLE_SSL = true;                                          // Abilita HTTPS/SSL

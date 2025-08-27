@@ -4,7 +4,7 @@
 //+------------------------------------------------------------------+
 
 // Configurazione connessione
-string SERVER_URL = "https://new2dash.vercel.app";  // URL produzione
+string SERVER_URL = "https://aegis-trading-coach.vercel.app";  // URL produzione
 // string SERVER_URL = "http://localhost:3000";     // URL sviluppo locale
 
 // Variabili globali per gestione retry

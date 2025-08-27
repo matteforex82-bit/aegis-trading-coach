@@ -114,7 +114,7 @@ void SendMetricsWithRetry()
    string jsonPayload = BuildJsonPayload(); // La tua funzione esistente
    
    // URL del tuo server (sostituisci con quello corretto)
-   string serverUrl = "https://new2dash.vercel.app/api/ingest/mt5";
+   string serverUrl = "https://aegis-trading-coach.vercel.app/api/ingest/mt5";
    
    // In caso di sviluppo locale, usa questo:
    // string serverUrl = "http://localhost:3000/api/ingest/mt5";
