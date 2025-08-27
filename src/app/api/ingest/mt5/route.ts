@@ -55,17 +55,51 @@ export async function POST(request: NextRequest) {
 
     console.log('🏦 Account login:', account.login)
 
-    // Test database connection first
+    // Test database connection first with timeout
     try {
       console.log('🔌 Testing database connection...')
-      const testQuery = await db.user.count()
+      const testQuery = await Promise.race([
+        db.user.count(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Database connection timeout')), 8000)
+        )
+      ])
       console.log('✅ Database connected, user count:', testQuery)
     } catch (dbError: any) {
       console.error('❌ Database connection error:', dbError)
-      return NextResponse.json(
-        { error: 'Database connection failed', details: dbError.message },
-        { status: 503 }
-      )
+      
+      // Handle specific database errors
+      if (dbError?.code === 'P5000' && dbError?.message?.includes('planLimitReached')) {
+        console.error('🚨 PRISMA PLAN LIMIT in connection test!')
+        return NextResponse.json({
+          error: 'Database service temporarily unavailable',
+          code: 'PRISMA_PLAN_LIMIT',
+          message: 'Database plan limit reached during connection test',
+          suggestion: 'Upgrade Prisma plan at https://cloud.prisma.io/',
+          requestId: requestId,
+          ea_action: 'RETRY_LATER',
+          timestamp: new Date().toISOString()
+        }, { 
+          status: 503,
+          headers: {
+            'Retry-After': '1800' // 30 minutes
+          }
+        })
+      }
+      
+      return NextResponse.json({
+        error: 'Database connection failed', 
+        details: dbError.message,
+        code: dbError.code || 'DB_CONNECTION_ERROR',
+        requestId: requestId,
+        ea_action: 'RETRY_WITH_BACKOFF',
+        timestamp: new Date().toISOString()
+      }, { 
+        status: 503,
+        headers: {
+          'Retry-After': '300' // 5 minutes
+        }
+      })
     }
 
     // Handle different types of requests with SAFE versions
