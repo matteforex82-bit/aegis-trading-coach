@@ -68,37 +68,89 @@ export default function SimpleRiskWidget({ account, rules, stats, openTrades = [
     }
   }
 
-  // 🎯 STEP 2.5: Calculate Open Positions Risk
+  // 🎯 STEP 2.5: Calculate Open Positions Risk - FIXED VERSION
   const calculateOpenPositionsRisk = () => {
     if (!openTrades || openTrades.length === 0) return { totalRisk: 0, positions: [] }
     
     let totalRisk = 0
     const positionsWithSL = []
     
+    // Helper function to get correct contract size/pip value
+    const getInstrumentSpecs = (symbol: string) => {
+      const sym = symbol.toUpperCase()
+      
+      // ✅ GOLD - Oro
+      if (sym.includes('XAU') || sym.includes('GOLD')) {
+        return { contractSize: 100, pipSize: 0.01, type: 'GOLD' } // 1 pip = $1 per 0.01 lot
+      }
+      
+      // ✅ SILVER - Argento  
+      if (sym.includes('XAG') || sym.includes('SILVER')) {
+        return { contractSize: 5000, pipSize: 0.001, type: 'SILVER' } // 1 pip = $5 per 1 lot
+      }
+      
+      // ✅ OIL - Petrolio
+      if (sym.includes('OIL') || sym.includes('WTI') || sym.includes('CRUDE')) {
+        return { contractSize: 1000, pipSize: 0.01, type: 'OIL' } // 1 pip = $10 per 1 lot
+      }
+      
+      // ✅ INDICES - Indici
+      if (sym.includes('US30') || sym.includes('DOW')) {
+        return { contractSize: 1, pipSize: 1, type: 'US30' } // 1 point = $1 per 1 lot
+      }
+      if (sym.includes('NAS100') || sym.includes('NDX')) {
+        return { contractSize: 1, pipSize: 1, type: 'NAS100' } // 1 point = $1 per 1 lot
+      }
+      if (sym.includes('SPX500') || sym.includes('SP500')) {
+        return { contractSize: 1, pipSize: 1, type: 'SPX500' } // 1 point = $1 per 1 lot
+      }
+      if (sym.includes('DAX') || sym.includes('GER40')) {
+        return { contractSize: 1, pipSize: 1, type: 'DAX' } // 1 point = €1 per 1 lot
+      }
+      
+      // ✅ FOREX - Valute
+      if (sym.includes('JPY')) {
+        return { contractSize: 100000, pipSize: 0.01, type: 'JPY' } // Coppie JPY
+      } else {
+        return { contractSize: 100000, pipSize: 0.0001, type: 'FOREX' } // Coppie major
+      }
+    }
+    
     for (const trade of openTrades) {
       const hasStopLoss = trade.sl && trade.sl !== 0
       if (hasStopLoss) {
-        // Calculate potential loss if stop loss is hit
-        const currentPrice = trade.openPrice // We need current price but for now use openPrice as approximation
         const volume = trade.volume || 0
+        const specs = getInstrumentSpecs(trade.symbol)
         
-        // Calculate potential loss based on stop loss with proper pip values
-        let potentialLoss = 0
-        let pipValue = 10 // default for major forex pairs
-        
-        // Determine pip value based on symbol
-        if (trade.symbol?.includes('XAU') || trade.symbol?.includes('GOLD')) {
-          pipValue = 100 // XAUUSD has contract size 100
-        } else if (trade.symbol?.includes('JPY')) {
-          pipValue = 6.5 // JPY pairs have different pip value
+        // ✅ Calculate actual distance to stop loss
+        let stopDistance = 0
+        if (trade.side?.toLowerCase() === 'buy') {
+          stopDistance = Math.abs(trade.openPrice - trade.sl) // BUY: Open price should be > SL
+        } else {
+          stopDistance = Math.abs(trade.sl - trade.openPrice) // SELL: SL should be > Open price
         }
         
-        if (trade.side?.toLowerCase() === 'buy') {
-          // BUY: loss = (open - stop) * volume * pip_value
-          potentialLoss = Math.abs((trade.openPrice - trade.sl) * volume * pipValue)
-        } else {
-          // SELL: loss = (stop - open) * volume * pip_value  
-          potentialLoss = Math.abs((trade.sl - trade.openPrice) * volume * pipValue)
+        // ✅ Calculate risk in USD using proper formula
+        let potentialLoss = 0
+        
+        if (specs.type === 'GOLD') {
+          // Gold: 1 lot = 100 oz, 1 pip (0.01) = $1 per 0.01 lot
+          potentialLoss = (stopDistance / specs.pipSize) * 1 * volume
+        } else if (specs.type === 'SILVER') {
+          // Silver: 1 lot = 5000 oz, 1 pip (0.001) = $5 per 1 lot  
+          potentialLoss = (stopDistance / specs.pipSize) * 5 * volume
+        } else if (specs.type === 'OIL') {
+          // Oil: 1 lot = 1000 barrels, 1 pip (0.01) = $10 per 1 lot
+          potentialLoss = (stopDistance / specs.pipSize) * 10 * volume
+        } else if (specs.type.includes('US30') || specs.type.includes('NAS100') || specs.type.includes('SPX500')) {
+          // US Indices: 1 point = $1 per 1 lot
+          potentialLoss = stopDistance * 1 * volume
+        } else if (specs.type === 'DAX') {
+          // DAX: 1 point = €1 per 1 lot (assume EUR/USD = 1.10)
+          potentialLoss = stopDistance * 1.10 * volume
+        } else if (specs.type === 'FOREX' || specs.type === 'JPY') {
+          // Forex: Standard calculation
+          potentialLoss = (stopDistance / specs.pipSize) * 10 * volume // $10 per pip for standard lots
         }
         
         // Add commission and swap as additional risk
@@ -111,6 +163,9 @@ export default function SimpleRiskWidget({ account, rules, stats, openTrades = [
           side: trade.side,
           volume: trade.volume,
           sl: trade.sl,
+          openPrice: trade.openPrice,
+          stopDistance: stopDistance,
+          instrumentType: specs.type,
           potentialLoss: potentialLoss
         })
       }
@@ -303,17 +358,26 @@ export default function SimpleRiskWidget({ account, rules, stats, openTrades = [
               </div>
               
               {openPositionsRisk.positionsWithSL > 0 && (
-                <div className="bg-white p-3 rounded border">
-                  <div className="font-semibold mb-2 text-orange-700">2️⃣.5 Open Positions SL Risk</div>
-                  <div className="space-y-1">
+                <div className="bg-white p-3 rounded border lg:col-span-2">
+                  <div className="font-semibold mb-2 text-orange-700">2️⃣.5 Open Positions SL Risk - FIXED CALCULATION</div>
+                  <div className="space-y-2 text-xs">
                     {openPositionsRisk.positions.map((pos, idx) => (
-                      <div key={idx} className="flex justify-between">
-                        <span>{pos.symbol} #{pos.ticketId}</span>
-                        <span className="font-mono text-red-600">-${pos.potentialLoss.toFixed(2)}</span>
+                      <div key={idx} className="border-b pb-2">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">{pos.symbol} #{pos.ticketId} ({pos.instrumentType})</span>
+                          <span className="font-mono text-red-600 font-bold">-${pos.potentialLoss.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-600 mt-1">
+                          <span>{pos.side} {pos.volume} lot</span>
+                          <span>SL Distance: {pos.stopDistance.toFixed(4)}</span>
+                        </div>
+                        <div className="text-gray-500 text-xs">
+                          Open: {pos.openPrice} → SL: {pos.sl} ({pos.instrumentType} calculation)
+                        </div>
                       </div>
                     ))}
-                    <div className="flex justify-between font-semibold border-t pt-1">
-                      <span>Total SL Risk:</span>
+                    <div className="flex justify-between font-semibold border-t pt-2 text-sm">
+                      <span>Total SL Risk (Corretto):</span>
                       <span className="font-mono text-red-700">-${openPositionsRisk.totalRisk.toFixed(2)}</span>
                     </div>
                   </div>
