@@ -20,9 +20,11 @@ Per risolvere l'errore di build `Invalid value undefined for datasource "db"`, d
 #### DATABASE_URL (OBBLIGATORIO)
 ```
 Nome: DATABASE_URL
-Valore: postgres://17b3f8bfadad63ae0819c2fc9faf3c0eb5cf2ba715a33f6543642f96d7050a32:sk_sDZsNRCzd3ODUzJwC9CD6@db.prisma.io:5432/postgres?sslmode=require
+Valore: postgresql://17b3f8bfadad63ae0819c2fc9faf3c0eb5cf2ba715a33f6543642f96d7050a32:sk_sDZsNRCzd3ODUzJwC9CD6@db.prisma.io:5432/postgres?sslmode=require
 Environment: Production, Preview, Development
 ```
+
+⚠️ **IMPORTANTE**: Assicurati di usare `postgresql://` (non `postgres://`) come prefisso nell'URL del database.
 
 #### NEXTAUTH_SECRET (OBBLIGATORIO)
 ```
@@ -54,6 +56,26 @@ Dopo aver aggiunto le variabili:
 ## 🔧 Risoluzione Problemi
 
 ### Errore: "Invalid value undefined for datasource db"
+
+**Causa**: La variabile `DATABASE_URL` non è configurata o non è accessibile durante il build.
+
+**Soluzione**:
+1. Vai su [vercel.com](https://vercel.com) → Il tuo progetto → **Settings** → **Environment Variables**
+2. Verifica che `DATABASE_URL` sia presente e configurata per tutti gli ambienti (Production, Preview, Development)
+3. Il valore deve iniziare con `postgresql://` (non `postgres://`)
+4. Dopo aver aggiunto/modificato le variabili, vai su **Deployments** e fai **Redeploy**
+
+### Come Verificare le Variabili d'Ambiente su Vercel
+
+1. **Accedi al Dashboard Vercel**: [vercel.com](https://vercel.com)
+2. **Seleziona il progetto**: `aegis-trading-coach`
+3. **Vai su Settings**: Settings → Environment Variables
+4. **Verifica che siano presenti**:
+   - `DATABASE_URL` (con valore che inizia con `postgresql://`)
+   - `NEXTAUTH_SECRET` (una stringa casuale lunga)
+   - `NEXTAUTH_URL` (l'URL della tua app Vercel)
+
+### Errore: "Invalid value undefined for datasource db" (Continuazione)
 - ✅ Verifica che `DATABASE_URL` sia configurata
 - ✅ Controlla che sia applicata a tutti gli environment
 - ✅ Redeploy dopo aver aggiunto le variabili
