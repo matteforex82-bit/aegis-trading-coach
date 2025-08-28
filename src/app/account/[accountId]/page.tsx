@@ -22,7 +22,8 @@ import {
   Settings,
   TrendingDown,
   Brain,
-  AlertTriangle
+  AlertTriangle,
+  CheckCircle
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import { OpenPositionsSection } from '@/components/OpenPositionsSection'
@@ -222,14 +223,10 @@ export default function AccountDashboard() {
 
         {/* Tabs Navigation */}
         <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <Home className="h-4 w-4" />
-              Dashboard
-            </TabsTrigger>
-            <TabsTrigger value="propfirm" className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              PropFirm Rules
+              Dashboard & Rules
             </TabsTrigger>
             <TabsTrigger value="performance" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
@@ -333,16 +330,159 @@ export default function AccountDashboard() {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
 
-          {/* PropFirm Rules Tab */}
-          <TabsContent value="propfirm" className="space-y-6">
-            <DynamicRuleRenderer
-              account={account}
-              rules={rules}
-              stats={stats}
-              openPositionsTotal={openPositionsTotal}
-            />
+            {/* PropFirm Rules Section */}
+            {account?.propFirmTemplate && (
+              <div className="mt-8">
+                <div className="flex items-center gap-2 mb-6">
+                  <Shield className="h-5 w-5 text-blue-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">PropFirm Rules & Compliance</h3>
+                  <Badge variant="outline" className="text-xs">
+                    {account.propFirmTemplate.templateName || account.propFirmTemplate.name}
+                  </Badge>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Profit Target */}
+                  <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-slate-50">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2 text-green-800 text-sm">
+                        <Target className="h-4 w-4" />
+                        Profit Target
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="text-lg font-bold text-green-900">
+                          {new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: account.currency || 'USD'
+                          }).format(account.propFirmTemplate.profitTarget || 0)}
+                        </div>
+                        <Progress 
+                          value={Math.min(100, Math.max(0, ((stats?.totalPnL || 0) / (account.propFirmTemplate.profitTarget || 1)) * 100))} 
+                          className="h-2" 
+                        />
+                        <div className="text-xs text-gray-600">
+                          Progress: {((stats?.totalPnL || 0) / (account.propFirmTemplate.profitTarget || 1) * 100).toFixed(1)}%
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Max Daily Loss */}
+                  <Card className="border-2 border-red-200 bg-gradient-to-br from-red-50 to-slate-50">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2 text-red-800 text-sm">
+                        <AlertTriangle className="h-4 w-4" />
+                        Daily Loss Limit
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="text-lg font-bold text-red-900">
+                          {new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: account.currency || 'USD'
+                          }).format(account.propFirmTemplate.maxDailyLoss || 0)}
+                        </div>
+                        <Progress 
+                          value={Math.min(100, Math.max(0, Math.abs((rules?.dailyPnL || 0) / (account.propFirmTemplate.maxDailyLoss || 1)) * 100))} 
+                          className="h-2" 
+                        />
+                        <div className="text-xs text-gray-600">
+                          Today: {new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: account.currency || 'USD'
+                          }).format(rules?.dailyPnL || 0)}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Max Overall Loss */}
+                  <Card className="border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-slate-50">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2 text-orange-800 text-sm">
+                        <TrendingDown className="h-4 w-4" />
+                        Max Drawdown
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="text-lg font-bold text-orange-900">
+                          {new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: account.currency || 'USD'
+                          }).format(account.propFirmTemplate.maxOverallLoss || 0)}
+                        </div>
+                        <Progress 
+                          value={Math.min(100, Math.max(0, Math.abs((rules?.maxOverallDrawdown || 0) / (account.propFirmTemplate.maxOverallLoss || 1)) * 100))} 
+                          className="h-2" 
+                        />
+                        <div className="text-xs text-gray-600">
+                          Current: {new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: account.currency || 'USD'
+                          }).format(rules?.maxOverallDrawdown || 0)}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Trading Days */}
+                  <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-slate-50">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2 text-blue-800 text-sm">
+                        <Calendar className="h-4 w-4" />
+                        Trading Days
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="text-lg font-bold text-blue-900">
+                          {rules?.tradingDays || 0} / {account.propFirmTemplate.minTradingDays || 0}
+                        </div>
+                        <Progress 
+                          value={Math.min(100, ((rules?.tradingDays || 0) / (account.propFirmTemplate.minTradingDays || 1)) * 100)} 
+                          className="h-2" 
+                        />
+                        <div className="text-xs text-gray-600">
+                          Required: {account.propFirmTemplate.minTradingDays || 0} days
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Compliance Status */}
+                  <Card className="border-2 border-gray-200 bg-gradient-to-br from-gray-50 to-slate-50">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2 text-gray-800 text-sm">
+                        <Shield className="h-4 w-4" />
+                        Compliance Status
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className={`flex items-center gap-2 text-lg font-bold ${
+                          rules?.isCompliant ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {rules?.isCompliant ? (
+                            <CheckCircle className="h-5 w-5" />
+                          ) : (
+                            <AlertTriangle className="h-5 w-5" />
+                          )}
+                          {rules?.isCompliant ? 'Compliant' : 'Non-Compliant'}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          Phase: {account.propFirmTemplate.phase || 'Unknown'}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           {/* Performance Tab */}
