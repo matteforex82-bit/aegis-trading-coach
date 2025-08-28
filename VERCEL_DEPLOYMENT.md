@@ -1,5 +1,11 @@
 # 🚀 Vercel Deployment Guide
 
+## ⚠️ IMPORTANTE: Errore Environment Variables
+
+Se vedi l'errore: **"Environment Variable 'DATABASE_URL' references Secret 'database-url', which does not exist"**
+
+Questo significa che le variabili d'ambiente devono essere configurate SOLO nel dashboard di Vercel, non nel file `vercel.json`.
+
 ## Configurazione Variabili d'Ambiente
 
 Per risolvere l'errore di build `Invalid value undefined for datasource "db"`, devi configurare le seguenti variabili d'ambiente nel dashboard di Vercel:
