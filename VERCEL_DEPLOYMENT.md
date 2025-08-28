@@ -6,44 +6,48 @@ Se vedi l'errore: **"Environment Variable 'DATABASE_URL' references Secret 'data
 
 Questo significa che le variabili d'ambiente devono essere configurate SOLO nel dashboard di Vercel, non nel file `vercel.json`.
 
-## Configurazione Variabili d'Ambiente
+## Environment Variables Configuration
 
-Per risolvere l'errore di build `Invalid value undefined for datasource "db"`, devi configurare le seguenti variabili d'ambiente nel dashboard di Vercel:
+⚠️ **CRITICAL**: Environment variables must be configured ONLY in the Vercel dashboard, NOT in vercel.json!
 
-### 1. Accedi al Dashboard Vercel
-- Vai su [vercel.com](https://vercel.com)
-- Seleziona il tuo progetto `aegis-trading-coach`
-- Vai su **Settings** → **Environment Variables**
+🚨 **COMMON ERROR**: If you see `Invalid value undefined for datasource "db"`, it means DATABASE_URL is not configured in Vercel.
 
-### 2. Aggiungi le Variabili Richieste
+Configure the following environment variables in your Vercel dashboard:
 
-#### DATABASE_URL (OBBLIGATORIO)
+### 1. Access Vercel Dashboard
+- Go to [vercel.com](https://vercel.com)
+- Select your project `aegis-trading-coach`
+- Go to **Settings** → **Environment Variables**
+
+### 2. Add Required Variables
+
+#### DATABASE_URL (REQUIRED)
 ```
-Nome: DATABASE_URL
-Valore: postgresql://17b3f8bfadad63ae0819c2fc9faf3c0eb5cf2ba715a33f6543642f96d7050a32:sk_sDZsNRCzd3ODUzJwC9CD6@db.prisma.io:5432/postgres?sslmode=require
+Name: DATABASE_URL
+Value: postgresql://17b3f8bfadad63ae0819c2fc9faf3c0eb5cf2ba715a33f6543642f96d7050a32:sk_sDZsNRCzd3ODUzJwC9CD6@db.prisma.io:5432/postgres?sslmode=require
 Environment: Production, Preview, Development
 ```
 
-⚠️ **IMPORTANTE**: Assicurati di usare `postgresql://` (non `postgres://`) come prefisso nell'URL del database.
+⚠️ **CRITICAL**: Must use `postgresql://` prefix, NOT `postgres://`!
 
-#### NEXTAUTH_SECRET (OBBLIGATORIO)
+#### NEXTAUTH_SECRET (REQUIRED)
 ```
-Nome: NEXTAUTH_SECRET
-Valore: your-nextauth-secret-key-here
+Name: NEXTAUTH_SECRET
+Value: your-nextauth-secret-key-here (32+ characters)
 Environment: Production, Preview, Development
 ```
 
-#### NEXTAUTH_URL (OBBLIGATORIO)
+#### NEXTAUTH_URL (REQUIRED)
 ```
-Nome: NEXTAUTH_URL
-Valore: https://your-vercel-app-url.vercel.app
+Name: NEXTAUTH_URL
+Value: https://your-vercel-app-url.vercel.app
 Environment: Production, Preview
 ```
 
-#### NODE_ENV (AUTOMATICO)
+#### NODE_ENV (AUTOMATIC)
 ```
-Nome: NODE_ENV
-Valore: production
+Name: NODE_ENV
+Value: production
 Environment: Production
 ```
 

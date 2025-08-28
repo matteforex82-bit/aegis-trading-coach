@@ -4,6 +4,15 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
+// Validate DATABASE_URL environment variable
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    'DATABASE_URL environment variable is not set. ' +
+    'Please configure it in your Vercel dashboard under Environment Variables. ' +
+    'Format: postgresql://username:password@host:port/database?schema=public'
+  )
+}
+
 export const db =
   globalForPrisma.prisma ??
   new PrismaClient({
