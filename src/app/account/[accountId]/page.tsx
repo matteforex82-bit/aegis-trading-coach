@@ -127,7 +127,7 @@ export default function AccountDashboard() {
         setOpenTrades(tradesData)
         
         const total = tradesData.reduce((sum: number, trade: any) => {
-          return sum + (trade.unrealizedPnL || 0)
+          return sum + (trade.profit || 0)
         }, 0)
         setOpenPositionsTotal(total)
       }
@@ -197,13 +197,13 @@ export default function AccountDashboard() {
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {account.propFirmTemplate && (
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                   {account.propFirmTemplate.name}
                 </Badge>
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200">
                   {account.propFirmTemplate.phase}
                 </Badge>
               </div>
@@ -211,8 +211,8 @@ export default function AccountDashboard() {
             <Button
               onClick={handleRefresh}
               disabled={refreshing}
-              size="sm"
               variant="outline"
+              size="sm"
               className="flex items-center gap-2"
             >
               <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
@@ -223,10 +223,10 @@ export default function AccountDashboard() {
 
         {/* Tabs Navigation */}
         <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <Home className="h-4 w-4" />
-              Dashboard & Rules
+              Dashboard
             </TabsTrigger>
             <TabsTrigger value="performance" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
@@ -237,72 +237,66 @@ export default function AccountDashboard() {
               AI & Insights
             </TabsTrigger>
             <TabsTrigger value="positions" className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" />
+              <Target className="h-4 w-4" />
               Positions & Risk
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Settings
             </TabsTrigger>
           </TabsList>
 
           {/* Dashboard Tab */}
           <TabsContent value="dashboard" className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Account Balance */}
-              <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-slate-50">
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-blue-800 text-sm">
-                    <DollarSign className="h-4 w-4" />
-                    Account Balance
-                  </CardTitle>
+            {/* Account Balance */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Balance</CardTitle>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-blue-900 mb-2">
+                  <div className="text-2xl font-bold">
                     {(() => {
-                      const startingBalance = account.propFirmTemplate?.accountSize || account.initialBalance || 50000
-                      const closedTradesP_L = stats?.totalPnL || 0
-                      const currentBalance = startingBalance + closedTradesP_L
+                      const currentBalance = account.initialBalance + (stats?.totalPnL || 0)
                       
                       return new Intl.NumberFormat('en-US', {
                         style: 'currency',
                         currency: account.currency || 'USD',
                         minimumFractionDigits: 2
                       }).format(currentBalance)
-                    })()} 
+                    })()}
                   </div>
                 </CardContent>
               </Card>
 
               {/* Current Equity */}
-              <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-slate-50">
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-green-800 text-sm">
-                    <Activity className="h-4 w-4" />
-                    Current Equity
-                  </CardTitle>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Equity</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-900 mb-2">
+                  <div className="text-2xl font-bold">
                     {(() => {
-                      const startingBalance = account.propFirmTemplate?.accountSize || account.initialBalance || 50000
-                      const closedTradesP_L = stats?.totalPnL || 0
-                      const currentBalance = startingBalance + closedTradesP_L
-                      const equity = currentBalance + (openPositionsTotal || 0)
+                      const currentBalance = account.initialBalance + (stats?.totalPnL || 0)
+                      const equity = currentBalance + openPositionsTotal
                       
                       return new Intl.NumberFormat('en-US', {
                         style: 'currency',
                         currency: account.currency || 'USD',
                         minimumFractionDigits: 2
                       }).format(equity)
-                    })()} 
+                    })()}
                   </div>
                 </CardContent>
               </Card>
 
               {/* Daily P&L */}
-              <Card className="border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-slate-50">
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-orange-800 text-sm">
-                    <Target className="h-4 w-4" />
-                    Daily P&L
-                  </CardTitle>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Daily P&L</CardTitle>
+                  <Activity className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className={`text-2xl font-bold mb-2 ${rules?.dailyPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -316,12 +310,10 @@ export default function AccountDashboard() {
               </Card>
 
               {/* Win Rate */}
-              <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-slate-50">
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-purple-800 text-sm">
-                    <Target className="h-4 w-4" />
-                    Win Rate
-                  </CardTitle>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
+                  <Target className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className={`text-2xl font-bold mb-2 ${stats?.winRate >= 50 ? 'text-green-600' : 'text-orange-600'}`}>
@@ -333,156 +325,127 @@ export default function AccountDashboard() {
 
             {/* PropFirm Rules Section */}
             {account?.propFirmTemplate && (
-              <div className="mt-8">
-                <div className="flex items-center gap-2 mb-6">
-                  <Shield className="h-5 w-5 text-blue-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">PropFirm Rules & Compliance</h3>
-                  <Badge variant="outline" className="text-xs">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5" />
                     {account.propFirmTemplate.templateName || account.propFirmTemplate.name}
-                  </Badge>
-                </div>
-                
-                <div className="space-y-4">
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
                   {/* Main PropFirm Rules - 3 grandi */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Profit Target */}
-                    <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-slate-50">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="flex items-center gap-2 text-green-800 text-sm">
-                          <Target className="h-4 w-4" />
-                          Profit Target
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          <div className="text-lg font-bold text-green-900">
-                            {new Intl.NumberFormat('en-US', {
-                              style: 'currency',
-                              currency: account.currency || 'USD'
-                            }).format(account.propFirmTemplate.profitTarget || 0)}
-                          </div>
-                          <Progress 
-                            value={Math.min(100, Math.max(0, ((stats?.totalPnL || 0) / (account.propFirmTemplate.profitTarget || 1)) * 100))} 
-                            className="h-2" 
-                          />
-                          <div className="text-xs text-gray-600">
-                            Progress: {((stats?.totalPnL || 0) / (account.propFirmTemplate.profitTarget || 1) * 100).toFixed(1)}%
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Profit Target</span>
+                        <span className="text-sm text-muted-foreground">
+                          {new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: 'USD'
+                          }).format(account.propFirmTemplate.profitTarget || 0)}
+                        </span>
+                      </div>
+                      <Progress 
+                        value={Math.min(100, Math.max(0, ((stats?.totalPnL || 0) / (account.propFirmTemplate.profitTarget || 1)) * 100))}
+                        className="h-2"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Progress: {((stats?.totalPnL || 0) / (account.propFirmTemplate.profitTarget || 1) * 100).toFixed(1)}%
+                      </p>
+                    </div>
 
                     {/* Max Daily Loss */}
-                    <Card className="border-2 border-red-200 bg-gradient-to-br from-red-50 to-slate-50">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="flex items-center gap-2 text-red-800 text-sm">
-                          <AlertTriangle className="h-4 w-4" />
-                          Daily Loss Limit
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          <div className="text-lg font-bold text-red-900">
-                            {new Intl.NumberFormat('en-US', {
-                              style: 'currency',
-                              currency: account.currency || 'USD'
-                            }).format(account.propFirmTemplate.maxDailyLoss || 0)}
-                          </div>
-                          <Progress 
-                            value={Math.min(100, Math.max(0, Math.abs((rules?.dailyPnL || 0) / (account.propFirmTemplate.maxDailyLoss || 1)) * 100))} 
-                            className="h-2" 
-                          />
-                          <div className="text-xs text-gray-600">
-                            Today: {new Intl.NumberFormat('en-US', {
-                              style: 'currency',
-                              currency: account.currency || 'USD'
-                            }).format(rules?.dailyPnL || 0)}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Max Daily Loss</span>
+                        <span className="text-sm text-muted-foreground">
+                          {new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: 'USD'
+                          }).format(account.propFirmTemplate.maxDailyLoss || 0)}
+                        </span>
+                      </div>
+                      <Progress 
+                        value={Math.min(100, Math.max(0, Math.abs((rules?.dailyPnL || 0) / (account.propFirmTemplate.maxDailyLoss || 1)) * 100))}
+                        className="h-2"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Today: {new Intl.NumberFormat('en-US', {
+                          style: 'currency',
+                          currency: 'USD'
+                        }).format(rules?.dailyPnL || 0)}
+                      </p>
+                    </div>
 
                     {/* Max Overall Loss */}
-                    <Card className="border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-slate-50">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="flex items-center gap-2 text-orange-800 text-sm">
-                          <TrendingDown className="h-4 w-4" />
-                          Max Drawdown
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          <div className="text-lg font-bold text-orange-900">
-                            {new Intl.NumberFormat('en-US', {
-                              style: 'currency',
-                              currency: account.currency || 'USD'
-                            }).format(account.propFirmTemplate.maxOverallLoss || 0)}
-                          </div>
-                          <Progress 
-                            value={Math.min(100, Math.max(0, Math.abs((rules?.maxOverallDrawdown || 0) / (account.propFirmTemplate.maxOverallLoss || 1)) * 100))} 
-                            className="h-2" 
-                          />
-                          <div className="text-xs text-gray-600">
-                            Current: {new Intl.NumberFormat('en-US', {
-                              style: 'currency',
-                              currency: account.currency || 'USD'
-                            }).format(rules?.maxOverallDrawdown || 0)}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Max Overall Loss</span>
+                        <span className="text-sm text-muted-foreground">
+                          {new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: 'USD'
+                          }).format(account.propFirmTemplate.maxOverallLoss || 0)}
+                        </span>
+                      </div>
+                      <Progress 
+                        value={Math.min(100, Math.max(0, Math.abs((rules?.maxOverallDrawdown || 0) / (account.propFirmTemplate.maxOverallLoss || 1)) * 100))}
+                        className="h-2"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Current: {new Intl.NumberFormat('en-US', {
+                          style: 'currency',
+                          currency: 'USD'
+                        }).format(rules?.maxOverallDrawdown || 0)}
+                      </p>
+                    </div>
                   </div>
 
                   {/* Secondary Info - Più piccoli */}
-                  <div className="flex gap-4 text-sm">
-                    <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
-                      <Calendar className="h-4 w-4 text-blue-600" />
-                      <span className="text-blue-800 font-medium">
-                        Trading Days: {rules?.tradingDays || 0}/{account.propFirmTemplate.minTradingDays || 0}
-                      </span>
+                  <div className="flex flex-wrap items-center gap-4 pt-4 border-t">
+                    <div className="text-sm text-muted-foreground">
+                      Trading Days: {rules?.tradingDays || 0}/{account.propFirmTemplate.minTradingDays || 0}
                     </div>
+                    
                     <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
                       rules?.isCompliant 
-                        ? 'bg-green-50 border-green-200 text-green-800' 
-                        : 'bg-red-50 border-red-200 text-red-800'
+                        ? 'bg-green-50 text-green-700 border-green-200' 
+                        : 'bg-red-50 text-red-700 border-red-200'
                     }`}>
                       {rules?.isCompliant ? (
                         <CheckCircle className="h-4 w-4" />
                       ) : (
                         <AlertTriangle className="h-4 w-4" />
                       )}
-                      <span className="font-medium">
-                        {rules?.isCompliant ? 'Compliant' : 'Non-Compliant'}
-                      </span>
+                      {rules?.isCompliant ? 'Compliant' : 'Non-Compliant'}
                     </div>
-                    <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">
-                      <Shield className="h-4 w-4 text-gray-600" />
-                      <span className="text-gray-800 font-medium">
-                        Phase: {account.propFirmTemplate.phase || 'Unknown'}
-                      </span>
+                    
+                    <div className="text-sm text-muted-foreground">
+                      Phase: {account.propFirmTemplate.phase || 'Unknown'}
                     </div>
                   </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             )}
-            
+
             {/* Live Operations Section */}
-             {openTrades && openTrades.length > 0 && (
-               <div className="mt-6">
-                 <OpenPositionsSection
-                   openTrades={openTrades}
-                   account={account}
-                 />
-               </div>
-             )}
-            </div>
+            {openTrades && openTrades.length > 0 && (
+              <OpenPositionsSection 
+                accountId={accountId}
+                openTrades={openTrades}
+                account={account}
+                onTradesUpdate={() => fetchAccountData()}
+              />
+            )}
           </TabsContent>
 
           {/* Performance Tab */}
           <TabsContent value="performance" className="space-y-6">
-            <TradingPerformanceMetrics
+            <TradingPerformanceMetrics 
               account={account}
               stats={stats}
+              rules={rules}
             />
           </TabsContent>
 
@@ -495,36 +458,36 @@ export default function AccountDashboard() {
               openTrades={openTrades}
             />
             
-            <TradingInsights
+            <TradingInsights 
               account={account}
               stats={stats}
               openTrades={openTrades}
               onInsightClick={(insight) => {
-                const aegisElement = document.querySelector('.aegis-coach-container');
+                const aegisElement = document.getElementById('aegis-coach')
                 if (aegisElement) {
                   aegisElement.scrollIntoView({ behavior: 'smooth' });
                 }
               }}
             />
             
-            <TradingAlerts
+            <TradingAlerts 
               account={account}
               stats={stats}
               openTrades={openTrades}
               onAlertClick={(alertAction) => {
-                const aegisElement = document.querySelector('.aegis-coach-container');
+                const aegisElement = document.getElementById('aegis-coach')
                 if (aegisElement) {
                   aegisElement.scrollIntoView({ behavior: 'smooth' });
                 }
               }}
             />
             
-            <LearningResources
+            <LearningResources 
               account={account}
               stats={stats}
             />
             
-            <TradingGoals
+            <TradingGoals 
               account={account}
               stats={stats}
             />
@@ -532,57 +495,64 @@ export default function AccountDashboard() {
 
           {/* Positions & Risk Tab */}
           <TabsContent value="positions" className="space-y-6">
-            <OpenPositionsSection
+            <OpenPositionsSection 
               accountId={accountId}
               openTrades={openTrades}
               onTradesUpdate={(trades) => {
                 setOpenTrades(trades)
                 const total = trades.reduce((sum: number, trade: any) => {
-                  return sum + (trade.unrealizedPnL || 0)
+                  return sum + (trade.profit || 0)
                 }, 0)
                 setOpenPositionsTotal(total)
               }}
             />
             
-            <details className="group">
-              <summary className="cursor-pointer list-none">
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border hover:bg-gray-100 transition-colors">
-                  <h3 className="text-md font-semibold text-slate-700">🛡️ Advanced Risk Manager</h3>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant="outline" className="text-xs">Collapsible</Badge>
-                  </div>
-                </div>
-              </summary>
-              <div className="mt-4">
-                <SimpleRiskWidget
-                  account={account}
-                  stats={stats}
-                  rules={rules}
-                  openTrades={openTrades}
-                />
-              </div>
-            </details>
+            <DynamicRuleRenderer 
+              accountId={accountId}
+              account={account}
+              stats={stats}
+              rules={rules}
+              openTrades={openTrades}
+            />
             
-            <div className="flex gap-4">
-              <Button
+            <SimpleRiskWidget 
+              account={account}
+              stats={stats}
+              rules={rules}
+              openTrades={openTrades}
+            />
+          </TabsContent>
+
+          {/* Settings Tab */}
+          <TabsContent value="settings" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Button 
+                variant="outline" 
+                className="h-auto p-4 flex flex-col items-start gap-2"
                 onClick={() => window.open(`/account/${accountId}/trades`, '_blank')}
-                className="flex items-center gap-2"
               >
-                <BarChart3 className="h-4 w-4" />
-                Vedi Operazioni
+                <Calendar className="h-5 w-5" />
+                <div className="text-left">
+                  <div className="font-medium">View All Trades</div>
+                  <div className="text-sm text-muted-foreground">Complete trading history</div>
+                </div>
               </Button>
               
-              <Button
-                variant="outline"
+              <Button 
+                variant="outline" 
+                className="h-auto p-4 flex flex-col items-start gap-2"
                 onClick={() => {
                   if (confirm('Sei sicuro di voler pulire le posizioni live? Questa azione non può essere annullata.')) {
-                    // Implement clean live positions logic
+                    // Handle cleanup
                   }
                 }}
               >
-                🧹 Pulisci Live
+                <Zap className="h-5 w-5" />
+                <div className="text-left">
+                  <div className="font-medium">Clean Live Positions</div>
+                  <div className="text-sm text-muted-foreground">Reset live trading data</div>
+                </div>
               </Button>
-</div>
             </div>
           </TabsContent>
         </Tabs>
