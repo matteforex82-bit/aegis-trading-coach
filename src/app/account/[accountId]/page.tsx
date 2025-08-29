@@ -44,6 +44,9 @@ interface Account {
   accountNumber: string
   currency: string
   initialBalance: number
+  startBalance: number
+  currentBalance?: number
+  currentPhase: string
   propFirmTemplate?: {
     id: string
     name: string
@@ -66,6 +69,9 @@ interface TradeStats {
   losingTrades: number
   closedTrades: number
   openPositions: number
+  totalCommission: number
+  totalSwap: number
+  netPnL: number
 }
 
 interface RuleMetrics {
@@ -323,110 +329,25 @@ export default function AccountDashboard() {
               </Card>
             </div>
 
-            {/* PropFirm Rules Section */}
+            {/* PropFirm Rules Section - Integrazione Position & Risk */}
             {account?.propFirmTemplate && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5" />
-                    {account.propFirmTemplate.templateName || account.propFirmTemplate.name}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Main PropFirm Rules - 3 grandi */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Profit Target */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Profit Target</span>
-                        <span className="text-sm text-muted-foreground">
-                          {new Intl.NumberFormat('en-US', {
-                            style: 'currency',
-                            currency: 'USD'
-                          }).format(account.propFirmTemplate.profitTarget || 0)}
-                        </span>
-                      </div>
-                      <Progress 
-                        value={Math.min(100, Math.max(0, ((stats?.totalPnL || 0) / (account.propFirmTemplate.profitTarget || 1)) * 100))}
-                        className="h-2"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Progress: {((stats?.totalPnL || 0) / (account.propFirmTemplate.profitTarget || 1) * 100).toFixed(1)}%
-                      </p>
-                    </div>
-
-                    {/* Max Daily Loss */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Max Daily Loss</span>
-                        <span className="text-sm text-muted-foreground">
-                          {new Intl.NumberFormat('en-US', {
-                            style: 'currency',
-                            currency: 'USD'
-                          }).format(account.propFirmTemplate.maxDailyLoss || 0)}
-                        </span>
-                      </div>
-                      <Progress 
-                        value={Math.min(100, Math.max(0, Math.abs((rules?.dailyPnL || 0) / (account.propFirmTemplate.maxDailyLoss || 1)) * 100))}
-                        className="h-2"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Today: {new Intl.NumberFormat('en-US', {
-                          style: 'currency',
-                          currency: 'USD'
-                        }).format(rules?.dailyPnL || 0)}
-                      </p>
-                    </div>
-
-                    {/* Max Overall Loss */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Max Overall Loss</span>
-                        <span className="text-sm text-muted-foreground">
-                          {new Intl.NumberFormat('en-US', {
-                            style: 'currency',
-                            currency: 'USD'
-                          }).format(account.propFirmTemplate.maxOverallLoss || 0)}
-                        </span>
-                      </div>
-                      <Progress 
-                        value={Math.min(100, Math.max(0, Math.abs((rules?.maxOverallDrawdown || 0) / (account.propFirmTemplate.maxOverallLoss || 1)) * 100))}
-                        className="h-2"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Current: {new Intl.NumberFormat('en-US', {
-                          style: 'currency',
-                          currency: 'USD'
-                        }).format(rules?.maxOverallDrawdown || 0)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Secondary Info - Più piccoli */}
-                  <div className="flex flex-wrap items-center gap-4 pt-4 border-t">
-                    <div className="text-sm text-muted-foreground">
-                      Trading Days: {rules?.tradingDays || 0}/{account.propFirmTemplate.minTradingDays || 0}
-                    </div>
-                    
-                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
-                      rules?.isCompliant 
-                        ? 'bg-green-50 text-green-700 border-green-200' 
-                        : 'bg-red-50 text-red-700 border-red-200'
-                    }`}>
-                      {rules?.isCompliant ? (
-                        <CheckCircle className="h-4 w-4" />
-                      ) : (
-                        <AlertTriangle className="h-4 w-4" />
-                      )}
-                      {rules?.isCompliant ? 'Compliant' : 'Non-Compliant'}
-                    </div>
-                    
-                    <div className="text-sm text-muted-foreground">
-                      Phase: {account.propFirmTemplate.phase || 'Unknown'}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Shield className="h-5 w-5" />
+                      {account.propFirmTemplate.templateName || account.propFirmTemplate.name} - KPI Live
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {stats && (
+                      <DynamicRuleRenderer account={account} stats={stats} />
+                    )}
+                  </CardContent>
+                </Card>
+                
+                <SimpleRiskWidget accountId={account.id} />
+              </div>
             )}
 
             {/* Live Operations Section */}
@@ -507,13 +428,12 @@ export default function AccountDashboard() {
               }}
             />
             
-            <DynamicRuleRenderer 
-              accountId={accountId}
-              account={account}
-              stats={stats}
-              rules={rules}
-              openTrades={openTrades}
-            />
+            {account && stats && (
+              <DynamicRuleRenderer 
+                account={account}
+                stats={stats}
+              />
+            )}
             
             <SimpleRiskWidget 
               account={account}

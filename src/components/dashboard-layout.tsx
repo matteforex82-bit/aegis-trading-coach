@@ -31,12 +31,20 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
               {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
             
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-800">
-                PROP CONTROL
-              </h1>
+            <div className="flex items-center space-x-3">
+              <div className="flex-shrink-0">
+                <img 
+                  src="/propcontrollogo.jpeg" 
+                  alt="PROP CONTROL" 
+                  width="120" 
+                  height="48" 
+                  className="object-contain"
+                />
+              </div>
               {subtitle && (
-                <p className="text-gray-600 mt-1 text-sm sm:text-base">{subtitle}</p>
+                <div>
+                  <p className="text-gray-600 text-sm sm:text-base">{subtitle}</p>
+                </div>
               )}
             </div>
           </div>

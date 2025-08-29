@@ -71,16 +71,19 @@ export class TemplateBasedCalculator {
   private template: PropFirmTemplate | null
   private rules: TemplateRules | null
   private accountBalance: number
+  private startBalance: number
   private currentPhase: string
 
   constructor(
     template: PropFirmTemplate | null,
     accountBalance: number,
-    currentPhase: string = 'PHASE_1'
+    currentPhase: string = 'PHASE_1',
+    startBalance?: number
   ) {
     this.template = template
     this.rules = (template?.rulesJson as unknown as TemplateRules) || null
     this.accountBalance = accountBalance
+    this.startBalance = startBalance || template?.accountSize || accountBalance
     this.currentPhase = currentPhase
   }
 
@@ -269,7 +272,8 @@ export class TemplateBasedCalculator {
     return {
       name: this.template?.name || 'Unknown Template',
       propFirm: 'Unknown PropFirm', // Will be provided by parent component
-      accountSize: this.template?.accountSize || 0,
+      accountSize: this.accountBalance,
+      startBalance: this.startBalance,
       currency: this.template?.currency || 'USD',
       currentPhase: this.currentPhase
     }

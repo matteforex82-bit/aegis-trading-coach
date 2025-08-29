@@ -56,9 +56,6 @@ export async function GET(
     console.log(`📊 Found ${trades.length} trades for rule evaluation`)
 
     try {
-      // Create rule engine and evaluate
-      const ruleEngine = createRuleEngine(account.propFirmTemplate.rulesJson)
-      
       // Convert database trades to rule engine format
       const ruleEngineTrades = trades.map(trade => ({
         id: trade.id,
@@ -66,23 +63,37 @@ export async function GET(
         symbol: trade.symbol,
         volume: trade.volume,
         openPrice: trade.openPrice,
-        closePrice: trade.closePrice,
-        openTime: trade.openTime,
-        closeTime: trade.closeTime,
+        closePrice: trade.closePrice || undefined,
+        openTime: trade.openTime.toISOString(),
+        closeTime: trade.closeTime?.toISOString() || undefined,
         pnlGross: trade.pnlGross,
-        commission: trade.commission,
         swap: trade.swap,
-        comment: trade.comment
+        commission: trade.commission,
+        comment: trade.comment || '',
+        side: trade.side as 'buy' | 'sell'
       }))
 
-      const evaluation = ruleEngine.evaluateAccount({
+      // Convert account to rule engine format
+      const ruleEngineAccount = {
         id: account.id,
         login: account.login,
-        initialBalance: account.initialBalance || account.startBalance || 10000,
-        currentBalance: account.currentBalance || account.initialBalance || account.startBalance || 10000,
-        currentPhase: account.currentPhase || 'PHASE_1',
-        trades: ruleEngineTrades
-      })
+        initialBalance: account.initialBalance || account.propFirmTemplate.accountSize,
+        currentPhase: account.currentPhase as 'PHASE_1' | 'PHASE_2' | 'FUNDED',
+        propFirmTemplate: {
+          id: account.propFirmTemplate.id,
+          name: account.propFirmTemplate.name,
+          accountSize: account.propFirmTemplate.accountSize,
+          currency: account.propFirmTemplate.currency,
+          rulesJson: account.propFirmTemplate.rulesJson,
+          propFirm: {
+            name: account.propFirmTemplate.propFirm.name
+          }
+        }
+      }
+
+      // Create and run rule engine
+      const ruleEngine = createRuleEngine(ruleEngineAccount, ruleEngineTrades)
+      const evaluation = ruleEngine.evaluateRules()
 
       // Calculate additional metrics
       const closedTrades = trades.filter(t => t.closeTime)
@@ -109,21 +120,21 @@ export async function GET(
       const tradingDays = tradingDaysSet.size
 
       const rules = {
-        maxOverallDrawdown: evaluation.metrics.maxDrawdown || 0,
-        maxDailyLoss: evaluation.metrics.maxDailyLoss || 0,
-        profitTarget: evaluation.metrics.profitTarget || 0,
-        tradingDays,
-        minTradingDays: evaluation.metrics.minTradingDays || 0,
+        maxOverallDrawdown: evaluation.metrics.currentDrawdown || 0,
+        maxDailyLoss: evaluation.metrics.dailyProfit || 0,
+        profitTarget: evaluation.metrics.totalProfit || 0,
+        tradingDays: evaluation.metrics.tradingDays || tradingDays,
+        minTradingDays: account.propFirmTemplate.rulesJson?.phase1?.minTradingDays || 0,
         dailyPnL,
         isCompliant: evaluation.isCompliant,
         // Additional metrics from rule engine
-        bestDayActive: evaluation.metrics.bestDayActive,
-        bestDayProjection: evaluation.metrics.bestDayProjection,
-        dailyProtectionActiveRequired: evaluation.metrics.dailyProtectionActiveRequired,
-        dailyProtectionProjectionRequired: evaluation.metrics.dailyProtectionProjectionRequired,
-        dailyProtectionActivePassing: evaluation.metrics.dailyProtectionActivePassing,
-        dailyProtectionProjectionPassing: evaluation.metrics.dailyProtectionProjectionPassing,
-        dailyOptimalExit: evaluation.metrics.dailyOptimalExit
+        bestDayActive: evaluation.metrics.bestTradingDay,
+        bestDayProjection: evaluation.metrics.bestSingleTrade,
+        dailyProtectionActiveRequired: 0,
+        dailyProtectionProjectionRequired: 0,
+        dailyProtectionActivePassing: true,
+        dailyProtectionProjectionPassing: true,
+        dailyOptimalExit: 0
       }
 
       console.log('✅ Rules evaluated:', rules)

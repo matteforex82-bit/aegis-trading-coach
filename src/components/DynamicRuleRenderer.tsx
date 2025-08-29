@@ -3,11 +3,12 @@
 import React from 'react'
 import { PropFirmTemplate, PropFirm } from '@prisma/client'
 import { TemplateBasedCalculator } from '@/lib/template-calculator'
-// import FintechKPIBar from '@/components/FintechKPIBar'
+import SeparatedProfitTargetKPIs from '@/components/SeparatedProfitTargetKPIs'
 import { Badge } from '@/components/ui/badge'
 import { AlertTriangle, CheckCircle, Clock, Target, Shield, TrendingUp } from 'lucide-react'
 
 interface AccountWithTemplate {
+  id: string
   startBalance: number
   currentBalance?: number  
   currentPhase: string
@@ -18,6 +19,7 @@ interface AccountWithTemplate {
 
 interface TradeStats {
   totalPnL: number
+  netPnL?: number
   dailyPnL?: number
   bestDay?: number
   bestTrade?: number
@@ -36,11 +38,14 @@ export default function DynamicRuleRenderer({
   className = "" 
 }: DynamicRuleRendererProps) {
   // Initialize calculator with current balance (startBalance + netPnL)
-  const currentBalance = (account.startBalance || 50000) + (stats.netPnL || 0)
+  // Use initialBalance or default to 50000 if startBalance is not available
+  const startBalance = account.startBalance || account.initialBalance || 50000
+  const currentBalance = startBalance + (stats.netPnL || stats.totalPnL || 0)
   const calculator = new TemplateBasedCalculator(
     account.propFirmTemplate || null,
     currentBalance,
-    account.currentPhase
+    account.currentPhase,
+    startBalance
   )
 
   // Get template info
@@ -70,14 +75,11 @@ export default function DynamicRuleRenderer({
         </Badge>
       </div>
 
-      <div className="grid gap-4">
-        {/* Profit Target - Always show if exists */}
-        {calculator.hasRule('profit') && (
-          <ProfitTargetKPI 
-            calculator={calculator} 
-            stats={stats} 
-          />
-        )}
+      <div className="space-y-6">
+        {/* Profit Targets Separati - Sempre mostrati */}
+        <SeparatedProfitTargetKPIs accountId={account.id} />
+        
+        <div className="grid gap-4">
 
         {/* Daily Loss Limit */}
         {calculator.hasRule('dailyLoss') && (
@@ -115,49 +117,14 @@ export default function DynamicRuleRenderer({
         {calculator.getSpecialFeatures().length > 0 && (
           <SpecialFeaturesInfo calculator={calculator} />
         )}
+        </div>
       </div>
     </div>
   )
 }
 
 // Individual KPI Components
-function ProfitTargetKPI({ calculator, stats }: { 
-  calculator: TemplateBasedCalculator
-  stats: TradeStats 
-}) {
-  const profitTarget = calculator.getProfitTarget()
-  if (!profitTarget) return null
-
-  // Now calculator already has the correct current balance, so we pass 0 for currentPnL
-  const targetAmount = calculator.getTargetAmount(0)
-  const progress = calculator.getProfitTargetProgress(0)
-  
-  // Get current balance directly from calculator (it already includes totalPnL)
-  const currentBalance = calculator.getTemplateInfo().accountSize
-
-  return (
-    <div className="p-4 border rounded-lg bg-green-50 border-green-200">
-      <div className="flex items-center gap-2 mb-2">
-        <Target className="h-4 w-4 text-green-600" />
-        <h3 className="font-semibold text-sm">PROFIT TARGET</h3>
-      </div>
-      <div className="space-y-2">
-        <div className="text-xs text-gray-600">{calculator.getRequirementText('profit')}</div>
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">${currentBalance.toLocaleString()}</span>
-          <span className="text-sm text-gray-500">/ ${targetAmount.toLocaleString()}</span>
-        </div>
-        <div className="bg-gray-200 rounded-full h-2">
-          <div 
-            className="bg-green-500 h-2 rounded-full transition-all"
-            style={{ width: `${Math.min(progress, 100)}%` }}
-          />
-        </div>
-        <div className="text-xs text-center font-medium">{Math.min(progress, 100).toFixed(1)}%</div>
-      </div>
-    </div>
-  )
-}
+// Componente ProfitTargetKPI rimosso - sostituito da SeparatedProfitTargetKPIs
 
 function DailyLossKPI({ calculator, stats }: { 
   calculator: TemplateBasedCalculator

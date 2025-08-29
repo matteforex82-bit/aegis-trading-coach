@@ -124,17 +124,23 @@ export class PropFirmRuleEngine {
   //| Get Current Phase Rules                                         |
   //+------------------------------------------------------------------+
   private getCurrentPhaseRules(): PhaseRules {
-    const rules = this.account.propFirmTemplate!.rulesJson
+    const rulesJson = this.account.propFirmTemplate!.rulesJson as any
+    const currentPhase = this.account.currentPhase
     
-    switch (this.account.currentPhase) {
-      case 'PHASE_1':
-        return rules.phase1
-      case 'PHASE_2':
-        return rules.phase2
-      case 'FUNDED':
-        return rules.funded
-      default:
-        return rules.phase1
+    // Extract rules from the database structure
+    const profitTarget = rulesJson.profitTargets?.[currentPhase]
+    const dailyLoss = rulesJson.maximumDailyLoss?.[currentPhase]
+    const overallLoss = rulesJson.maximumOverallLoss?.[currentPhase]
+    const minDays = rulesJson.minimumTradingDays?.[currentPhase]
+    
+    return {
+      profitTarget: profitTarget?.percentage || 0,
+      profitTargetAmount: profitTarget?.amount || 0,
+      maxDailyLoss: dailyLoss?.percentage || 0,
+      maxDailyLossAmount: dailyLoss?.amount || 0,
+      maxOverallLoss: overallLoss?.percentage || 0,
+      maxOverallLossAmount: overallLoss?.amount || 0,
+      minTradingDays: minDays?.days || 0
     }
   }
 
