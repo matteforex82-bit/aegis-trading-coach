@@ -428,13 +428,6 @@ export default function AccountDashboard() {
               }}
             />
             
-            {account && stats && (
-              <DynamicRuleRenderer 
-                account={account}
-                stats={stats}
-              />
-            )}
-            
             <SimpleRiskWidget 
               account={account}
               stats={stats}

@@ -19,6 +19,14 @@ export const metadata: Metadata = {
   keywords: ["PropFirm", "Trading", "MT5", "Risk Management", "Trading Dashboard", "Performance Analytics"],
   authors: [{ name: "PROP CONTROL Team" }],
   viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '16x16', type: 'image/x-icon' },
+      { url: '/favicon.svg', sizes: '32x32', type: 'image/svg+xml' }
+    ],
+    shortcut: '/favicon.ico',
+    apple: '/favicon.svg'
+  },
   openGraph: {
     title: "PROP CONTROL - Trading Dashboard",
     description: "Professional PropFirm trading dashboard with MT5 integration",

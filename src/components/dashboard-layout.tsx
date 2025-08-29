@@ -5,6 +5,7 @@ import { Navigation } from '@/components/navigation'
 import { AccountList } from '@/components/account-list'
 import { Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import Image from 'next/image'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -33,12 +34,13 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
             
             <div className="flex items-center space-x-3">
               <div className="flex-shrink-0">
-                <img 
+                <Image 
                   src="/propcontrollogo.jpeg" 
                   alt="PROP CONTROL" 
-                  width="120" 
-                  height="48" 
+                  width={120} 
+                  height={48} 
                   className="object-contain"
+                  priority
                 />
               </div>
               {subtitle && (
