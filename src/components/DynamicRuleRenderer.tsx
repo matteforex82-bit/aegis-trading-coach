@@ -35,10 +35,11 @@ export default function DynamicRuleRenderer({
   stats, 
   className = "" 
 }: DynamicRuleRendererProps) {
-  // Initialize calculator
+  // Initialize calculator with current balance (startBalance + netPnL)
+  const currentBalance = (account.startBalance || 50000) + (stats.netPnL || 0)
   const calculator = new TemplateBasedCalculator(
     account.propFirmTemplate || null,
-    account.startBalance || 50000,
+    currentBalance,
     account.currentPhase
   )
 
@@ -127,8 +128,12 @@ function ProfitTargetKPI({ calculator, stats }: {
   const profitTarget = calculator.getProfitTarget()
   if (!profitTarget) return null
 
-  const targetAmount = calculator.getTargetAmount(stats.totalPnL)
-  const progress = calculator.getProfitTargetProgress(stats.totalPnL)
+  // Now calculator already has the correct current balance, so we pass 0 for currentPnL
+  const targetAmount = calculator.getTargetAmount(0)
+  const progress = calculator.getProfitTargetProgress(0)
+  
+  // Get current balance directly from calculator (it already includes totalPnL)
+  const currentBalance = calculator.getTemplateInfo().accountSize
 
   return (
     <div className="p-4 border rounded-lg bg-green-50 border-green-200">
@@ -139,7 +144,7 @@ function ProfitTargetKPI({ calculator, stats }: {
       <div className="space-y-2">
         <div className="text-xs text-gray-600">{calculator.getRequirementText('profit')}</div>
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">${(calculator.getTemplateInfo().accountSize + stats.totalPnL).toLocaleString()}</span>
+          <span className="text-sm font-medium">${currentBalance.toLocaleString()}</span>
           <span className="text-sm text-gray-500">/ ${targetAmount.toLocaleString()}</span>
         </div>
         <div className="bg-gray-200 rounded-full h-2">
@@ -162,7 +167,6 @@ function DailyLossKPI({ calculator, stats }: {
   if (!dailyLimit) return null
 
   const currentDailyPnL = stats.dailyPnL || 0
-  const safeCapacity = calculator.getSafeCapacity(stats.totalPnL)
   
   // Calculate percentage used (negative PnL means loss)
   const lossUsed = currentDailyPnL < 0 ? Math.abs(currentDailyPnL) : 0
@@ -199,8 +203,8 @@ function OverallLossKPI({ calculator, stats }: {
   const overallLimit = calculator.getOverallLossLimit()
   if (!overallLimit) return null
 
-  // Calculate total loss from starting balance
-  const totalLoss = stats.totalPnL < 0 ? Math.abs(stats.totalPnL) : 0
+  // Calculate total loss from starting balance (negative netPnL means loss)
+  const totalLoss = (stats.netPnL || 0) < 0 ? Math.abs(stats.netPnL || 0) : 0
   const percentage = overallLimit.amount ? (totalLoss / overallLimit.amount) * 100 : 0
 
   return (
@@ -236,10 +240,10 @@ function ConsistencyRulesKPI({ calculator, stats }: {
 
   const bestDay = stats.bestDay || 0
   const bestTrade = stats.bestTrade || 0
-  const totalPnL = stats.totalPnL || 0
+  const netPnL = stats.netPnL || 0
 
   // Check consistency requirements
-  const meetsConsistency = totalPnL >= (bestDay * 2) && totalPnL >= (bestTrade * 2)
+  const meetsConsistency = netPnL >= (bestDay * 2) && netPnL >= (bestTrade * 2)
 
   return (
     <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
@@ -260,8 +264,8 @@ function ConsistencyRulesKPI({ calculator, stats }: {
               {consistency.rules.map((rule, index) => (
                 <li key={index} className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${
-                    (index === 0 && totalPnL >= bestDay * 2) || 
-                    (index === 1 && totalPnL >= bestTrade * 2) 
+                    (index === 0 && netPnL >= bestDay * 2) || 
+                    (index === 1 && netPnL >= bestTrade * 2) 
                       ? 'bg-green-500' : 'bg-amber-500'
                   }`} />
                   {rule}
