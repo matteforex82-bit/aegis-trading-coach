@@ -33,18 +33,20 @@ async function testFuturaFunding() {
       const rules = template.rulesJson
       const phase1Target = rules.profitTargets?.PHASE_1?.amount || 0
       const phase2Target = rules.profitTargets?.PHASE_2?.amount || 0
-      const maxDaily = rules.maxDailyLoss?.amount || 0
-      const maxTotal = rules.maxTotalLoss?.amount || 0
+      const maxDaily = rules.dailyLossLimits?.PHASE_1?.amount || 0
+      const maxTotal = rules.overallLossLimits?.PHASE_1?.amount || 0
       
       console.log(`      🎯 Phase 1 Target: $${phase1Target.toLocaleString()}`)
       console.log(`      🎯 Phase 2 Target: $${phase2Target.toLocaleString()}`)
       console.log(`      🚫 Max Daily Loss: $${maxDaily.toLocaleString()}`)
       console.log(`      🚫 Max Total Loss: $${maxTotal.toLocaleString()}`)
-      console.log(`      ⏰ Time Limit: None (Unlimited)`)
-      console.log(`      🤖 EA Allowed: ${rules.permissions?.expertAdvisors?.allowed ? 'Yes' : 'No'}`)
-      console.log(`      📰 News Trading: ${rules.permissions?.newsTrading?.allowed ? 'Yes' : 'No'}`)
-      console.log(`      🎪 Consistency Rule: ${rules.specialFeatures?.consistencyRule?.exists ? 'Yes' : 'No'}`)
-      console.log(`      💰 Profit Split: ${rules.fundedRules?.profitSplit?.trader || 0}%`)
+      console.log(`      📅 Min Trading Days: ${rules.minimumTradingDays?.PHASE_1?.days || 0}`)
+      console.log(`      ⏰ Time Limit: ${rules.maxDuration?.description || 'Nessun limite di tempo'}`)
+      console.log(`      🤖 EA Allowed: ${rules.tradingRestrictions?.expertAdvisors ? 'Yes' : 'No'}`)
+      console.log(`      📰 News Trading: ${rules.tradingRestrictions?.newsTrading ? 'Yes' : 'No'}`)
+      console.log(`      🎪 Consistency Rule: ${rules.consistencyRules?.PHASE_1?.enabled ? 'Yes' : 'No (VANTAGGIO!)'}`)
+      console.log(`      💰 Profit Split: ${rules.payoutInfo?.profitSplit?.trader || 0}% trader`)
+      console.log(`      🔄 Payout Frequency: Every ${rules.payoutInfo?.payoutFrequencyDays || 0} days`)
       console.log('')
     })
 
