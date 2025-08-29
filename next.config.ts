@@ -11,7 +11,15 @@ const nextConfig: NextConfig = {
     unoptimized: true,
     domains: [],
     formats: ['image/webp', 'image/avif'],
+    loader: 'default',
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
+  // Assicura che i file statici siano serviti correttamente
+  assetPrefix: '',
+  trailingSlash: false,
+  // Configurazione per il deployment
+  output: 'standalone',
   webpack: (config, { dev }) => {
     if (dev) {
       // 禁用 webpack 的热模块替换
