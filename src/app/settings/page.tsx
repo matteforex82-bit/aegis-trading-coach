@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, CheckCircle, AlertCircle, DollarSign, Upload, ChevronRight, Home, Check } from 'lucide-react'
 import Link from 'next/link'
+import ThemeToggle from '@/components/ThemeToggle'
 
 interface PropFirmTemplate {
   id: string
@@ -304,6 +305,11 @@ export default function SettingsPage() {
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        {/* Theme Settings Section */}
+        <div className="mb-8">
+          <ThemeToggle />
+        </div>
         
         {/* Step 1: Account Selection */}
         {currentStep === 1 && (

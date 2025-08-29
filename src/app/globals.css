@@ -112,16 +112,225 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Vibrant Theme - Dramatically Enhanced Color Palette */
+[data-theme="vibrant"] {
+  /* Primary colors - Deep Purple (#4C1D95) */
+  --primary: oklch(0.28 0.22 285);
+  --primary-foreground: oklch(0.98 0.02 285);
+  
+  /* Secondary colors - Vibrant Orange (#EA580C) */
+  --secondary: oklch(0.65 0.18 55);
+  --secondary-foreground: oklch(0.98 0.02 55);
+  
+  /* Accent colors - Electric Blue (#0EA5E9) */
+  --accent: oklch(0.68 0.15 220);
+  --accent-foreground: oklch(0.98 0.02 220);
+  
+  /* Background and surfaces - Subtle gradient backgrounds */
+  --background: linear-gradient(135deg, oklch(0.96 0.02 285) 0%, oklch(0.97 0.015 220) 100%);
+  --foreground: oklch(0.12 0.05 285);
+  --card: oklch(0.98 0.015 285);
+  --card-foreground: oklch(0.12 0.05 285);
+  --popover: oklch(0.98 0.015 285);
+  --popover-foreground: oklch(0.12 0.05 285);
+  
+  /* Muted colors with vibrant purple tint */
+  --muted: oklch(0.92 0.03 285);
+  --muted-foreground: oklch(0.45 0.08 285);
+  
+  /* Border and input with strong purple undertone */
+  --border: oklch(0.82 0.05 285);
+  --input: oklch(0.94 0.02 285);
+  --ring: oklch(0.28 0.22 285);
+  
+  /* Charts - Dramatically vibrant palette */
+  --chart-1: oklch(0.28 0.22 285); /* Deep Purple */
+  --chart-2: oklch(0.65 0.18 55);  /* Vibrant Orange */
+  --chart-3: oklch(0.68 0.15 220); /* Electric Blue */
+  --chart-4: oklch(0.55 0.20 320); /* Magenta */
+  --chart-5: oklch(0.72 0.15 140); /* Emerald Green */
+  
+  /* Sidebar with dramatic purple gradient theme */
+  --sidebar: linear-gradient(180deg, oklch(0.94 0.03 285) 0%, oklch(0.96 0.02 220) 100%);
+  --sidebar-foreground: oklch(0.12 0.05 285);
+  --sidebar-primary: oklch(0.28 0.22 285);
+  --sidebar-primary-foreground: oklch(0.98 0.02 285);
+  --sidebar-accent: oklch(0.90 0.04 285);
+  --sidebar-accent-foreground: oklch(0.12 0.05 285);
+  --sidebar-border: oklch(0.82 0.05 285);
+  --sidebar-ring: oklch(0.28 0.22 285);
+  
+  /* Pink as marginal/accent color - very subtle usage */
+  --pink-accent: oklch(0.75 0.12 340);
+  --pink-subtle: oklch(0.95 0.02 340);
+}
+
+[data-theme="vibrant"].dark {
+  /* Dark mode for vibrant theme */
+  --background: oklch(0.12 0.02 280);
+  --foreground: oklch(0.95 0.01 280);
+  --card: oklch(0.15 0.02 280);
+  --card-foreground: oklch(0.95 0.01 280);
+  --popover: oklch(0.15 0.02 280);
+  --popover-foreground: oklch(0.95 0.01 280);
+  
+  /* Brighter primary in dark mode */
+  --primary: oklch(0.65 0.18 280);
+  --primary-foreground: oklch(0.12 0.02 280);
+  
+  /* Vibrant secondary in dark */
+  --secondary: oklch(0.75 0.15 65);
+  --secondary-foreground: oklch(0.12 0.02 280);
+  
+  /* Bright accent */
+  --accent: oklch(0.72 0.18 45);
+  --accent-foreground: oklch(0.12 0.02 280);
+  
+  /* Dark muted colors */
+  --muted: oklch(0.18 0.02 280);
+  --muted-foreground: oklch(0.65 0.03 280);
+  
+  /* Dark borders */
+  --border: oklch(0.25 0.03 280);
+  --input: oklch(0.22 0.02 280);
+  --ring: oklch(0.65 0.18 280);
+  
+  /* Dark sidebar */
+  --sidebar: oklch(0.15 0.02 280);
+  --sidebar-foreground: oklch(0.95 0.01 280);
+  --sidebar-primary: oklch(0.65 0.18 280);
+  --sidebar-primary-foreground: oklch(0.12 0.02 280);
+  --sidebar-accent: oklch(0.18 0.02 280);
+  --sidebar-accent-foreground: oklch(0.95 0.01 280);
+  --sidebar-border: oklch(0.25 0.03 280);
+  --sidebar-ring: oklch(0.65 0.18 280);
+}
+
+/* Theme transitions */
+* {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
     /* Mobile optimizations */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     touch-action: manipulation;
+  }
+  
+  /* Apply gradient backgrounds for vibrant theme */
+  [data-theme="vibrant"] body {
+    background: linear-gradient(135deg, oklch(0.96 0.02 285) 0%, oklch(0.97 0.015 220) 100%);
+    min-height: 100vh;
+  }
+  
+  [data-theme="vibrant"] .bg-card {
+    background: oklch(0.98 0.015 285);
+    border: 1px solid oklch(0.82 0.05 285);
+    box-shadow: 0 4px 6px -1px oklch(0.28 0.22 285 / 0.1), 0 2px 4px -1px oklch(0.28 0.22 285 / 0.06);
+  }
+  
+  [data-theme="vibrant"] .bg-sidebar {
+    background: linear-gradient(180deg, oklch(0.94 0.03 285) 0%, oklch(0.96 0.02 220) 100%);
+    border-right: 1px solid oklch(0.82 0.05 285);
+  }
+  
+  /* Enhanced logo styling for vibrant theme */
+  [data-theme="vibrant"] img[alt="PROP CONTROL"],
+  [data-theme="vibrant"] .logo-enhanced {
+    filter: drop-shadow(0 2px 4px oklch(0.28 0.22 285 / 0.3));
+    border-radius: 8px;
+    background: linear-gradient(135deg, oklch(0.99 0.005 285) 0%, oklch(0.98 0.01 220) 100%);
+    padding: 4px 8px;
+    border: 1px solid oklch(0.82 0.05 285);
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+  
+  /* General logo enhancement for all themes */
+  .logo-enhanced {
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+    max-width: 100%;
+    height: auto;
+  }
+  
+  /* Enhanced header styling for vibrant theme */
+  [data-theme="vibrant"] header {
+    background: linear-gradient(90deg, oklch(0.98 0.015 285) 0%, oklch(0.99 0.01 220) 100%);
+    border-bottom: 2px solid oklch(0.28 0.22 285);
+    box-shadow: 0 4px 6px -1px oklch(0.28 0.22 285 / 0.1);
+  }
+  
+  /* Enhanced component styling for vibrant theme */
+  [data-theme="vibrant"] .bg-primary {
+    background: linear-gradient(135deg, oklch(0.28 0.22 285) 0%, oklch(0.32 0.20 300) 100%);
+    box-shadow: 0 4px 14px 0 oklch(0.28 0.22 285 / 0.39);
+  }
+  
+  [data-theme="vibrant"] .bg-secondary {
+    background: linear-gradient(135deg, oklch(0.65 0.18 55) 0%, oklch(0.70 0.16 45) 100%);
+    box-shadow: 0 4px 14px 0 oklch(0.65 0.18 55 / 0.39);
+  }
+  
+  [data-theme="vibrant"] .bg-accent {
+    background: linear-gradient(135deg, oklch(0.68 0.15 220) 0%, oklch(0.72 0.13 210) 100%);
+    box-shadow: 0 4px 14px 0 oklch(0.68 0.15 220 / 0.39);
+  }
+  
+  /* Enhanced button hover effects */
+  [data-theme="vibrant"] button:hover {
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+  }
+  
+  /* Enhanced Badge styling */
+  [data-theme="vibrant"] .bg-blue-50 {
+    background: linear-gradient(135deg, oklch(0.95 0.03 220) 0%, oklch(0.97 0.02 210) 100%);
+  }
+  
+  [data-theme="vibrant"] .bg-green-50 {
+    background: linear-gradient(135deg, oklch(0.95 0.03 140) 0%, oklch(0.97 0.02 130) 100%);
+  }
+  
+  [data-theme="vibrant"] .bg-orange-100 {
+    background: linear-gradient(135deg, oklch(0.92 0.05 55) 0%, oklch(0.94 0.04 45) 100%);
+  }
+  
+  /* Enhanced Progress Bar */
+  [data-theme="vibrant"] .bg-primary {
+    background: linear-gradient(90deg, oklch(0.28 0.22 285) 0%, oklch(0.32 0.20 300) 50%, oklch(0.35 0.18 315) 100%);
+  }
+  
+  /* Enhanced Alert styling */
+  [data-theme="vibrant"] .border-red-200 {
+    border-color: oklch(0.75 0.15 25);
+    background: linear-gradient(135deg, oklch(0.97 0.02 25) 0%, oklch(0.98 0.015 15) 100%);
+  }
+  
+  [data-theme="vibrant"] .border-green-200 {
+    border-color: oklch(0.75 0.15 140);
+    background: linear-gradient(135deg, oklch(0.97 0.02 140) 0%, oklch(0.98 0.015 130) 100%);
+  }
+  
+  [data-theme="vibrant"] .border-yellow-200 {
+    border-color: oklch(0.75 0.15 85);
+    background: linear-gradient(135deg, oklch(0.97 0.02 85) 0%, oklch(0.98 0.015 75) 100%);
+  }
+  
+  /* Theme-specific utilities */
+  .theme-vibrant {
+    /* Enhanced vibrant theme styles */
+  }
+  
+  .theme-classic {
+    /* Classic theme styles */
   }
 }
 

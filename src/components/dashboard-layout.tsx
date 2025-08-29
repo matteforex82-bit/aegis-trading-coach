@@ -17,9 +17,9 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background transition-colors duration-300">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 sticky top-0 z-20 shadow-sm">
+      <header className="bg-card border-b border-border px-4 sm:px-6 py-4 sticky top-0 z-20 shadow-sm transition-colors duration-300">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             {/* Mobile menu button */}
@@ -39,13 +39,18 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
                   alt="PROP CONTROL" 
                   width={120} 
                   height={48} 
-                  className="object-contain"
+                  className="object-contain logo-enhanced"
                   priority
+                  style={{
+                    maxHeight: '48px',
+                    width: 'auto',
+                    display: 'block'
+                  }}
                 />
               </div>
               {subtitle && (
                 <div>
-                  <p className="text-gray-600 text-sm sm:text-base">{subtitle}</p>
+                  <p className="text-muted-foreground text-sm sm:text-base">{subtitle}</p>
                 </div>
               )}
             </div>
@@ -57,7 +62,7 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
         {/* Mobile Overlay */}
         {sidebarOpen && (
           <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+            className="fixed inset-0 bg-black/50 z-30 lg:hidden transition-opacity duration-200"
             onClick={() => setSidebarOpen(false)}
           />
         )}
@@ -65,20 +70,20 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
         {/* Professional Sidebar */}
         <aside className={`
           fixed lg:static inset-y-0 left-0 z-40
-          w-64 bg-white border-r border-gray-200 min-h-screen shadow-sm
-          transform transition-transform duration-200 ease-in-out lg:transform-none
+          w-64 bg-sidebar border-r border-sidebar-border min-h-screen shadow-sm
+          transform transition-all duration-300 ease-in-out lg:transform-none
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}>
           <div className="p-4 pt-20 lg:pt-4">
             <div className="mb-6">
-              <h2 className="text-sm font-semibold text-gray-900 mb-4 uppercase tracking-wide">
+              <h2 className="text-sm font-semibold text-sidebar-foreground mb-4 uppercase tracking-wide transition-colors duration-300">
                 Account
               </h2>
               <AccountList />
             </div>
 
-            <div className="border-t pt-4">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">
+            <div className="border-t border-sidebar-border pt-4">
+              <h3 className="text-sm font-semibold text-sidebar-foreground mb-3 uppercase tracking-wide transition-colors duration-300">
                 Navigazione
               </h3>
               <Navigation />

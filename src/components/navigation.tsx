@@ -24,11 +24,11 @@ export function Navigation() {
             key={item.name}
             href={item.href}
             className={cn(
-              'flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors touch-target no-select',
+              'flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 touch-target no-select',
               'active:scale-95 transition-transform duration-75', // Mobile tap feedback
               isActive
-                ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 active:bg-gray-100'
+                ? 'bg-sidebar-accent text-sidebar-primary border border-sidebar-border shadow-sm'
+                : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-primary active:bg-sidebar-accent/80'
             )}
           >
             <Icon className="h-5 w-5 flex-shrink-0" />
