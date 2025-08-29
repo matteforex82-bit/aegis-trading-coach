@@ -40,29 +40,29 @@ export async function GET(
         side: true,
         volume: true,
         openPrice: true,
-        currentPrice: true,
         openTime: true,
         pnlGross: true,
-        unrealizedPnL: true,
         commission: true,
         swap: true,
         comment: true,
-        stopLoss: true,
-        takeProfit: true
+        sl: true,
+        tp: true
       }
     })
 
     // Calculate additional metrics for each trade
     const enrichedTrades = openTrades.map(trade => {
-      const pnl = trade.unrealizedPnL || trade.pnlGross || 0
+      const pnl = trade.pnlGross || 0
       const netPnl = pnl + (trade.commission || 0) + (trade.swap || 0)
       
       return {
         ...trade,
         netPnL: netPnl,
-        pips: calculatePips(trade.symbol, trade.openPrice, trade.currentPrice || trade.openPrice),
+        pips: calculatePips(trade.symbol, trade.openPrice, trade.openPrice), // Using openPrice as current since we don't have real-time prices
         duration: calculateDuration(trade.openTime),
-        isProfit: netPnl > 0
+        isProfit: netPnl > 0,
+        stopLoss: trade.sl,
+        takeProfit: trade.tp
       }
     })
 

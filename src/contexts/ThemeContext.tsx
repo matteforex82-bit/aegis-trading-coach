@@ -35,7 +35,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       localStorage.setItem('theme', 'vibrant');
     }
     setMounted(true);
-  }, []);}]}}}
+  }, []);
 
   useEffect(() => {
     if (mounted) {
