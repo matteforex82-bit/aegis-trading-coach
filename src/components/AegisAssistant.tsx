@@ -158,7 +158,7 @@ export default function AegisAssistant({ account, stats, rules, openTrades = [] 
       const payload = {
         message: inputMessage,
         sessionId: sessionId,
-        imageUrl: uploadedImage || undefined,
+        imageUrl: uploadedImage || null,
         context: generateContextData(),
         timestamp: new Date().toISOString()
       }

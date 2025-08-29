@@ -226,7 +226,7 @@ export default function AegisCoach({ account, stats, rules, openTrades = [] }: A
       const payload = {
         message: inputMessage,
         sessionId: sessionId,
-        imageUrl: uploadedImage || undefined,
+        imageUrl: uploadedImage || null,
         context: generateContextData(),
         timestamp: new Date().toISOString(),
         requestType: 'coaching' // Signal that this is a coaching request
