@@ -82,13 +82,16 @@ X-Finnhub-Secret: d2r7o31r01qlk22s2hcg
 }
 ```
 
-### ⚠️ Nota Importante sul Calendario Economico
+### ✅ Calendario Economico Aggiornato
 
-L'endpoint del Calendario Economico (`/api/v1/calendar/economic`) richiede un **piano Finnhub a pagamento**. Con il piano gratuito, riceverai un errore 403 Forbidden quando tenti di accedere ai dati economici. L'applicazione attualmente mostra dati mock a scopo dimostrativo.
+Il calendario economico ora utilizza il **widget gratuito di Investing.com** invece dell'API Finnhub a pagamento.
 
-Per accedere ai dati reali del calendario economico:
-1. Aggiorna a un piano Finnhub a pagamento su https://finnhub.io/pricing
-2. Il webhook funzionerà automaticamente con eventi economici reali una volta aggiornato
+**Vantaggi del nuovo sistema:**
+- **Completamente gratuito**: Non richiede API key o piani a pagamento
+- **Dati in tempo reale**: Eventi economici aggiornati automaticamente
+- **Interfaccia professionale**: Widget integrato direttamente da Investing.com Italia
+- **Funzionalità complete**: Include filtri per paese, importanza e dati storici
+- **Nessuna configurazione**: Funziona immediatamente senza setup aggiuntivi
 
 ## 🔍 Monitoraggio
 
@@ -133,11 +136,15 @@ I webhook vengono loggati nella console con:
 
 ### Errori Comuni
 
-1. **403 Forbidden Error (Calendario Economico)**
-   - Questo è normale con il piano gratuito Finnhub
-   - Il calendario economico richiede un abbonamento a pagamento
-   - L'app mostra dati mock per dimostrazione
-   - Aggiorna su https://finnhub.io/pricing per dati reali
+1. **Calendario Economico non si carica**
+   **Problema**: Il widget del calendario economico non viene visualizzato
+   
+   **Possibili cause e soluzioni**:
+   - **Blocco iframe**: Alcuni browser o estensioni potrebbero bloccare gli iframe
+     - Disabilita temporaneamente le estensioni ad-blocker
+     - Verifica le impostazioni di sicurezza del browser
+   - **Connessione internet**: Verifica la connessione a investing.com
+   - **Firewall aziendale**: Alcuni firewall potrebbero bloccare il dominio investing.com
 
 2. **Webhook Non Funziona**
    - Verifica che `FINNHUB_WEBHOOK_SECRET` sia configurato correttamente
