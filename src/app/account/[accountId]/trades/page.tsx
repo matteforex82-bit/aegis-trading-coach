@@ -264,8 +264,8 @@ export default function AccountTrades() {
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(stats.totalPnL, account.currency)}
+                <div className={`text-2xl font-bold ${(stats.totalPnL + (stats.totalCommission || 0) + (stats.totalSwap || 0)) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(stats.totalPnL + (stats.totalCommission || 0) + (stats.totalSwap || 0), account.currency)}
                 </div>
               </CardContent>
             </Card>

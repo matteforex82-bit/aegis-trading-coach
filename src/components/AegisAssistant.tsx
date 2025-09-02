@@ -112,8 +112,8 @@ export default function AegisAssistant({ account, stats, rules, openTrades = [] 
         login: account.login,
         broker: account.broker,
         currency: account.currency,
-        balance: stats?.totalPnL ? (50000 + stats.totalPnL) : 50000,
-        equity: stats?.totalPnL ? (50000 + stats.totalPnL + (openTrades.reduce((sum, t) => sum + t.pnlGross, 0))) : 50000,
+        balance: stats?.netPnL ? (50000 + stats.netPnL) : 50000,
+        equity: stats?.netPnL ? (50000 + stats.netPnL + (openTrades.reduce((sum, t) => sum + t.pnlGross, 0))) : 50000,
         dailyPnL: rules?.dailyPnL || 0
       },
       openPositions: openTrades.length,
@@ -125,7 +125,7 @@ export default function AegisAssistant({ account, stats, rules, openTrades = [] 
         openPrice: trade.openPrice
       })),
       performance: {
-        totalPnL: stats?.totalPnL || 0,
+        totalPnL: stats?.netPnL || 0,
         winRate: stats?.winRate || 0,
         totalTrades: stats?.totalTrades || 0
       }

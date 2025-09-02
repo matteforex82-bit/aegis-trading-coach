@@ -264,7 +264,8 @@ export default function AccountDashboard() {
                 <CardContent>
                   <div className="text-2xl font-bold">
                     {(() => {
-                      const currentBalance = account.initialBalance + (stats?.totalPnL || 0)
+                      // Balance = somma algebrica di tutte le posizioni CHIUSE (include commissioni e swap)
+                      const currentBalance = account.initialBalance + (stats?.netPnL || 0)
                       
                       return new Intl.NumberFormat('en-US', {
                         style: 'currency',
@@ -285,7 +286,9 @@ export default function AccountDashboard() {
                 <CardContent>
                   <div className="text-2xl font-bold">
                     {(() => {
-                      const currentBalance = account.initialBalance + (stats?.totalPnL || 0)
+                      // Balance = somma algebrica di tutte le posizioni CHIUSE (netPnL include commissioni e swap)
+                      const currentBalance = account.initialBalance + (stats?.netPnL || 0)
+                      // Equity = balance + posizioni aperte flottanti
                       const equity = currentBalance + openPositionsTotal
                       
                       return new Intl.NumberFormat('en-US', {

@@ -53,7 +53,7 @@ export default function SimpleRiskWidget({ account, rules, stats, openTrades = [
     const overallLimit = accountSize * (overallLossPercent / 100)
     
     // Get current equity
-    const currentEquity = accountSize + (stats.totalPnL || 0)
+    const currentEquity = accountSize + (stats.netPnL || 0)
     
     // Calculate how much we can still lose before hitting the limit
     const minAllowedEquity = accountSize - overallLimit
