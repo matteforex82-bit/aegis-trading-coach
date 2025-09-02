@@ -29,7 +29,30 @@ interface OpenPositionsSectionProps {
 
 export function OpenPositionsSection({ openTrades, account }: OpenPositionsSectionProps) {
   if (!openTrades || openTrades.length === 0) {
-    return null
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3 sm:gap-0">
+          <div className="flex items-center gap-2">
+            <Activity className="h-5 w-5 text-blue-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Posizioni Live</h2>
+            <Badge variant="outline" className="text-xs px-2 py-1">
+              0 APERTE
+            </Badge>
+          </div>
+        </div>
+        
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+            <Activity className="h-8 w-8 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Nessuna posizione aperta</h3>
+          <p className="text-gray-500 max-w-md">
+            Al momento non hai posizioni live sul mercato. Quando aprirai nuove posizioni, 
+            appariranno qui con i dettagli in tempo reale.
+          </p>
+        </div>
+      </div>
+    )
   }
 
   // Calcoli precisi

@@ -3,9 +3,10 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { Settings, Upload } from 'lucide-react'
+import { Settings, Upload, BarChart3 } from 'lucide-react'
 
 const navigation = [
+  { name: 'All Trades', href: '/trades', icon: BarChart3 },
   { name: 'Impostazioni', href: '/settings', icon: Settings },
   { name: 'Import Dati', href: '/import', icon: Upload },
 ]
