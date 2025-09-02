@@ -26,13 +26,20 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const from = searchParams.get('from') || new Date().toISOString().split('T')[0]
-    const to = searchParams.get('to') || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const to = searchParams.get('to') || from
     
-    // Finnhub API key - in production, this should be in environment variables
-    const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || 'demo'
+    // Finnhub API key
+    const apiKey = process.env.FINNHUB_API_KEY
+    
+    if (!apiKey || apiKey === 'your-finnhub-api-key-here' || apiKey.includes('la-tua-chiave-api-qui')) {
+      return NextResponse.json({
+        success: false,
+        message: 'Chiave API Finnhub non configurata. Registrati su https://finnhub.io/register per ottenere una chiave gratuita e configurala nel file .env'
+      }, { status: 500 })
+    }
     
     const response = await fetch(
-      `https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${FINNHUB_API_KEY}`,
+      `https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${apiKey}`,
       {
         headers: {
           'Content-Type': 'application/json',
