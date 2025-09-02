@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import WebhookStatus from '@/components/WebhookStatus'
+
 import { Calendar, Clock } from 'lucide-react'
 
 interface NewsAndMacroTabProps {
@@ -64,10 +64,7 @@ export function NewsAndMacroTab({ accountId }: NewsAndMacroTabProps) {
           </Card>
         </div>
         
-        {/* Webhook Status Column */}
-         <div className="lg:col-span-1">
-           <WebhookStatus />
-         </div>
+
       </div>
     </div>
   )

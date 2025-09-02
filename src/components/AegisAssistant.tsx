@@ -20,6 +20,7 @@ import {
   X
 } from 'lucide-react'
 
+
 interface Message {
   id: string
   content: string
@@ -51,6 +52,7 @@ export default function AegisAssistant({ account, stats, rules, openTrades = [] 
   const [isExpanded, setIsExpanded] = useState(false)
   const [pasteSuccess, setPasteSuccess] = useState(false)
   const [imageInfo, setImageInfo] = useState<string>('')
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -97,6 +99,8 @@ export default function AegisAssistant({ account, stats, rules, openTrades = [] 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+
 
   // Save messages to localStorage
   const saveMessages = (newMessages: Message[]) => {
@@ -418,6 +422,7 @@ export default function AegisAssistant({ account, stats, rules, openTrades = [] 
               <p className="text-xs sm:text-sm text-slate-600 mt-1">
                 Assistente intelligente per il trading • Account: {account.login}
               </p>
+
             </div>
           </div>
           <Button

@@ -33,6 +33,7 @@ import {
   Calendar
 } from 'lucide-react'
 
+
 interface Message {
   id: string
   content: string
@@ -107,6 +108,7 @@ export default function AegisCoach({ account, stats, rules, openTrades = [] }: A
   const [riskScore, setRiskScore] = useState<number>(0)
   const [disciplineScore, setDisciplineScore] = useState<number>(0)
 
+
   // Initialize session ID and load data
   useEffect(() => {
     if (account?.id) {
@@ -150,6 +152,7 @@ export default function AegisCoach({ account, stats, rules, openTrades = [] }: A
       loadTradingGoals()
       generateDailyTip()
       calculateScores()
+
     }
   }, [account?.id, account?.login])
 
@@ -195,7 +198,8 @@ export default function AegisCoach({ account, stats, rules, openTrades = [] }: A
         riskScore,
         disciplineScore,
         insights: insights.length,
-        goals: tradingGoals.map(g => ({ title: g.title, progress: g.progress, target: g.target }))
+        goals: tradingGoals.map(g => ({ title: g.title, progress: g.progress, target: g.target })),
+        marketContext: null
       }
     }
   }
@@ -749,6 +753,8 @@ export default function AegisCoach({ account, stats, rules, openTrades = [] }: A
     setDailyTip(tips[tipIndex])
   }
   
+
+
   const calculateScores = () => {
     // In a real implementation, these would be calculated based on actual trading data
     // For now, we'll use sample values or derive from stats if available

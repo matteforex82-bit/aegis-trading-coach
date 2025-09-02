@@ -19,7 +19,7 @@ import {
   Shield, 
   Zap,
   Home,
-  Settings,
+
   TrendingDown,
   Brain,
   AlertTriangle,
@@ -247,10 +247,7 @@ export default function AccountDashboard() {
               <Target className="h-4 w-4" />
               Positions & Risk
             </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Settings
-            </TabsTrigger>
+
           </TabsList>
 
           {/* Dashboard Tab */}
@@ -438,38 +435,7 @@ export default function AccountDashboard() {
             />
           </TabsContent>
 
-          {/* Settings Tab */}
-          <TabsContent value="settings" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Button 
-                variant="outline" 
-                className="h-auto p-4 flex flex-col items-start gap-2"
-                onClick={() => window.open(`/account/${accountId}/trades`, '_blank')}
-              >
-                <Calendar className="h-5 w-5" />
-                <div className="text-left">
-                  <div className="font-medium">View All Trades</div>
-                  <div className="text-sm text-muted-foreground">Complete trading history</div>
-                </div>
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                className="h-auto p-4 flex flex-col items-start gap-2"
-                onClick={() => {
-                  if (confirm('Sei sicuro di voler pulire le posizioni live? Questa azione non può essere annullata.')) {
-                    // Handle cleanup
-                  }
-                }}
-              >
-                <Zap className="h-5 w-5" />
-                <div className="text-left">
-                  <div className="font-medium">Clean Live Positions</div>
-                  <div className="text-sm text-muted-foreground">Reset live trading data</div>
-                </div>
-              </Button>
-            </div>
-          </TabsContent>
+
         </Tabs>
       </div>
     </DashboardLayout>
