@@ -36,6 +36,7 @@ import TradingPerformanceMetrics from '@/components/TradingPerformanceMetrics'
 import TradingAlerts from '@/components/TradingAlerts'
 import LearningResources from '@/components/LearningResources'
 import TradingGoals from '@/components/TradingGoals'
+import { NewsAndMacroTab } from '@/components/NewsAndMacroTab'
 
 interface Account {
   id: string
@@ -234,9 +235,9 @@ export default function AccountDashboard() {
               <Home className="h-4 w-4" />
               Dashboard
             </TabsTrigger>
-            <TabsTrigger value="performance" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Performance
+            <TabsTrigger value="news-macro" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              NEWS & MACRO
             </TabsTrigger>
             <TabsTrigger value="ai-insights" className="flex items-center gap-2">
               <Brain className="h-4 w-4" />
@@ -364,12 +365,10 @@ export default function AccountDashboard() {
             )}
           </TabsContent>
 
-          {/* Performance Tab */}
-          <TabsContent value="performance" className="space-y-6">
-            <TradingPerformanceMetrics 
-              account={account}
-              stats={stats}
-              rules={rules}
+          {/* NEWS & MACRO Tab */}
+          <TabsContent value="news-macro" className="space-y-6">
+            <NewsAndMacroTab 
+              accountId={accountId}
             />
           </TabsContent>
 
