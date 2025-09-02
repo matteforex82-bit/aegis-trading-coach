@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import WebhookStatus from '@/components/WebhookStatus'
 import { 
   Calendar, 
   Globe, 
@@ -169,8 +170,11 @@ export function NewsAndMacroTab({ accountId }: NewsAndMacroTabProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header with filters */}
-      <Card>
+      {/* Webhook Status */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          {/* Header with filters */}
+          <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-2">
@@ -260,6 +264,13 @@ export function NewsAndMacroTab({ accountId }: NewsAndMacroTabProps) {
           </div>
         </CardContent>
       </Card>
+        </div>
+        
+        {/* Webhook Status Column */}
+         <div className="lg:col-span-1">
+           <WebhookStatus />
+         </div>
+      </div>
 
       {/* Events List */}
       {loading ? (
