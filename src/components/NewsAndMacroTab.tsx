@@ -106,30 +106,15 @@ export function NewsAndMacroTab({ accountId }: NewsAndMacroTabProps) {
               </div>
             </TabsContent>
             
-            <div className="mt-6 text-center">
-              <div className="text-xs text-muted-foreground">
-                Calendario economico fornito da{' '}
-                <a 
-                  href="https://it.investing.com/" 
-                  rel="nofollow" 
-                  target="_blank" 
-                  className="text-primary font-semibold hover:underline transition-colors"
-                >
-                  Investing.com Italia
-                </a>
-                {' '}- Il Portale di Trading sul Forex e sui titoli di borsa.
-              </div>
-            </TabsContent>
-            
             <TabsContent value="weekly-high-priority" className="mt-6">
               <div className="w-full overflow-hidden rounded-lg border bg-background">
                 <div className="p-4 bg-orange-50 border-b border-orange-200">
                   <div className="flex items-center gap-2 text-orange-700">
                     <span className="text-lg">📅⭐</span>
-                    <span className="font-semibold">Eventi VIP della Settimana</span>
+                    <span className="font-semibold">Eventi VIP - Settimana</span>
                   </div>
                   <p className="text-sm text-orange-600 mt-1">
-                    Panoramica settimanale degli eventi economici ad alto impatto
+                    Mostra gli eventi economici settimanali con il massimo impatto sui mercati
                   </p>
                 </div>
                 <iframe 
