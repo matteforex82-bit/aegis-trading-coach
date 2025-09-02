@@ -22,8 +22,42 @@ interface FinnhubEvent {
   previous: number | null
 }
 
+// Rate limiting per Finnhub API (30 chiamate/secondo)
+let lastRequestTime = 0
+let requestCount = 0
+const RATE_LIMIT = 25 // Limite conservativo per evitare il 429
+const TIME_WINDOW = 1000 // 1 secondo in millisecondi
+
+function checkRateLimit(): boolean {
+  const now = Date.now()
+  
+  // Reset counter se è passato più di un secondo
+  if (now - lastRequestTime >= TIME_WINDOW) {
+    requestCount = 0
+    lastRequestTime = now
+  }
+  
+  // Controlla se abbiamo superato il limite
+  if (requestCount >= RATE_LIMIT) {
+    return false // Rate limit superato
+  }
+  
+  requestCount++
+  return true // OK per procedere
+}
+
 export async function GET(request: NextRequest) {
   try {
+    // Controlla rate limiting prima di fare la richiesta
+    if (!checkRateLimit()) {
+      return NextResponse.json({
+        success: false,
+        error: 'Rate limit superato',
+        message: 'Troppe richieste. Finnhub permette massimo 30 chiamate al secondo. Riprova tra qualche secondo.',
+        retryAfter: 1
+      }, { status: 429 })
+    }
+
     const { searchParams } = new URL(request.url)
     const from = searchParams.get('from') || new Date().toISOString().split('T')[0]
     const to = searchParams.get('to') || from
@@ -47,6 +81,16 @@ export async function GET(request: NextRequest) {
         next: { revalidate: 300 } // Cache for 5 minutes
       }
     )
+
+    // Gestione specifica per errore 429 (Rate Limit Exceeded)
+    if (response.status === 429) {
+      return NextResponse.json({
+        success: false,
+        error: 'Rate limit Finnhub superato',
+        message: 'Finnhub ha restituito errore 429. Limite di 30 chiamate/secondo superato. Riprova tra qualche secondo.',
+        retryAfter: 60 // Suggerisci di aspettare 1 minuto
+      }, { status: 429 })
+    }
 
     if (!response.ok) {
       throw new Error(`Finnhub API error: ${response.status}`)
