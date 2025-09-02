@@ -73,15 +73,44 @@ export function NewsAndMacroTab({ accountId }: NewsAndMacroTabProps) {
           to = from
       }
       
-      const response = await fetch(`/api/economic-calendar?from=${from}&to=${to}`)
-      const data = await response.json()
+      // Simuliamo alcuni eventi economici di esempio per la demo
+      // In produzione, questo richiederebbe un piano Finnhub a pagamento
+      const mockEvents: EconomicEvent[] = [
+        {
+          country: 'US',
+          event: 'Non-Farm Payrolls',
+          impact: 'high',
+          date: new Date().toISOString().split('T')[0],
+          time: '14:30',
+          actual: null,
+          estimate: '200K',
+          previous: '187K'
+        },
+        {
+          country: 'EU',
+          event: 'ECB Interest Rate Decision',
+          impact: 'high',
+          date: new Date().toISOString().split('T')[0],
+          time: '13:45',
+          actual: null,
+          estimate: '4.25%',
+          previous: '4.25%'
+        },
+        {
+          country: 'GB',
+          event: 'GDP Growth Rate',
+          impact: 'medium',
+          date: new Date().toISOString().split('T')[0],
+          time: '09:30',
+          actual: null,
+          estimate: '0.2%',
+          previous: '0.1%'
+        }
+      ]
       
-      if (data.success) {
-        setEvents(data.data || [])
-        setLastUpdate(new Date())
-      } else {
-        throw new Error(data.message || 'Failed to fetch economic data')
-      }
+      setEvents(mockEvents)
+      setLastUpdate(new Date())
+      setError('Nota: Stai visualizzando dati di esempio. Il calendario economico completo richiede un piano Finnhub a pagamento.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error occurred')
       console.error('Error fetching economic data:', err)

@@ -82,6 +82,14 @@ X-Finnhub-Secret: d2r7o31r01qlk22s2hcg
 }
 ```
 
+### ⚠️ Nota Importante sul Calendario Economico
+
+L'endpoint del Calendario Economico (`/api/v1/calendar/economic`) richiede un **piano Finnhub a pagamento**. Con il piano gratuito, riceverai un errore 403 Forbidden quando tenti di accedere ai dati economici. L'applicazione attualmente mostra dati mock a scopo dimostrativo.
+
+Per accedere ai dati reali del calendario economico:
+1. Aggiorna a un piano Finnhub a pagamento su https://finnhub.io/pricing
+2. Il webhook funzionerà automaticamente con eventi economici reali una volta aggiornato
+
 ## 🔍 Monitoraggio
 
 ### Dashboard Webhook Status
@@ -123,14 +131,28 @@ I webhook vengono loggati nella console con:
 
 ## 🔧 Troubleshooting
 
-### Webhook Non Funziona
-
-1. **Verifica URL:** Assicurati che l'URL sia corretto e accessibile
-2. **Controlla Secret:** Verifica che il secret sia configurato correttamente
-3. **Logs:** Controlla i logs del server per errori
-4. **Status Code:** Il webhook deve restituire 2xx per essere considerato attivo
-
 ### Errori Comuni
+
+1. **403 Forbidden Error (Calendario Economico)**
+   - Questo è normale con il piano gratuito Finnhub
+   - Il calendario economico richiede un abbonamento a pagamento
+   - L'app mostra dati mock per dimostrazione
+   - Aggiorna su https://finnhub.io/pricing per dati reali
+
+2. **Webhook Non Funziona**
+   - Verifica che `FINNHUB_WEBHOOK_SECRET` sia configurato correttamente
+   - Controlla l'URL del webhook nel dashboard Finnhub
+   - Verifica i logs del server per errori
+
+3. **Errori di Autenticazione**
+   - Assicurati che l'header `X-Finnhub-Secret` corrisponda al tuo secret
+   - Verifica che il secret sia configurato sia su Finnhub che nella tua app
+
+4. **Rate Limiting**
+   - Il piano gratuito Finnhub ha limiti di rate (60 chiamate/minuto)
+   - Considera l'aggiornamento per limiti più alti
+
+### Altri Errori
 
 - **401 Unauthorized:** Secret non corretto
 - **404 Not Found:** URL webhook non valido

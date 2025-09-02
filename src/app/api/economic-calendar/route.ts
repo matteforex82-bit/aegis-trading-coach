@@ -92,6 +92,19 @@ export async function GET(request: NextRequest) {
       }, { status: 429 })
     }
 
+    // Gestione specifica per errore 403 (Forbidden)
+    if (response.status === 403) {
+      return NextResponse.json({
+        success: false,
+        error: 'Accesso negato Finnhub API',
+        message: 'Errore 403: La chiave API potrebbe essere scaduta, non valida, o hai superato la quota giornaliera. Verifica la tua chiave API su https://finnhub.io/dashboard',
+        details: {
+          status: 403,
+          suggestion: 'Controlla il tuo piano Finnhub e i limiti di utilizzo'
+        }
+      }, { status: 403 })
+    }
+
     if (!response.ok) {
       throw new Error(`Finnhub API error: ${response.status}`)
     }
