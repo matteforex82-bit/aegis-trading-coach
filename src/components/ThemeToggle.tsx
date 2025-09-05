@@ -48,25 +48,6 @@ export default function ThemeToggle() {
           }`} onClick={() => isVibrant || toggleTheme()}>
             <div className="space-y-2">
               <div className="text-sm font-medium text-gray-900 flex items-center space-x-1">
-                <span>Tema Neon</span>
-                <div className="w-3 h-3 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 animate-pulse"></div>
-              </div>
-              <div className="flex space-x-1">
-                <div className="w-4 h-4 rounded" style={{ backgroundColor: '#00D4FF' }}></div>
-                <div className="w-4 h-4 rounded" style={{ backgroundColor: '#FF0080' }}></div>
-                <div className="w-4 h-4 rounded" style={{ backgroundColor: '#00FF88' }}></div>
-                <div className="w-4 h-4 rounded" style={{ backgroundColor: '#8B5CF6' }}></div>
-              </div>
-              <div className="text-xs text-gray-500">Cyber e futuristico</div>
-            </div>
-          </div>
-
-          {/* Neon Theme Preview */}
-          <div className={`p-3 rounded-lg border-2 transition-all cursor-pointer ${
-            isNeon ? 'border-cyan-500 bg-cyan-50' : 'border-gray-200 hover:border-gray-300'
-          }`} onClick={() => isNeon || toggleTheme()}>
-            <div className="space-y-2">
-              <div className="text-sm font-medium text-gray-900 flex items-center space-x-1">
                 <span>Tema Vibrante</span>
                 <Sparkles className="h-3 w-3 text-purple-500" />
               </div>
@@ -77,6 +58,25 @@ export default function ThemeToggle() {
                 <div className="w-4 h-4 rounded" style={{ backgroundColor: '#D94A98' }}></div>
               </div>
               <div className="text-xs text-gray-500">Moderno e dinamico</div>
+            </div>
+          </div>
+
+          {/* Neon Theme Preview */}
+          <div className={`p-3 rounded-lg border-2 transition-all cursor-pointer ${
+            isNeon ? 'border-cyan-500 bg-cyan-50' : 'border-gray-200 hover:border-gray-300'
+          }`} onClick={() => isNeon || toggleTheme()}>
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-gray-900 flex items-center space-x-1">
+                <span>Tema Neon</span>
+                <div className="w-3 h-3 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 animate-pulse"></div>
+              </div>
+              <div className="flex space-x-1">
+                <div className="w-4 h-4 rounded" style={{ backgroundColor: '#00D4FF' }}></div>
+                <div className="w-4 h-4 rounded" style={{ backgroundColor: '#FF0080' }}></div>
+                <div className="w-4 h-4 rounded" style={{ backgroundColor: '#00FF88' }}></div>
+                <div className="w-4 h-4 rounded" style={{ backgroundColor: '#8B5CF6' }}></div>
+              </div>
+              <div className="text-xs text-gray-500">Cyber e futuristico</div>
             </div>
           </div>
         </div>
