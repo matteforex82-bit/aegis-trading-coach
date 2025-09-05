@@ -19,7 +19,6 @@ import {
   Shield, 
   Zap,
   Home,
-
   TrendingDown,
   Brain,
   AlertTriangle,
@@ -37,6 +36,7 @@ import TradingAlerts from '@/components/TradingAlerts'
 import LearningResources from '@/components/LearningResources'
 import TradingGoals from '@/components/TradingGoals'
 import { NewsAndMacroTab } from '@/components/NewsAndMacroTab'
+import ErrorBoundary from '@/components/ErrorBoundary'
 
 interface Account {
   id: string
@@ -114,9 +114,20 @@ export default function AccountDashboard() {
         fetch(`/api/accounts/${accountId}/trades/open`)
       ])
 
+      // Handle account not found case
+      if (accountRes.status === 404) {
+        console.log('Account not found:', accountId)
+        setAccount(null)
+        setLoading(false)
+        setRefreshing(false)
+        return
+      }
+
       if (accountRes.ok) {
         const accountData = await accountRes.json()
         setAccount(accountData)
+      } else {
+        console.error('Failed to fetch account:', accountRes.status, accountRes.statusText)
       }
 
       if (statsRes.ok) {
@@ -142,6 +153,7 @@ export default function AccountDashboard() {
       setLastUpdate(new Date())
     } catch (error) {
       console.error('Error fetching account data:', error)
+      setAccount(null)
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -323,8 +335,8 @@ export default function AccountDashboard() {
                   <Target className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className={`text-2xl font-bold mb-2 ${stats?.winRate >= 50 ? 'text-green-600' : 'text-orange-600'}`}>
-                    {stats?.winRate.toFixed(1)}%
+                  <div className={`text-2xl font-bold mb-2 ${(stats?.winRate || 0) >= 50 ? 'text-green-600' : 'text-orange-600'}`}>
+                    {stats?.winRate ? stats.winRate.toFixed(1) : '0.0'}%
                   </div>
                 </CardContent>
               </Card>
@@ -333,106 +345,130 @@ export default function AccountDashboard() {
             {/* PropFirm Rules Section - Integrazione Position & Risk */}
             {account?.propFirmTemplate && (
               <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Shield className="h-5 w-5" />
-                      {account.propFirmTemplate.templateName || account.propFirmTemplate.name} - KPI Live
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {stats && (
-                      <DynamicRuleRenderer account={account} stats={stats} />
-                    )}
-                  </CardContent>
-                </Card>
+                <ErrorBoundary>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Shield className="h-5 w-5" />
+                        {account.propFirmTemplate.templateName || account.propFirmTemplate.name} - KPI Live
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {stats && (
+                        <DynamicRuleRenderer account={account} stats={stats} />
+                      )}
+                    </CardContent>
+                  </Card>
+                </ErrorBoundary>
                 
-                <SimpleRiskWidget accountId={account.id} />
+                <ErrorBoundary>
+                  <SimpleRiskWidget accountId={account.id} />
+                </ErrorBoundary>
               </div>
             )}
 
             {/* Live Operations Section */}
             {openTrades && openTrades.length > 0 && (
-              <OpenPositionsSection 
-                accountId={accountId}
-                openTrades={openTrades}
-                account={account}
-                onTradesUpdate={() => fetchAccountData()}
-              />
+              <ErrorBoundary>
+                <OpenPositionsSection 
+                  accountId={accountId}
+                  openTrades={openTrades}
+                  account={account}
+                  onTradesUpdate={() => fetchAccountData()}
+                />
+              </ErrorBoundary>
             )}
           </TabsContent>
 
           {/* NEWS & MACRO Tab */}
           <TabsContent value="news-macro" className="space-y-6">
-            <NewsAndMacroTab 
-              accountId={accountId}
-            />
+            <ErrorBoundary>
+              <NewsAndMacroTab 
+                accountId={accountId}
+              />
+            </ErrorBoundary>
           </TabsContent>
 
           {/* AI & Insights Tab */}
           <TabsContent value="ai-insights" className="space-y-6">
-            <AegisCoach 
-              account={account}
-              stats={stats}
-              rules={rules}
-              openTrades={openTrades}
-            />
+            <ErrorBoundary>
+              <AegisCoach 
+                account={account}
+                stats={stats}
+                rules={rules}
+                openTrades={openTrades}
+              />
+            </ErrorBoundary>
             
-            <TradingInsights 
-              account={account}
-              stats={stats}
-              openTrades={openTrades}
-              onInsightClick={(insight) => {
-                const aegisElement = document.getElementById('aegis-coach')
-                if (aegisElement) {
-                  aegisElement.scrollIntoView({ behavior: 'smooth' });
-                }
-              }}
-            />
+            <ErrorBoundary>
+              <TradingInsights 
+                account={account}
+                stats={stats}
+                openTrades={openTrades}
+                onInsightClick={(insight) => {
+                  const aegisElement = document.getElementById('aegis-coach')
+                  if (aegisElement) {
+                    aegisElement.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
+              />
+            </ErrorBoundary>
             
-            <TradingAlerts 
-              account={account}
-              stats={stats}
-              openTrades={openTrades}
-              onAlertClick={(alertAction) => {
-                const aegisElement = document.getElementById('aegis-coach')
-                if (aegisElement) {
-                  aegisElement.scrollIntoView({ behavior: 'smooth' });
-                }
-              }}
-            />
+            <ErrorBoundary>
+              <TradingAlerts 
+                account={account}
+                stats={stats}
+                openTrades={openTrades}
+                onAlertClick={(alertAction) => {
+                  const aegisElement = document.getElementById('aegis-coach')
+                  if (aegisElement) {
+                    aegisElement.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
+              />
+            </ErrorBoundary>
             
-            <LearningResources 
-              account={account}
-              stats={stats}
-            />
+            <ErrorBoundary>
+              <LearningResources 
+                account={account}
+                stats={stats}
+              />
+            </ErrorBoundary>
             
-            <TradingGoals 
-              account={account}
-              stats={stats}
-            />
+            <ErrorBoundary>
+              <TradingGoals 
+                account={account}
+                stats={stats}
+              />
+            </ErrorBoundary>
           </TabsContent>
 
           {/* Positions & Risk Tab */}
           <TabsContent value="positions" className="space-y-6">
-            <OpenPositionsSection 
-              accountId={accountId}
-              openTrades={openTrades}
-              onTradesUpdate={(trades) => {
-                setOpenTrades(trades)
-                const total = trades.reduce((sum: number, trade: any) => {
-                  return sum + (trade.profit || 0)
-                }, 0)
-                setOpenPositionsTotal(total)
-              }}
-            />
+            <ErrorBoundary>
+              <OpenPositionsSection 
+                accountId={accountId}
+                openTrades={openTrades}
+                onTradesUpdate={(trades) => {
+                  setOpenTrades(trades)
+                  const total = trades.reduce((sum: number, trade: any) => {
+                    return sum + (trade.profit || 0)
+                  }, 0)
+                  setOpenPositionsTotal(total)
+                }}
+              />
+            </ErrorBoundary>
             
-            <SimpleRiskWidget 
-              account={account}
-              stats={stats}
-              rules={rules}
-              openTrades={openTrades}
-            />
+            {account && stats && rules && (
+              <ErrorBoundary>
+                <SimpleRiskWidget 
+                  account={account}
+                  stats={stats}
+                  rules={rules}
+                  openTrades={openTrades}
+                />
+              </ErrorBoundary>
+            )}
           </TabsContent>
 
 

@@ -41,6 +41,23 @@ export default function TradingInsights({ account, stats, openTrades = [], onIns
   const [insights, setInsights] = useState<Insight[]>([])
   const [activeTab, setActiveTab] = useState('all')
   
+  // Early return if essential data is missing
+  if (!account) {
+    return (
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="h-5 w-5" />
+            Trading Insights
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-gray-500">Loading insights...</div>
+        </CardContent>
+      </Card>
+    )
+  }
+  
   // Generate insights based on trading data
   useEffect(() => {
     if (!stats) return

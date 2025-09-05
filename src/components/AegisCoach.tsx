@@ -85,6 +85,23 @@ const MAX_HEIGHT = 768
 const IMAGE_QUALITY = 0.8
 
 export default function AegisCoach({ account, stats, rules, openTrades = [] }: AegisCoachProps) {
+  // Early return if essential data is missing
+  if (!account) {
+    return (
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5" />
+            AEGIS Coach
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-gray-500">Loading coaching data...</div>
+        </CardContent>
+      </Card>
+    )
+  }
+  
   // Core chat functionality (from original AEGIS)
   const [messages, setMessages] = useState<Message[]>([])
   const [inputMessage, setInputMessage] = useState('')

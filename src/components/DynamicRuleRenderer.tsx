@@ -228,16 +228,25 @@ function ConsistencyRulesKPI({ calculator, stats }: {
           
           {consistency.rules && (
             <ul className="space-y-1 text-xs">
-              {consistency.rules.map((rule, index) => (
-                <li key={index} className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${
-                    (index === 0 && netPnL >= bestDay * 2) || 
-                    (index === 1 && netPnL >= bestTrade * 2) 
-                      ? 'bg-green-500' : 'bg-amber-500'
-                  }`} />
-                  {rule}
-                </li>
-              ))}
+              {consistency.rules.map((rule, index) => {
+                // Safety check: ensure rule is a string
+                const ruleText = typeof rule === 'string' 
+                  ? rule 
+                  : typeof rule === 'object' && rule !== null
+                    ? JSON.stringify(rule)
+                    : String(rule)
+                
+                return (
+                  <li key={index} className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${
+                      (index === 0 && netPnL >= bestDay * 2) || 
+                      (index === 1 && netPnL >= bestTrade * 2) 
+                        ? 'bg-green-500' : 'bg-amber-500'
+                    }`} />
+                    {ruleText}
+                  </li>
+                )
+              })}
             </ul>
           )}
         </div>
@@ -292,12 +301,21 @@ function SpecialFeaturesInfo({ calculator }: {
         <h3 className="font-semibold text-sm text-green-800">SPECIAL FEATURES</h3>
       </div>
       <ul className="space-y-1">
-        {features.map((feature, index) => (
-          <li key={index} className="flex items-center gap-2 text-xs text-green-700">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-            {feature}
-          </li>
-        ))}
+        {features.map((feature, index) => {
+          // Safety check: ensure feature is a string
+          const featureText = typeof feature === 'string' 
+            ? feature 
+            : typeof feature === 'object' && feature !== null
+              ? JSON.stringify(feature)
+              : String(feature)
+          
+          return (
+            <li key={index} className="flex items-center gap-2 text-xs text-green-700">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+              {featureText}
+            </li>
+          )
+        })}
       </ul>
     </div>
   )

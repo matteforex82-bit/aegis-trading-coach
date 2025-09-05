@@ -15,6 +15,21 @@ interface SimpleRiskWidgetProps {
 
 export default function SimpleRiskWidget({ account, rules, stats, openTrades = [] }: SimpleRiskWidgetProps) {
   const [showDebug, setShowDebug] = useState(false)
+  
+  // Early return if essential data is missing
+  if (!account || !rules || !stats) {
+    return (
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>🔍 Simple Risk Widget</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-gray-500">Loading risk data...</div>
+        </CardContent>
+      </Card>
+    )
+  }
+  
   // 🎯 STEP 1: Calculate Daily Drawdown EFFETTIVO
   const calculateDailyDrawdownEffective = () => {
     if (!account?.propFirmTemplate || !rules) return null
@@ -22,7 +37,7 @@ export default function SimpleRiskWidget({ account, rules, stats, openTrades = [
     const accountSize = account.propFirmTemplate.accountSize || 50000
     const currentPhase = account.currentPhase || 'PHASE_1'
     
-    // Get daily loss limit from template
+    // Get daily loss limit from template with safe access
     const dailyLossPercent = account.propFirmTemplate.rulesJson?.dailyLossLimits?.[currentPhase]?.percentage || 5
     const dailyLimit = accountSize * (dailyLossPercent / 100)
     
@@ -48,7 +63,7 @@ export default function SimpleRiskWidget({ account, rules, stats, openTrades = [
     const accountSize = account.propFirmTemplate.accountSize || 50000
     const currentPhase = account.currentPhase || 'PHASE_1'
     
-    // Get overall loss limit from template
+    // Get overall loss limit from template with safe access
     const overallLossPercent = account.propFirmTemplate.rulesJson?.overallLossLimits?.[currentPhase]?.percentage || 10
     const overallLimit = accountSize * (overallLossPercent / 100)
     
