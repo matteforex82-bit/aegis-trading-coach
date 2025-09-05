@@ -5,6 +5,7 @@ import { PropFirmTemplate, PropFirm } from '@prisma/client'
 import { TemplateBasedCalculator } from '@/lib/template-calculator'
 import SeparatedProfitTargetKPIs from '@/components/SeparatedProfitTargetKPIs'
 import { Badge } from '@/components/ui/badge'
+import { useTheme } from '@/contexts/ThemeContext'
 import { AlertTriangle, CheckCircle, Clock, Target, Shield, TrendingUp } from 'lucide-react'
 
 interface AccountWithTemplate {
@@ -37,6 +38,7 @@ export default function DynamicRuleRenderer({
   stats, 
   className = "" 
 }: DynamicRuleRendererProps) {
+  const { theme } = useTheme()
   // Initialize calculator with current balance (startBalance + netPnL)
   // Use initialBalance or default to 50000 if startBalance is not available
   const startBalance = account.startBalance || account.initialBalance || 50000
@@ -64,13 +66,19 @@ export default function DynamicRuleRenderer({
   }
 
   return (
-    <div className={`space-y-4 ${className}`}>
+    <div className={`space-y-4 ${className} ${
+      theme === 'neon' ? 'animate-cyber-scan' : ''
+    }`}>
       {/* Template Header */}
       <div className="flex items-center gap-3 mb-6">
-        <Badge variant="outline" className="text-sm px-3 py-1">
+        <Badge variant="outline" className={`text-sm px-3 py-1 ${
+          theme === 'neon' ? 'animate-neon-glow' : ''
+        }`}>
           {templateInfo.propFirm} - {templateInfo.name}
         </Badge>
-        <Badge variant="secondary" className="text-xs">
+        <Badge variant="secondary" className={`text-xs ${
+          theme === 'neon' ? 'animate-neon-pulse' : ''
+        }`}>
           {account.currentPhase}
         </Badge>
       </div>
@@ -259,6 +267,7 @@ function TradingDaysKPI({ calculator, stats }: {
   calculator: TemplateBasedCalculator
   stats: TradeStats 
 }) {
+  const { theme } = useTheme()
   const minDays = calculator.getMinimumTradingDays()
   if (!minDays) return null
 
@@ -266,7 +275,9 @@ function TradingDaysKPI({ calculator, stats }: {
   const percentage = (currentDays / minDays.days) * 100
 
   return (
-    <div className="p-4 border rounded-lg">
+    <div className={`p-4 border rounded-lg ${
+      theme === 'neon' ? 'animate-neon-pulse' : ''
+    }`}>
       <div className="flex items-center gap-2 mb-2">
         <Target className="h-4 w-4 text-blue-600" />
         <h3 className="font-semibold text-sm">MINIMUM TRADING DAYS</h3>
@@ -292,10 +303,13 @@ function TradingDaysKPI({ calculator, stats }: {
 function SpecialFeaturesInfo({ calculator }: { 
   calculator: TemplateBasedCalculator 
 }) {
+  const { theme } = useTheme()
   const features = calculator.getSpecialFeatures()
   
   return (
-    <div className="p-4 border rounded-lg bg-green-50 border-green-200">
+    <div className={`p-4 border rounded-lg bg-green-50 border-green-200 ${
+      theme === 'neon' ? 'animate-neon-glow' : ''
+    }`}>
       <div className="flex items-center gap-2 mb-2">
         <TrendingUp className="h-4 w-4 text-green-600" />
         <h3 className="font-semibold text-sm text-green-800">SPECIAL FEATURES</h3>

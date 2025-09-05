@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { useTheme } from '@/contexts/ThemeContext'
 import { ChevronDown, ChevronUp, Bug, Shield, Target, Zap } from 'lucide-react'
 
 interface SimpleRiskWidgetProps {
@@ -15,6 +16,7 @@ interface SimpleRiskWidgetProps {
 
 export default function SimpleRiskWidget({ account, rules, stats, openTrades = [] }: SimpleRiskWidgetProps) {
   const [showDebug, setShowDebug] = useState(false)
+  const { theme } = useTheme()
   
   // Early return if essential data is missing
   if (!account || !rules || !stats) {
@@ -284,10 +286,14 @@ export default function SimpleRiskWidget({ account, rules, stats, openTrades = [
 
         {/* COMPACT: Open Positions Alert */}
         {openPositionsRisk.totalPositions > 0 && (
-          <div className="p-3 sm:p-4 bg-gradient-to-r from-orange-50 to-red-50 border-2 border-dashed border-orange-300 rounded-xl">
+          <div className={`p-3 sm:p-4 bg-gradient-to-r from-orange-50 to-red-50 border-2 border-dashed border-orange-300 rounded-xl ${
+            theme === 'neon' ? 'animate-neon-pulse' : ''
+          }`}>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-orange-500 rounded-full text-white flex-shrink-0">
+                <div className={`p-2 bg-orange-500 rounded-full text-white flex-shrink-0 ${
+                  theme === 'neon' ? 'animate-neon-glow' : ''
+                }`}>
                   <svg className="h-3 w-3 sm:h-4 sm:w-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
@@ -306,13 +312,19 @@ export default function SimpleRiskWidget({ account, rules, stats, openTrades = [
         )}
 
         {/* BIG RESULT: Final Risk Recommendation */}
-        <div className="p-4 sm:p-6 bg-gradient-to-br from-green-100 via-teal-50 to-blue-100 border-2 border-green-300 rounded-2xl shadow-lg">
+        <div className={`p-4 sm:p-6 bg-gradient-to-br from-green-100 via-teal-50 to-blue-100 border-2 border-green-300 rounded-2xl shadow-lg ${
+          theme === 'neon' ? 'animate-neon-pulse' : ''
+        }`}>
           <div className="text-center">
-            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-green-600 text-white rounded-full text-xs sm:text-sm font-medium mb-3 sm:mb-4">
+            <div className={`inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-green-600 text-white rounded-full text-xs sm:text-sm font-medium mb-3 sm:mb-4 ${
+              theme === 'neon' ? 'animate-neon-glow' : ''
+            }`}>
               <Target className="h-4 w-4 sm:h-5 sm:w-5" />
               RISCHIO CONSIGLIATO FINALE
             </div>
-            <div className="text-3xl sm:text-4xl lg:text-5xl font-bold text-green-800 mb-2">
+            <div className={`text-3xl sm:text-4xl lg:text-5xl font-bold text-green-800 mb-2 ${
+              theme === 'neon' ? 'animate-neon-glow' : ''
+            }`}>
               ${(() => {
                 const maxTheorical = Math.min(dailyData.effective, overallData.effective)
                 const availableAfterPositions = Math.max(0, maxTheorical - openPositionsRisk.totalRisk)

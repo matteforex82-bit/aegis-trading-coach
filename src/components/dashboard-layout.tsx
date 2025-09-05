@@ -5,6 +5,7 @@ import { Navigation } from '@/components/navigation'
 import { AccountList } from '@/components/account-list'
 import { Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useTheme } from '@/contexts/ThemeContext'
 import Image from 'next/image'
 
 interface DashboardLayoutProps {
@@ -15,11 +16,16 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { theme } = useTheme()
 
   return (
-    <div className="min-h-screen bg-background transition-colors duration-300">
+    <div className={`min-h-screen bg-background transition-colors duration-300 ${
+      theme === 'neon' ? 'animate-cyber-scan' : ''
+    }`}>
       {/* Header */}
-      <header className="bg-card border-b border-border px-4 sm:px-6 py-4 sticky top-0 z-20 shadow-sm transition-colors duration-300">
+      <header className={`bg-card border-b border-border px-4 sm:px-6 py-4 sticky top-0 z-20 shadow-sm transition-colors duration-300 ${
+        theme === 'neon' ? 'animate-neon-pulse' : ''
+      }`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             {/* Mobile menu button */}
@@ -39,7 +45,9 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
                   alt="PROP CONTROL" 
                   width={120} 
                   height={48} 
-                  className="object-contain logo-enhanced"
+                  className={`object-contain logo-enhanced ${
+                    theme === 'neon' ? 'animate-neon-glow' : ''
+                  }`}
                   priority
                   style={{
                     maxHeight: '48px',

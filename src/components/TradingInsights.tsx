@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
+import { useTheme } from '@/contexts/ThemeContext'
 import {
   TrendingUp,
   TrendingDown,
@@ -38,6 +39,7 @@ interface Insight {
 }
 
 export default function TradingInsights({ account, stats, openTrades = [], onInsightClick }: TradingInsightsProps) {
+  const { theme } = useTheme()
   const [insights, setInsights] = useState<Insight[]>([])
   const [activeTab, setActiveTab] = useState('all')
   
@@ -184,18 +186,26 @@ export default function TradingInsights({ account, stats, openTrades = [], onIns
   }
 
   return (
-    <Card className="border-2 border-gradient-to-r from-blue-200 to-purple-200 mb-6">
-      <CardHeader className="bg-gradient-to-r from-slate-50 to-gray-50 pb-3">
+    <Card className={`border-2 border-gradient-to-r from-blue-200 to-purple-200 mb-6 ${
+      theme === 'neon' ? 'animate-neon-pulse' : ''
+    }`}>
+      <CardHeader className={`bg-gradient-to-r from-slate-50 to-gray-50 pb-3 ${
+        theme === 'neon' ? 'animate-cyber-scan' : ''
+      }`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg text-white">
+            <div className={`p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg text-white ${
+              theme === 'neon' ? 'animate-neon-glow' : ''
+            }`}>
               <Brain className="h-5 w-5" />
             </div>
             <CardTitle className="text-lg font-bold text-slate-800">
               Trading Insights
             </CardTitle>
           </div>
-          <Badge className="bg-purple-100 text-purple-800 text-xs">
+          <Badge className={`bg-purple-100 text-purple-800 text-xs ${
+            theme === 'neon' ? 'animate-neon-glow' : ''
+          }`}>
             AI-Powered
           </Badge>
         </div>
@@ -221,7 +231,9 @@ export default function TradingInsights({ account, stats, openTrades = [], onIns
             {filteredInsights.map((insight) => (
               <div 
                 key={insight.id} 
-                className={`p-3 rounded-lg border ${getInsightColor(insight.type)}`}
+                className={`p-3 rounded-lg border ${getInsightColor(insight.type)} ${
+                  theme === 'neon' ? 'animate-neon-pulse' : ''
+                }`}
               >
                 <div className="flex items-start gap-2">
                   {getInsightIcon(insight.type)}

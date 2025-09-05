@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-type Theme = 'classic' | 'vibrant';
+type Theme = 'classic' | 'vibrant' | 'neon';
 
 interface ThemeContextType {
   theme: Theme;
@@ -27,7 +27,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     // Load theme from localStorage on mount, default to vibrant if none saved
     const savedTheme = localStorage.getItem('theme') as Theme;
-    if (savedTheme && (savedTheme === 'classic' || savedTheme === 'vibrant')) {
+    if (savedTheme && (savedTheme === 'classic' || savedTheme === 'vibrant' || savedTheme === 'neon')) {
       setTheme(savedTheme);
     } else {
       // Set vibrant as default and save it
@@ -52,7 +52,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [theme, mounted]);
 
   const toggleTheme = () => {
-    setTheme(prev => prev === 'classic' ? 'vibrant' : 'classic');
+    setTheme(prev => {
+      if (prev === 'classic') return 'vibrant';
+      if (prev === 'vibrant') return 'neon';
+      return 'classic';
+    });
   };
 
   // Prevent hydration mismatch
