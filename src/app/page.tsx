@@ -9,6 +9,7 @@ import { Navigation } from '@/components/navigation'
 import { AccountList } from '@/components/account-list'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface Account {
   id: string
@@ -62,8 +63,15 @@ export default function Dashboard() {
         <div className="max-w-4xl mx-auto">
           <Card className="text-center py-8 sm:py-12 shadow-sm mx-4 sm:mx-0">
             <CardContent className="px-4 sm:px-6">
-              <div className="mx-auto flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-slate-100 rounded-full mb-4 sm:mb-6">
-                <Users className="h-6 w-6 sm:h-8 sm:w-8 text-slate-600" />
+              <div className="mx-auto flex items-center justify-center mb-4 sm:mb-6">
+                <Image 
+                  src="/prop-control-logo.svg" 
+                  alt="PROP CONTROL" 
+                  width={150} 
+                  height={60} 
+                  className="object-contain"
+                  priority
+                />
               </div>
               <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-3 sm:mb-4">
                 Seleziona un Account
