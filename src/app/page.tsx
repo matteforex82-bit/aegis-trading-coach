@@ -47,31 +47,17 @@ export default function Dashboard() {
     }
   }
 
--  if (loading) {
--    return (
--      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
--        <div className="text-center">
--          <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
--          <p className="text-gray-600 text-sm sm:text-base">Caricamento account...</p>
--        </div>
--      </div>
--    )
--  }
--
--  return (
--    <DashboardLayout subtitle="Seleziona un account per visualizzare la dashboard">
--        <div className="max-w-4xl mx-auto">
-+  return (
-+    <DashboardLayout subtitle="Seleziona un account per visualizzare la dashboard">
-+      {loading ? (
-+        <div className="min-h-[60vh] bg-gray-50 flex items-center justify-center p-4">
-+          <div className="text-center">
-+            <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-+            <p className="text-gray-600 text-sm sm:text-base">Caricamento account...</p>
-+          </div>
-+        </div>
-+      ) : (
-+        <div className="max-w-4xl mx-auto">
+  return (
+    <DashboardLayout subtitle="Seleziona un account per visualizzare la dashboard">
+      {loading ? (
+        <div className="min-h-[60vh] bg-gray-50 flex items-center justify-center p-4">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600 text-sm sm:text-base">Caricamento account...</p>
+          </div>
+        </div>
+      ) : (
+        <div className="max-w-4xl mx-auto">
            <Card className="text-center py-8 sm:py-12 shadow-sm mx-4 sm:mx-0">
              <CardContent className="px-4 sm:px-6">
                <div className="mx-auto flex items-center justify-center mb-4 sm:mb-6">
@@ -135,10 +121,8 @@ export default function Dashboard() {
                </Link>
              </CardContent>
            </Card>
--        </div>
--    </DashboardLayout>
-+        </div>
-+      )}
-+    </DashboardLayout>
+        </div>
+      )}
+    </DashboardLayout>
    )
 }
