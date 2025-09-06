@@ -1,53 +1,56 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+/**
+ * Account-Specific Dashboard Page - SPECTACULAR VISUAL DESIGN
+ * Beautiful animated progress bars with vibrant colors
+ * Real-time KPI monitoring with gradient backgrounds
+ */
+
+import { useEffect, useState } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   RefreshCw, 
   TrendingUp, 
+  TrendingDown, 
   DollarSign, 
   Activity, 
-  Target, 
-  BarChart3, 
-  Calendar, 
-  Shield, 
-  Zap,
-  Home,
-  TrendingDown,
-  Brain,
+  BarChart3,
+  Target,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  Eye,
+  ArrowRight,
+  Calendar,
+  Shield,
+  Zap,
+  Award,
+  Flame,
+  Star
 } from 'lucide-react'
-import { DashboardLayout } from '@/components/dashboard-layout'
+import Link from 'next/link'
+import { useParams, useRouter } from 'next/navigation'
+import DashboardLayout from '@/components/dashboard-layout'
 import { OpenPositionsSection } from '@/components/OpenPositionsSection'
 import ConnectionStatus from '@/components/ConnectionStatus'
 import DynamicRuleRenderer from '@/components/DynamicRuleRenderer'
 import SimpleRiskWidget from '@/components/SimpleRiskWidget'
-import AegisCoach from '@/components/AegisCoach'
-import TradingInsights from '@/components/TradingInsights'
-import TradingPerformanceMetrics from '@/components/TradingPerformanceMetrics'
-import TradingAlerts from '@/components/TradingAlerts'
-import LearningResources from '@/components/LearningResources'
-import TradingGoals from '@/components/TradingGoals'
-import { NewsAndMacroTab } from '@/components/NewsAndMacroTab'
-import ErrorBoundary from '@/components/ErrorBoundary'
+import AegisAssistant from '@/components/AegisAssistant'
 
 interface Account {
   id: string
   name: string
+  login: string
   broker: string
-  accountNumber: string
+  server: string
   currency: string
+  currentPhase: 'PHASE_1' | 'PHASE_2' | 'FUNDED'
   initialBalance: number
   startBalance: number
   currentBalance?: number
-  currentPhase: string
   propFirmTemplate?: {
     id: string
     name: string
@@ -94,6 +97,7 @@ interface RuleMetrics {
 
 export default function AccountDashboard() {
   const params = useParams()
+  const router = useRouter()
   const accountId = params.accountId as string
   
   const [account, setAccount] = useState<Account | null>(null)
@@ -203,276 +207,135 @@ export default function AccountDashboard() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Account Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 bg-white rounded-lg border shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="flex flex-col">
-              <h1 className="text-2xl font-bold text-slate-800">{account.name}</h1>
-              <div className="flex items-center gap-2 text-sm text-slate-600">
-                <span>{account.broker}</span>
-                <span>•</span>
-                <span>{account.accountNumber}</span>
-                <ConnectionStatus accountId={accountId} />
-              </div>
-            </div>
+        <header className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-white">{account.name}</h1>
+            <p className="text-sm text-gray-400">
+              {account.broker} ({account.login}) - Live 
+              <span className="text-green-400 font-semibold mx-2">• Checking...</span>
+              <ConnectionStatus accountId={accountId} />
+              <span className="ml-2 text-gray-500">Last sync: {new Date().toLocaleDateString()}</span>
+            </p>
           </div>
-          
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             {account.propFirmTemplate && (
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                  {account.propFirmTemplate.name}
-                </Badge>
-                <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200">
-                  {account.propFirmTemplate.phase}
-                </Badge>
-              </div>
+              <Button variant="outline" className="py-2 px-4 border border-gray-600 rounded-md text-sm font-medium text-gray-300 hover:bg-gray-700">
+                {account.propFirmTemplate.name}
+              </Button>
             )}
             <Button
               onClick={handleRefresh}
               disabled={refreshing}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
+              className="bg-accent py-2 px-4 rounded-md text-sm font-medium text-white hover:bg-blue-500"
             >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
               Aggiorna
             </Button>
           </div>
+        </header>
+
+        {/* Account Balance Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-card border border-card rounded-lg p-6">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-sm font-medium text-gray-400">Balance</h3>
+              <DollarSign className="h-5 w-5 text-gray-500" />
+            </div>
+            <p className="text-3xl font-semibold text-white">
+              {(() => {
+                const currentBalance = account.initialBalance + (stats?.netPnL || 0)
+                
+                return new Intl.NumberFormat('en-US', {
+                  style: 'currency',
+                  currency: account.currency || 'USD',
+                  minimumFractionDigits: 2
+                }).format(currentBalance)
+              })()}
+            </p>
+          </div>
+
+          <div className="bg-card border border-card rounded-lg p-6">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-sm font-medium text-gray-400">Equity</h3>
+              <TrendingUp className="h-5 w-5 text-gray-500" />
+            </div>
+            <p className="text-3xl font-semibold text-white">
+              {(() => {
+                const currentBalance = account.initialBalance + (stats?.netPnL || 0)
+                const equity = currentBalance + openPositionsTotal
+                
+                return new Intl.NumberFormat('en-US', {
+                  style: 'currency',
+                  currency: account.currency || 'USD',
+                  minimumFractionDigits: 2
+                }).format(equity)
+              })()}
+            </p>
+          </div>
+
+          <div className="bg-card border border-card rounded-lg p-6">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-sm font-medium text-gray-400">Daily P&L</h3>
+              <Activity className="h-5 w-5 text-gray-500" />
+            </div>
+            <p className={`text-3xl font-semibold ${rules?.dailyPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: account.currency || 'USD',
+                minimumFractionDigits: 2
+              }).format(rules?.dailyPnL || 0)}
+            </p>
+          </div>
+
+          <div className="bg-card border border-card rounded-lg p-6">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-sm font-medium text-gray-400">Win Rate</h3>
+              <Target className="h-5 w-5 text-gray-500" />
+            </div>
+            <p className={`text-3xl font-semibold ${(stats?.winRate || 0) >= 50 ? 'text-green-400' : 'text-orange-400'}`}>
+              {stats?.winRate ? stats.winRate.toFixed(1) : '0.0'}%
+            </p>
+          </div>
         </div>
 
-        {/* Tabs Navigation */}
-        <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="dashboard" className="flex items-center gap-2">
-              <Home className="h-4 w-4" />
-              Dashboard
-            </TabsTrigger>
-            <TabsTrigger value="news-macro" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              NEWS & MACRO
-            </TabsTrigger>
-            <TabsTrigger value="ai-insights" className="flex items-center gap-2">
-              <Brain className="h-4 w-4" />
-              AI & Insights
-            </TabsTrigger>
-            <TabsTrigger value="positions" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              Positions & Risk
-            </TabsTrigger>
-
-          </TabsList>
-
-          {/* Dashboard Tab */}
-          <TabsContent value="dashboard" className="space-y-6">
-            {/* Account Balance */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Balance</CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {(() => {
-                      // Balance = somma algebrica di tutte le posizioni CHIUSE (include commissioni e swap)
-                      const currentBalance = account.initialBalance + (stats?.netPnL || 0)
-                      
-                      return new Intl.NumberFormat('en-US', {
-                        style: 'currency',
-                        currency: account.currency || 'USD',
-                        minimumFractionDigits: 2
-                      }).format(currentBalance)
-                    })()}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Current Equity */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Equity</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {(() => {
-                      // Balance = somma algebrica di tutte le posizioni CHIUSE (netPnL include commissioni e swap)
-                      const currentBalance = account.initialBalance + (stats?.netPnL || 0)
-                      // Equity = balance + posizioni aperte flottanti
-                      const equity = currentBalance + openPositionsTotal
-                      
-                      return new Intl.NumberFormat('en-US', {
-                        style: 'currency',
-                        currency: account.currency || 'USD',
-                        minimumFractionDigits: 2
-                      }).format(equity)
-                    })()}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Daily P&L */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Daily P&L</CardTitle>
-                  <Activity className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-2xl font-bold mb-2 ${rules?.dailyPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {new Intl.NumberFormat('en-US', {
-                      style: 'currency',
-                      currency: account.currency || 'USD',
-                      minimumFractionDigits: 2
-                    }).format(rules?.dailyPnL || 0)}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Win Rate */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
-                  <Target className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-2xl font-bold mb-2 ${(stats?.winRate || 0) >= 50 ? 'text-green-600' : 'text-orange-600'}`}>
-                    {stats?.winRate ? stats.winRate.toFixed(1) : '0.0'}%
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* PropFirm Rules Section - Integrazione Position & Risk */}
-            {account?.propFirmTemplate && (
-              <div className="space-y-6">
-                <ErrorBoundary>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Shield className="h-5 w-5" />
-                        {account.propFirmTemplate.templateName || account.propFirmTemplate.name} - KPI Live
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {stats && (
-                        <DynamicRuleRenderer account={account} stats={stats} />
-                      )}
-                    </CardContent>
-                  </Card>
-                </ErrorBoundary>
-                
-                <ErrorBoundary>
-                  <SimpleRiskWidget accountId={account.id} />
-                </ErrorBoundary>
-              </div>
-            )}
-
-            {/* Live Operations Section */}
-            {openTrades && openTrades.length > 0 && (
-              <ErrorBoundary>
-                <OpenPositionsSection 
-                  accountId={accountId}
-                  openTrades={openTrades}
-                  account={account}
-                  onTradesUpdate={() => fetchAccountData()}
-                />
-              </ErrorBoundary>
-            )}
-          </TabsContent>
-
-          {/* NEWS & MACRO Tab */}
-          <TabsContent value="news-macro" className="space-y-6">
-            <ErrorBoundary>
-              <NewsAndMacroTab 
-                accountId={accountId}
-              />
-            </ErrorBoundary>
-          </TabsContent>
-
-          {/* AI & Insights Tab */}
-          <TabsContent value="ai-insights" className="space-y-6">
-            <ErrorBoundary>
-              <AegisCoach 
-                account={account}
-                stats={stats}
-                rules={rules}
-                openTrades={openTrades}
-              />
-            </ErrorBoundary>
+        {/* PropFirm Rules Section */}
+        {account?.propFirmTemplate && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  {account.propFirmTemplate.templateName || account.propFirmTemplate.name} - KPI Live
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {stats && (
+                  <DynamicRuleRenderer account={account} stats={stats} />
+                )}
+              </CardContent>
+            </Card>
             
-            <ErrorBoundary>
-              <TradingInsights 
-                account={account}
-                stats={stats}
-                openTrades={openTrades}
-                onInsightClick={(insight) => {
-                  const aegisElement = document.getElementById('aegis-coach')
-                  if (aegisElement) {
-                    aegisElement.scrollIntoView({ behavior: 'smooth' });
-                  }
-                }}
-              />
-            </ErrorBoundary>
-            
-            <ErrorBoundary>
-              <TradingAlerts 
-                account={account}
-                stats={stats}
-                openTrades={openTrades}
-                onAlertClick={(alertAction) => {
-                  const aegisElement = document.getElementById('aegis-coach')
-                  if (aegisElement) {
-                    aegisElement.scrollIntoView({ behavior: 'smooth' });
-                  }
-                }}
-              />
-            </ErrorBoundary>
-            
-            <ErrorBoundary>
-              <LearningResources 
-                account={account}
-                stats={stats}
-              />
-            </ErrorBoundary>
-            
-            <ErrorBoundary>
-              <TradingGoals 
-                account={account}
-                stats={stats}
-              />
-            </ErrorBoundary>
-          </TabsContent>
+            <SimpleRiskWidget accountId={account.id} />
+          </div>
+        )}
 
-          {/* Positions & Risk Tab */}
-          <TabsContent value="positions" className="space-y-6">
-            <ErrorBoundary>
-              <OpenPositionsSection 
-                accountId={accountId}
-                openTrades={openTrades}
-                onTradesUpdate={(trades) => {
-                  setOpenTrades(trades)
-                  const total = trades.reduce((sum: number, trade: any) => {
-                    return sum + (trade.profit || 0)
-                  }, 0)
-                  setOpenPositionsTotal(total)
-                }}
-              />
-            </ErrorBoundary>
-            
-            {account && stats && rules && (
-              <ErrorBoundary>
-                <SimpleRiskWidget 
-                  account={account}
-                  stats={stats}
-                  rules={rules}
-                  openTrades={openTrades}
-                />
-              </ErrorBoundary>
-            )}
-          </TabsContent>
+        {/* Live Operations Section */}
+        {openTrades && openTrades.length > 0 && (
+          <OpenPositionsSection 
+            accountId={accountId}
+            openTrades={openTrades}
+            account={account}
+            onTradesUpdate={() => fetchAccountData()}
+          />
+        )}
 
-
-        </Tabs>
+        {/* AI Assistant */}
+        <AegisAssistant 
+          account={account}
+          stats={stats}
+          rules={rules}
+          openTrades={openTrades}
+        />
       </div>
     </DashboardLayout>
   )

@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { RefreshCw, BarChart3, Users, ArrowRight } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { AccountList } from '@/components/account-list'
-import { DashboardLayout } from '@/components/dashboard-layout'
+import DashboardLayout from '@/components/dashboard-layout'
 import Link from 'next/link'
 import Image from 'next/image'
 

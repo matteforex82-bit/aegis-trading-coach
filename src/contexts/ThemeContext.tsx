@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-type Theme = 'classic' | 'vibrant' | 'neon';
+type Theme = 'classic' | 'fintech' | 'neon';
 
 interface ThemeContextType {
   theme: Theme;
@@ -21,18 +21,18 @@ export const useTheme = () => {
 };
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setTheme] = useState<Theme>('vibrant'); // Default to vibrant theme
+  const [theme, setTheme] = useState<Theme>('fintech'); // Default to fintech theme
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Load theme from localStorage on mount, default to vibrant if none saved
+    // Load theme from localStorage on mount, default to fintech if none saved
     const savedTheme = localStorage.getItem('theme') as Theme;
-    if (savedTheme && (savedTheme === 'classic' || savedTheme === 'vibrant' || savedTheme === 'neon')) {
+    if (savedTheme && (savedTheme === 'classic' || savedTheme === 'fintech' || savedTheme === 'neon')) {
       setTheme(savedTheme);
     } else {
-      // Set vibrant as default and save it
-      setTheme('vibrant');
-      localStorage.setItem('theme', 'vibrant');
+      // Set fintech as default and save it
+      setTheme('fintech');
+      localStorage.setItem('theme', 'fintech');
     }
     setMounted(true);
   }, []);
@@ -53,8 +53,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const toggleTheme = () => {
     setTheme(prev => {
-      if (prev === 'classic') return 'vibrant';
-      if (prev === 'vibrant') return 'neon';
+      if (prev === 'classic') return 'fintech';
+      if (prev === 'fintech') return 'neon';
       return 'classic';
     });
   };

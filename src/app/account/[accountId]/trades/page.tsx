@@ -22,7 +22,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { DashboardLayout } from '@/components/dashboard-layout'
+import DashboardLayout from '@/components/dashboard-layout'
 
 interface Trade {
   id: string

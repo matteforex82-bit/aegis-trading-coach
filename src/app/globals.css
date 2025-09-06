@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 
 @custom-variant dark (&:is(.dark *));
 
@@ -112,40 +114,40 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
-/* Vibrant Theme - Dramatically Enhanced Color Palette */
-[data-theme="vibrant"] {
-  /* Primary colors - Deep Purple (#4C1D95) */
-  --primary: oklch(0.28 0.22 285);
-  --primary-foreground: oklch(0.98 0.02 285);
+/* Fintech Theme - Professional Dark Interface */
+[data-theme="fintech"] {
+  /* Primary colors - GitHub Blue (#58a6ff) */
+  --primary: oklch(0.70 0.15 240);
+  --primary-foreground: oklch(0.98 0.02 240);
   
-  /* Secondary colors - Vibrant Orange (#EA580C) */
-  --secondary: oklch(0.65 0.18 55);
-  --secondary-foreground: oklch(0.98 0.02 55);
+  /* Secondary colors - Dark Gray */
+  --secondary: oklch(0.18 0.02 240);
+  --secondary-foreground: oklch(0.85 0.02 240);
   
-  /* Accent colors - Electric Blue (#0EA5E9) */
-  --accent: oklch(0.68 0.15 220);
-  --accent-foreground: oklch(0.98 0.02 220);
+  /* Accent colors - GitHub Blue */
+  --accent: oklch(0.70 0.15 240);
+  --accent-foreground: oklch(0.98 0.02 240);
   
-  /* Background and surfaces - Subtle gradient backgrounds */
-  --background: linear-gradient(135deg, oklch(0.96 0.02 285) 0%, oklch(0.97 0.015 220) 100%);
-  --foreground: oklch(0.12 0.05 285);
-  --card: oklch(0.98 0.015 285);
-  --card-foreground: oklch(0.12 0.05 285);
-  --popover: oklch(0.98 0.015 285);
-  --popover-foreground: oklch(0.12 0.05 285);
+  /* Background and surfaces - GitHub Dark Theme */
+  --background: oklch(0.08 0.01 240);
+  --foreground: oklch(0.85 0.02 240);
+  --card: oklch(0.12 0.02 240);
+  --card-foreground: oklch(0.85 0.02 240);
+  --popover: oklch(0.12 0.02 240);
+  --popover-foreground: oklch(0.85 0.02 240);
   
-  /* Muted colors with vibrant purple tint */
-  --muted: oklch(0.92 0.03 285);
-  --muted-foreground: oklch(0.45 0.08 285);
+  /* Muted colors with dark theme */
+  --muted: oklch(0.15 0.02 240);
+  --muted-foreground: oklch(0.60 0.02 240);
   
-  /* Border and input with strong purple undertone */
-  --border: oklch(0.82 0.05 285);
-  --input: oklch(0.94 0.02 285);
-  --ring: oklch(0.28 0.22 285);
+  /* Border and input with dark theme */
+  --border: oklch(0.20 0.02 240);
+  --input: oklch(0.12 0.02 240);
+  --ring: oklch(0.70 0.15 240);
   
-  /* Charts - Dramatically vibrant palette */
+  /* Charts - Professional fintech palette */
   --chart-1: oklch(0.28 0.22 285); /* Deep Purple */
-  --chart-2: oklch(0.65 0.18 55);  /* Vibrant Orange */
+  --chart-2: oklch(0.65 0.18 220); /* Professional Blue */
   --chart-3: oklch(0.68 0.15 220); /* Electric Blue */
   --chart-4: oklch(0.55 0.20 320); /* Magenta */
   --chart-5: oklch(0.72 0.15 140); /* Emerald Green */
@@ -165,45 +167,45 @@
   --pink-subtle: oklch(0.95 0.02 340);
 }
 
-[data-theme="vibrant"].dark {
-  /* Dark mode for vibrant theme */
-  --background: oklch(0.12 0.02 280);
-  --foreground: oklch(0.95 0.01 280);
-  --card: oklch(0.15 0.02 280);
-  --card-foreground: oklch(0.95 0.01 280);
-  --popover: oklch(0.15 0.02 280);
-  --popover-foreground: oklch(0.95 0.01 280);
+[data-theme="fintech"].dark {
+/* Enhanced dark mode for fintech theme */
+  --background: oklch(0.08 0.01 240);
+  --foreground: oklch(0.85 0.02 240);
+  --card: oklch(0.12 0.02 240);
+  --card-foreground: oklch(0.85 0.02 240);
+  --popover: oklch(0.12 0.02 240);
+  --popover-foreground: oklch(0.85 0.02 240);
   
-  /* Brighter primary in dark mode */
-  --primary: oklch(0.65 0.18 280);
-  --primary-foreground: oklch(0.12 0.02 280);
+  /* GitHub Blue primary */
+  --primary: oklch(0.70 0.15 240);
+  --primary-foreground: oklch(0.98 0.02 240);
   
-  /* Vibrant secondary in dark */
-  --secondary: oklch(0.75 0.15 65);
-  --secondary-foreground: oklch(0.12 0.02 280);
+  /* Dark secondary */
+  --secondary: oklch(0.18 0.02 240);
+  --secondary-foreground: oklch(0.85 0.02 240);
   
-  /* Bright accent */
-  --accent: oklch(0.72 0.18 45);
-  --accent-foreground: oklch(0.12 0.02 280);
+  /* GitHub Blue accent */
+  --accent: oklch(0.70 0.15 240);
+  --accent-foreground: oklch(0.98 0.02 240);
   
   /* Dark muted colors */
-  --muted: oklch(0.18 0.02 280);
-  --muted-foreground: oklch(0.65 0.03 280);
+  --muted: oklch(0.15 0.02 240);
+  --muted-foreground: oklch(0.60 0.02 240);
   
   /* Dark borders */
-  --border: oklch(0.25 0.03 280);
-  --input: oklch(0.22 0.02 280);
-  --ring: oklch(0.65 0.18 280);
+  --border: oklch(0.20 0.02 240);
+  --input: oklch(0.12 0.02 240);
+  --ring: oklch(0.70 0.15 240);
   
   /* Dark sidebar */
-  --sidebar: oklch(0.15 0.02 280);
-  --sidebar-foreground: oklch(0.95 0.01 280);
-  --sidebar-primary: oklch(0.65 0.18 280);
-  --sidebar-primary-foreground: oklch(0.12 0.02 280);
-  --sidebar-accent: oklch(0.18 0.02 280);
-  --sidebar-accent-foreground: oklch(0.95 0.01 280);
-  --sidebar-border: oklch(0.25 0.03 280);
-  --sidebar-ring: oklch(0.65 0.18 280);
+  --sidebar: oklch(0.12 0.02 240);
+  --sidebar-foreground: oklch(0.85 0.02 240);
+  --sidebar-primary: oklch(0.70 0.15 240);
+  --sidebar-primary-foreground: oklch(0.98 0.02 240);
+  --sidebar-accent: oklch(0.15 0.02 240);
+  --sidebar-accent-foreground: oklch(0.85 0.02 240);
+  --sidebar-border: oklch(0.20 0.02 240);
+  --sidebar-ring: oklch(0.70 0.15 240);
 }
 
 /* Neon Theme - Cyber/Futuristic Color Palette */
@@ -464,26 +466,62 @@
     touch-action: manipulation;
   }
   
-  /* Apply gradient backgrounds for vibrant theme */
-  [data-theme="vibrant"] body {
-    background: linear-gradient(135deg, oklch(0.96 0.02 285) 0%, oklch(0.97 0.015 220) 100%);
+  /* Apply gradient backgrounds for fintech theme */
+[data-theme="fintech"] body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    background: #0d1117;
+    color: #c9d1d9;
     min-height: 100vh;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
   
-  [data-theme="vibrant"] .bg-card {
-    background: oklch(0.98 0.015 285);
-    border: 1px solid oklch(0.82 0.05 285);
+  [data-theme="fintech"] .bg-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 0.5rem;
     box-shadow: 0 4px 6px -1px oklch(0.28 0.22 285 / 0.1), 0 2px 4px -1px oklch(0.28 0.22 285 / 0.06);
   }
   
-  [data-theme="vibrant"] .bg-sidebar {
-    background: linear-gradient(180deg, oklch(0.94 0.03 285) 0%, oklch(0.96 0.02 220) 100%);
-    border-right: 1px solid oklch(0.82 0.05 285);
+  [data-theme="fintech"] .card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
   }
   
-  /* Enhanced logo styling for vibrant theme */
-  [data-theme="vibrant"] img[alt="PROP CONTROL"],
-  [data-theme="vibrant"] .logo-enhanced {
+  [data-theme="fintech"] .bg-sidebar {
+    background: #161b22;
+    border-right: 1px solid #30363d;
+  }
+  
+  /* Fintech Theme - Text colors */
+  [data-theme="fintech"] .text-accent {
+    color: #58a6ff;
+  }
+  
+  [data-theme="fintech"] .text-muted-foreground {
+    color: #8b949e;
+  }
+  
+  [data-theme="fintech"] .text-gray-400 {
+    color: #8b949e;
+  }
+  
+  [data-theme="fintech"] .text-gray-500 {
+    color: #6e7681;
+  }
+  
+  [data-theme="fintech"] .bg-accent {
+    background-color: #58a6ff;
+  }
+  
+  [data-theme="fintech"] .bg-gray-800 {
+    background-color: #21262d;
+  }
+  
+  /* Enhanced logo styling for fintech theme */
+[data-theme="fintech"] img[alt="PROP CONTROL"],
+[data-theme="fintech"] .logo-enhanced {
     filter: drop-shadow(0 2px 4px oklch(0.28 0.22 285 / 0.3));
     border-radius: 8px;
     background: linear-gradient(135deg, oklch(0.99 0.005 285) 0%, oklch(0.98 0.01 220) 100%);
@@ -491,6 +529,39 @@
     border: 1px solid oklch(0.82 0.05 285);
     opacity: 1 !important;
     visibility: visible !important;
+  }
+  
+  /* Fintech Theme - Logo styles */
+  [data-theme="fintech"] .logo {
+    color: #58a6ff;
+    font-weight: 700;
+    font-size: 1.25rem;
+  }
+  
+  /* Fintech Theme - Progress bars */
+  [data-theme="fintech"] .progress-bar-bg {
+    background-color: #30363d;
+  }
+  
+  /* Fintech Theme - Status badges */
+  [data-theme="fintech"] .bg-green-500 {
+    background-color: #238636;
+  }
+  
+  [data-theme="fintech"] .bg-red-500 {
+    background-color: #da3633;
+  }
+  
+  [data-theme="fintech"] .bg-yellow-500 {
+    background-color: #d29922;
+  }
+  
+  [data-theme="fintech"] .bg-orange-500 {
+    background-color: #fb8500;
+  }
+  
+  [data-theme="fintech"] .bg-blue-500 {
+    background-color: #58a6ff;
   }
   
   /* General logo enhancement for all themes */
@@ -502,72 +573,72 @@
     height: auto;
   }
   
-  /* Enhanced header styling for vibrant theme */
-  [data-theme="vibrant"] header {
+  /* Enhanced header styling for fintech theme */
+[data-theme="fintech"] header {
     background: linear-gradient(90deg, oklch(0.98 0.015 285) 0%, oklch(0.99 0.01 220) 100%);
     border-bottom: 2px solid oklch(0.28 0.22 285);
     box-shadow: 0 4px 6px -1px oklch(0.28 0.22 285 / 0.1);
   }
   
-  /* Enhanced component styling for vibrant theme */
-  [data-theme="vibrant"] .bg-primary {
+  /* Enhanced component styling for fintech theme */
+[data-theme="fintech"] .bg-primary {
     background: linear-gradient(135deg, oklch(0.28 0.22 285) 0%, oklch(0.32 0.20 300) 100%);
     box-shadow: 0 4px 14px 0 oklch(0.28 0.22 285 / 0.39);
   }
   
-  [data-theme="vibrant"] .bg-secondary {
+  [data-theme="fintech"] .bg-secondary {
     background: linear-gradient(135deg, oklch(0.65 0.18 55) 0%, oklch(0.70 0.16 45) 100%);
     box-shadow: 0 4px 14px 0 oklch(0.65 0.18 55 / 0.39);
   }
   
-  [data-theme="vibrant"] .bg-accent {
+  [data-theme="fintech"] .bg-accent {
     background: linear-gradient(135deg, oklch(0.68 0.15 220) 0%, oklch(0.72 0.13 210) 100%);
     box-shadow: 0 4px 14px 0 oklch(0.68 0.15 220 / 0.39);
   }
   
   /* Enhanced button hover effects */
-  [data-theme="vibrant"] button:hover {
+  [data-theme="fintech"] button:hover {
     transform: translateY(-1px);
     transition: all 0.2s ease;
   }
   
   /* Enhanced Badge styling */
-  [data-theme="vibrant"] .bg-blue-50 {
+  [data-theme="fintech"] .bg-blue-50 {
     background: linear-gradient(135deg, oklch(0.95 0.03 220) 0%, oklch(0.97 0.02 210) 100%);
   }
   
-  [data-theme="vibrant"] .bg-green-50 {
+  [data-theme="fintech"] .bg-green-50 {
     background: linear-gradient(135deg, oklch(0.95 0.03 140) 0%, oklch(0.97 0.02 130) 100%);
   }
   
-  [data-theme="vibrant"] .bg-orange-100 {
+  [data-theme="fintech"] .bg-orange-100 {
     background: linear-gradient(135deg, oklch(0.92 0.05 55) 0%, oklch(0.94 0.04 45) 100%);
   }
   
   /* Enhanced Progress Bar */
-  [data-theme="vibrant"] .bg-primary {
+  [data-theme="fintech"] .bg-primary {
     background: linear-gradient(90deg, oklch(0.28 0.22 285) 0%, oklch(0.32 0.20 300) 50%, oklch(0.35 0.18 315) 100%);
   }
   
   /* Enhanced Alert styling */
-  [data-theme="vibrant"] .border-red-200 {
+  [data-theme="fintech"] .border-red-200 {
     border-color: oklch(0.75 0.15 25);
     background: linear-gradient(135deg, oklch(0.97 0.02 25) 0%, oklch(0.98 0.015 15) 100%);
   }
   
-  [data-theme="vibrant"] .border-green-200 {
+  [data-theme="fintech"] .border-green-200 {
     border-color: oklch(0.75 0.15 140);
     background: linear-gradient(135deg, oklch(0.97 0.02 140) 0%, oklch(0.98 0.015 130) 100%);
   }
   
-  [data-theme="vibrant"] .border-yellow-200 {
+  [data-theme="fintech"] .border-yellow-200 {
     border-color: oklch(0.75 0.15 85);
     background: linear-gradient(135deg, oklch(0.97 0.02 85) 0%, oklch(0.98 0.015 75) 100%);
   }
   
   /* Theme-specific utilities */
-  .theme-vibrant {
-    /* Enhanced vibrant theme styles */
+  .theme-fintech {
+/* Enhanced fintech theme styles */
   }
   
   .theme-classic {

@@ -14,7 +14,7 @@ interface DashboardLayoutProps {
   subtitle?: string
 }
 
-export function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { theme } = useTheme()
 
