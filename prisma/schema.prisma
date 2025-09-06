@@ -119,6 +119,9 @@ model Account {
   // NUOVO: Template delle regole
   propFirmTemplateId String?
   
+  // Soft delete
+  deletedAt   DateTime?
+  
   // Timestamps
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

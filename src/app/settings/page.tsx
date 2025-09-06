@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, CheckCircle, AlertCircle, DollarSign, Upload, ChevronRight, Home, Check } from 'lucide-react'
+import { ArrowLeft, CheckCircle, AlertCircle, DollarSign, Upload, ChevronRight, Home, Check, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import ThemeToggle from '@/components/ThemeToggle'
 
@@ -58,6 +58,10 @@ export default function SettingsPage() {
   const [currentPhase, setCurrentPhase] = useState<string>('PHASE_1')
   const [loading, setLoading] = useState(true)
   const [assigning, setAssigning] = useState(false)
+  const [deletingAccount, setDeletingAccount] = useState<string | null>(null)
+  const [deletedAccounts, setDeletedAccounts] = useState<any[]>([])
+  const [showDeletedAccounts, setShowDeletedAccounts] = useState(false)
+  const [loadingDeleted, setLoadingDeleted] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -142,6 +146,77 @@ export default function SettingsPage() {
     }
   }
 
+  const handleSoftDeleteAccount = async (accountId: string) => {
+     if (!confirm('Sei sicuro di voler eliminare questo account? Verrà mantenuto nello storico.')) {
+       return
+     }
+ 
+     setDeletingAccount(accountId)
+     try {
+        const response = await fetch(`/api/accounts/${accountId}/soft-delete`, {
+          method: 'PUT'
+        })
+ 
+       if (response.ok) {
+         alert('✅ Account eliminato con successo!')
+         await fetchData() // Refresh data
+         // Reset selected account if it was deleted
+         if (selectedAccount?.id === accountId) {
+           setSelectedAccount(null)
+           setCurrentStep(1)
+         }
+       } else {
+         const error = await response.json()
+         alert(`❌ Errore: ${error.error}`)
+       }
+     } catch (error) {
+       console.error('Error deleting account:', error)
+       alert('❌ Errore durante l\'eliminazione dell\'account')
+     } finally {
+       setDeletingAccount(null)
+     }
+   }
+
+   const fetchDeletedAccounts = async () => {
+     setLoadingDeleted(true)
+     try {
+       const response = await fetch('/api/accounts/deleted')
+       if (response.ok) {
+         const data = await response.json()
+         setDeletedAccounts(data.accounts || [])
+       } else {
+         console.error('Error fetching deleted accounts')
+       }
+     } catch (error) {
+       console.error('Error fetching deleted accounts:', error)
+     } finally {
+       setLoadingDeleted(false)
+     }
+   }
+
+   const handleRestoreAccount = async (accountId: string) => {
+     if (!confirm('Sei sicuro di voler ripristinare questo account?')) {
+       return
+     }
+
+     try {
+       const response = await fetch(`/api/accounts/${accountId}/soft-delete`, {
+         method: 'DELETE'
+       })
+
+       if (response.ok) {
+         alert('✅ Account ripristinato con successo!')
+         await fetchDeletedAccounts() // Refresh deleted accounts
+         await fetchData() // Refresh active accounts
+       } else {
+         const error = await response.json()
+         alert(`❌ Errore: ${error.error}`)
+       }
+     } catch (error) {
+       console.error('Error restoring account:', error)
+       alert('❌ Errore durante il ripristino dell\'account')
+     }
+   }
 
   // Helper functions for smart template selection
   const getTemplateById = (templateId: string): PropFirmTemplate | null => {
@@ -310,8 +385,124 @@ export default function SettingsPage() {
         <div className="mb-8">
           <ThemeToggle />
         </div>
+
+        {/* Account Management Section */}
+        <div className="mb-8">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Gestione Account</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Elimina gli account dai quali sei stato escluso dalle challenge. Gli account eliminati verranno mantenuti nello storico.
+            </p>
+            
+            {accounts && accounts.length > 0 ? (
+              <div className="space-y-3">
+                {accounts.map(account => (
+                  <div key={account.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <DollarSign className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900">Account {account.login}</div>
+                        <div className="text-sm text-gray-500">
+                          {account.propFirmTemplate ? 
+                            `${account.propFirmTemplate.propFirm.name} - ${formatCurrency(account.propFirmTemplate.accountSize)}` : 
+                            'Non configurato'
+                          }
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleSoftDeleteAccount(account.id)}
+                      disabled={deletingAccount === account.id}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      {deletingAccount === account.id ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2"></div>
+                      ) : (
+                        <Trash2 className="h-4 w-4 mr-2" />
+                      )}
+                      Elimina
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                Nessun account disponibile
+              </div>
+            )}
+          </div>
+         </div>
+
+         {/* Deleted Accounts History Section */}
+         <div className="mb-8">
+           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+             <div className="flex items-center justify-between mb-4">
+               <h3 className="text-lg font-semibold text-gray-900">Storico Account Eliminati</h3>
+               <Button
+                 variant="outline"
+                 size="sm"
+                 onClick={() => {
+                   setShowDeletedAccounts(!showDeletedAccounts)
+                   if (!showDeletedAccounts && deletedAccounts.length === 0) {
+                     fetchDeletedAccounts()
+                   }
+                 }}
+               >
+                 {showDeletedAccounts ? 'Nascondi' : 'Mostra'} Storico
+               </Button>
+             </div>
+             
+             {showDeletedAccounts && (
+               <div className="space-y-3">
+                 {loadingDeleted ? (
+                   <div className="text-center py-8">
+                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                     <div className="text-gray-500">Caricamento storico...</div>
+                   </div>
+                 ) : deletedAccounts.length > 0 ? (
+                   deletedAccounts.map(account => (
+                     <div key={account.id} className="flex items-center justify-between p-4 border border-red-200 rounded-lg bg-red-50">
+                       <div className="flex items-center space-x-3">
+                         <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                           <DollarSign className="h-5 w-5 text-red-600" />
+                         </div>
+                         <div>
+                           <div className="font-medium text-gray-900">Account {account.login}</div>
+                           <div className="text-sm text-gray-500">
+                             Eliminato il {new Date(account.deletedAt).toLocaleDateString('it-IT')}
+                           </div>
+                           {account.propFirmTemplate && (
+                             <div className="text-xs text-gray-400">
+                               {account.propFirmTemplate.propFirm.name} - {formatCurrency(account.propFirmTemplate.accountSize)}
+                             </div>
+                           )}
+                         </div>
+                       </div>
+                       <Button
+                         variant="outline"
+                         size="sm"
+                         onClick={() => handleRestoreAccount(account.id)}
+                         className="text-green-600 hover:text-green-700 hover:bg-green-50 border-green-300"
+                       >
+                         Ripristina
+                       </Button>
+                     </div>
+                   ))
+                 ) : (
+                   <div className="text-center py-8 text-gray-500">
+                     Nessun account eliminato trovato
+                   </div>
+                 )}
+               </div>
+             )}
+           </div>
+         </div>
         
-        {/* Step 1: Account Selection */}
+         {/* Step 1: Account Selection */}
         {currentStep === 1 && (
           <div className="space-y-6">
             <div className="text-center">

@@ -7,9 +7,12 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get('userId')
 
     if (userId) {
-      // Get accounts for specific user
+      // Get accounts for specific user (exclude soft deleted)
       const accounts = await db.account.findMany({
-        where: { userId },
+        where: { 
+          userId,
+          deletedAt: null
+        },
         include: {
           _count: {
             select: { trades: true }
@@ -24,8 +27,11 @@ export async function GET(request: NextRequest) {
       })
       return NextResponse.json(accounts)
     } else {
-      // Get all accounts
+      // Get all accounts (exclude soft deleted)
       const accounts = await db.account.findMany({
+        where: {
+          deletedAt: null
+        },
         include: {
           _count: {
             select: { trades: true }
