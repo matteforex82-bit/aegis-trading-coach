@@ -9,7 +9,7 @@ import { Navigation } from '@/components/navigation'
 import { AccountList } from '@/components/account-list'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import Link from 'next/link'
-// rimosso: import Image from 'next/image'
+import Image from 'next/image'
 
 interface Account {
   id: string
@@ -61,14 +61,13 @@ export default function Dashboard() {
            <Card className="text-center py-8 sm:py-12 shadow-sm mx-4 sm:mx-0">
              <CardContent className="px-4 sm:px-6">
                <div className="mx-auto flex items-center justify-center mb-4 sm:mb-6">
-                 <img 
-                   src="/logo.svg?v=3" 
+                 <Image 
+                   src="/logo.svg?v=4" 
                    alt="PROP CONTROL" 
                    width={150} 
                    height={60} 
                    className="object-contain logo-enhanced"
-                   loading="eager"
-                   decoding="async"
+                   priority
                  />
                </div>
                <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-3 sm:mb-4">

@@ -329,6 +329,93 @@
   box-shadow: 0 0 10px oklch(0.75 0.20 60 / 0.2);
 }
 
+/* Enhanced card and dashboard styling for neon theme */
+[data-theme="neon"] .bg-white,
+[data-theme="neon"] .bg-gray-50,
+[data-theme="neon"] .bg-slate-50,
+[data-theme="neon"] .bg-zinc-50 {
+  background: oklch(0.12 0.03 240) !important;
+  border: 1px solid oklch(0.25 0.08 200);
+  box-shadow: 0 0 15px oklch(0.75 0.25 200 / 0.1), 0 4px 6px -1px oklch(0.05 0.02 240 / 0.3);
+}
+
+[data-theme="neon"] .bg-gray-100,
+[data-theme="neon"] .bg-slate-100,
+[data-theme="neon"] .bg-zinc-100 {
+  background: oklch(0.15 0.04 240) !important;
+  border: 1px solid oklch(0.25 0.08 200);
+}
+
+[data-theme="neon"] .text-gray-600,
+[data-theme="neon"] .text-slate-600,
+[data-theme="neon"] .text-zinc-600 {
+  color: oklch(0.75 0.08 200) !important;
+}
+
+[data-theme="neon"] .text-gray-800,
+[data-theme="neon"] .text-slate-800,
+[data-theme="neon"] .text-zinc-800 {
+  color: oklch(0.90 0.05 200) !important;
+}
+
+[data-theme="neon"] .text-gray-900,
+[data-theme="neon"] .text-slate-900,
+[data-theme="neon"] .text-zinc-900 {
+  color: oklch(0.95 0.02 200) !important;
+}
+
+/* Enhanced secondary elements */
+[data-theme="neon"] .bg-secondary {
+  background: linear-gradient(135deg, oklch(0.15 0.04 240) 0%, oklch(0.18 0.05 220) 100%) !important;
+  border: 1px solid oklch(0.25 0.08 200);
+  box-shadow: 0 0 10px oklch(0.65 0.30 330 / 0.2);
+}
+
+[data-theme="neon"] .bg-accent {
+  background: linear-gradient(135deg, oklch(0.15 0.04 240) 0%, oklch(0.18 0.05 150) 100%) !important;
+  border: 1px solid oklch(0.25 0.08 200);
+  box-shadow: 0 0 10px oklch(0.80 0.25 150 / 0.2);
+}
+
+/* Enhanced input and form elements */
+[data-theme="neon"] input,
+[data-theme="neon"] textarea,
+[data-theme="neon"] select {
+  background: oklch(0.12 0.03 240) !important;
+  border: 1px solid oklch(0.25 0.08 200) !important;
+  color: oklch(0.95 0.02 200) !important;
+}
+
+[data-theme="neon"] input:focus,
+[data-theme="neon"] textarea:focus,
+[data-theme="neon"] select:focus {
+  border-color: oklch(0.75 0.25 200) !important;
+  box-shadow: 0 0 10px oklch(0.75 0.25 200 / 0.3) !important;
+}
+
+/* Enhanced table styling */
+[data-theme="neon"] table {
+  background: oklch(0.12 0.03 240) !important;
+}
+
+[data-theme="neon"] th {
+  background: oklch(0.15 0.04 240) !important;
+  border-bottom: 1px solid oklch(0.25 0.08 200) !important;
+  color: oklch(0.95 0.02 200) !important;
+}
+
+[data-theme="neon"] td {
+  border-bottom: 1px solid oklch(0.20 0.06 240) !important;
+  color: oklch(0.90 0.05 200) !important;
+}
+
+/* Enhanced modal and dialog styling */
+[data-theme="neon"] .bg-popover {
+  background: oklch(0.12 0.03 240) !important;
+  border: 1px solid oklch(0.25 0.08 200) !important;
+  box-shadow: 0 0 25px oklch(0.75 0.25 200 / 0.2), 0 10px 15px -3px oklch(0.05 0.02 240 / 0.5) !important;
+}
+
 /* Theme transitions */
 * {
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
