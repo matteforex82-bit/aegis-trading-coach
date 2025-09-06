@@ -9,8 +9,7 @@ import { Navigation } from '@/components/navigation'
 import { AccountList } from '@/components/account-list'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import Link from 'next/link'
--import Image from 'next/image'
-+// rimosso: import Image from 'next/image'
+// rimosso: import Image from 'next/image'
 
 interface Account {
   id: string
