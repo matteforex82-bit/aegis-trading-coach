@@ -41,7 +41,7 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
             <div className="flex items-center space-x-3">
               <div className="flex-shrink-0">
                 <Image 
-                  src="/prop-control-logo.svg" 
+                  src="/logo.svg" 
                   alt="PROP CONTROL" 
                   width={120} 
                   height={48} 

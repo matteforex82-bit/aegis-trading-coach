@@ -65,7 +65,7 @@ export default function Dashboard() {
             <CardContent className="px-4 sm:px-6">
               <div className="mx-auto flex items-center justify-center mb-4 sm:mb-6">
                 <Image 
-                  src="/prop-control-logo.svg" 
+                  src="/logo.svg" 
                   alt="PROP CONTROL" 
                   width={150} 
                   height={60} 
