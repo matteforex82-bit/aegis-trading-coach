@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
   assetPrefix: '',
   trailingSlash: false,
   // Configurazione per il deployment
-  output: 'standalone',
+  // output: 'standalone', // Commentato per risolvere problemi con file statici
   webpack: (config, { dev }) => {
     if (dev) {
       // 禁用 webpack 的热模块替换
