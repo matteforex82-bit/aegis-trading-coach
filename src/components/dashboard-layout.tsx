@@ -40,18 +40,15 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
             <div className="flex items-center space-x-3">
               <div className="flex-shrink-0">
                 <img 
-                  src="/logo.svg" 
+                  src="/logo.svg?v=3" 
                   alt="PROP CONTROL" 
                   width={120} 
                   height={48} 
                   className={`object-contain logo-enhanced ${
                     theme === 'neon' ? 'animate-neon-glow' : ''
                   }`}
-                  style={{
-                    maxHeight: '48px',
-                    width: 'auto',
-                    display: 'block'
-                  }}
+                  loading="eager"
+                  decoding="async"
                 />
               </div>
               {subtitle && (
@@ -79,7 +76,7 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
           w-64 bg-sidebar border-r border-sidebar-border min-h-screen shadow-sm
           transform transition-all duration-300 ease-in-out lg:transform-none
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        `}>
+       `}>
           <div className="p-4 pt-20 lg:pt-4">
             <div className="mb-6">
               <h2 className="text-sm font-semibold text-sidebar-foreground mb-4 uppercase tracking-wide transition-colors duration-300">
