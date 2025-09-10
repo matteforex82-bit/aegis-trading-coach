@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -30,6 +32,8 @@ interface Account {
 }
 
 export default function ImportPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
   const [loading, setLoading] = useState(true)
@@ -48,10 +52,22 @@ export default function ImportPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
 
   useEffect(() => {
+    if (status === 'loading') return
+    
+    if (!session) {
+      router.push('/auth/signin')
+      return
+    }
+    
     fetchAccounts()
-  }, [])
+  }, [session, status, router])
 
   const fetchAccounts = async () => {
+    if (!session?.user?.email) {
+      setLoading(false)
+      return
+    }
+    
     try {
       const accountsResponse = await fetch('/api/accounts')
       if (accountsResponse.ok) {
@@ -61,6 +77,9 @@ export default function ImportPage() {
         if (accountsArray.length > 0) {
           setSelectedAccount(accountsArray[0])
         }
+      } else if (accountsResponse.status === 401) {
+        router.push('/auth/signin')
+        return
       }
     } catch (error) {
       console.error('Error fetching accounts:', error)

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -59,9 +60,10 @@ interface TradeStats {
 }
 
 export default function AccountTrades() {
+  const { data: session, status } = useSession()
   const params = useParams()
   const router = useRouter()
-  const accountId = params?.accountId as string
+  const accountId = params.accountId as string
 
   const [account, setAccount] = useState<Account | null>(null)
   const [trades, setTrades] = useState<Trade[]>([])
@@ -78,16 +80,27 @@ export default function AccountTrades() {
   const [itemsPerPage] = useState(50)
 
   useEffect(() => {
+    if (status === 'loading') return
+    
+    if (!session) {
+      router.push('/auth/signin')
+      return
+    }
+    
     if (accountId) {
       loadAccountData()
     }
-  }, [accountId])
+  }, [accountId, session, status, router])
 
   const loadAccountData = async () => {
     setLoading(true)
     try {
       // Load account details
       const accountResponse = await fetch(`/api/accounts`)
+      if (accountResponse.status === 401) {
+        router.push('/auth/signin')
+        return
+      }
       const accounts = await accountResponse.json()
       const currentAccount = accounts.find((acc: any) => acc.id === accountId)
       

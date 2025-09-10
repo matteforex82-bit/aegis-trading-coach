@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -58,8 +60,10 @@ interface TradeStats {
 }
 
 export default function TradesPage() {
-  const [trades, setTrades] = useState<Trade[]>([])
+  const { data: session, status } = useSession()
+  const router = useRouter()
   const [account, setAccount] = useState<Account | null>(null)
+  const [trades, setTrades] = useState<Trade[]>([])
   const [stats, setStats] = useState<TradeStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -72,14 +76,25 @@ export default function TradesPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
   useEffect(() => {
+    if (status === 'loading') return
+    
+    if (!session) {
+      router.push('/auth/signin')
+      return
+    }
+    
     loadData()
-  }, [])
+  }, [session, status, router])
 
   const loadData = async () => {
     setLoading(true)
     try {
       // Fetch account
       const accountsResponse = await fetch('/api/accounts')
+      if (accountsResponse.status === 401) {
+        router.push('/auth/signin')
+        return
+      }
       const accountsData = await accountsResponse.json()
       const selectedAccount = Array.isArray(accountsData) ? accountsData[0] : null
       

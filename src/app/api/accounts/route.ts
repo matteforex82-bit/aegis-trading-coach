@@ -1,28 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
+    // Verify authentication
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Get current user info
+    const currentUser = await db.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true, role: true }
+    })
+
+    if (!currentUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
 
-    if (userId) {
-      // Get accounts for specific user (exclude soft deleted)
+    // Admin users can access all accounts or specific user accounts
+    if (currentUser.role === 'admin') {
+      if (userId) {
+        // Get accounts for specific user (exclude soft deleted)
+        const accounts = await db.account.findMany({
+          where: { 
+            userId,
+            deletedAt: null
+          },
+          include: {
+            user: true,
+            PropFirm: true
+          }
+        })
+        return NextResponse.json(accounts)
+      } else {
+        // Get all accounts (exclude soft deleted) - admin only
+        const accounts = await db.account.findMany({
+          where: {
+            deletedAt: null
+          },
+          include: {
+            user: true,
+            PropFirm: true
+          }
+        })
+        return NextResponse.json(accounts)
+      }
+    } else {
+      // Regular users can only access their own accounts
       const accounts = await db.account.findMany({
         where: { 
-          userId,
-          deletedAt: null
-        },
-        include: {
-          user: true,
-          PropFirm: true
-        }
-      })
-      return NextResponse.json(accounts)
-    } else {
-      // Get all accounts (exclude soft deleted)
-      const accounts = await db.account.findMany({
-        where: {
+          userId: currentUser.id,
           deletedAt: null
         },
         include: {

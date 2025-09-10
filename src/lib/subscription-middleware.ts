@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 
 export interface SubscriptionLimits {
@@ -231,7 +232,7 @@ export async function withSubscriptionCheck(
   limitType: 'tradingAccounts' | 'users' | keyof SubscriptionLimits,
   additionalCount: number = 1
 ): Promise<{ user: UserWithOrganization; error?: NextResponse }> {
-  const session = await getServerSession()
+  const session = await getServerSession(authOptions)
   
   if (!session?.user?.email) {
     return {

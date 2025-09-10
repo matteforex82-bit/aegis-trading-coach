@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -26,18 +28,37 @@ interface Account {
 }
 
 export default function Dashboard() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(true)
   const { subscriptionStatus, loading: subscriptionLoading } = useSubscriptionLimits()
 
   useEffect(() => {
+    if (status === 'loading') return
+    
+    if (!session) {
+      router.push('/auth/signin')
+      return
+    }
+    
     fetchAccounts()
-  }, [])
+  }, [session, status, router])
 
   const fetchAccounts = async () => {
+    if (!session?.user?.email) {
+      setLoading(false)
+      return
+    }
+    
     try {
+      // Fetch accounts - API now automatically filters for current user
       const response = await fetch('/api/accounts')
       if (!response.ok) {
+        if (response.status === 401) {
+          router.push('/auth/signin')
+          return
+        }
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       const data = await response.json()

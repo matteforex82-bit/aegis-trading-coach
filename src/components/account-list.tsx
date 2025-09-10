@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
 import { User, BarChart3 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -19,17 +20,39 @@ interface Account {
 
 export function AccountList() {
   const pathname = usePathname()
+  const router = useRouter()
+  const { data: session, status } = useSession()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (status === 'loading') return
+    
+    if (!session) {
+      setLoading(false)
+      return
+    }
+    
     fetchAccounts()
-  }, [])
+  }, [session, status])
 
   const fetchAccounts = async () => {
+    if (status === 'loading') {
+      return
+    }
+    
+    if (!session?.user?.email) {
+      setLoading(false)
+      return
+    }
+    
     try {
       const response = await fetch('/api/accounts')
       if (!response.ok) {
+        if (response.status === 401) {
+          router.push('/auth/signin')
+          return
+        }
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       const data = await response.json()

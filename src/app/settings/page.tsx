@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, CheckCircle, AlertCircle, DollarSign, Upload, ChevronRight, Home, Check, Trash2 } from 'lucide-react'
@@ -46,6 +48,8 @@ interface Account {
 }
 
 export default function SettingsPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
   const [propFirms, setPropFirms] = useState<PropFirm[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
@@ -64,8 +68,15 @@ export default function SettingsPage() {
   const [loadingDeleted, setLoadingDeleted] = useState(false)
 
   useEffect(() => {
+    if (status === 'loading') return
+    
+    if (!session) {
+      router.push('/auth/signin')
+      return
+    }
+    
     fetchData()
-  }, [])
+  }, [session, status, router])
 
   // Auto-configure balance when template changes
   useEffect(() => {
@@ -98,6 +109,9 @@ export default function SettingsPage() {
         if (accountsArray.length > 0) {
           setSelectedAccount(accountsArray[0])
         }
+      } else if (accountsResponse.status === 401) {
+        router.push('/auth/signin')
+        return
       }
     } catch (error) {
       console.error('Error fetching data:', error)

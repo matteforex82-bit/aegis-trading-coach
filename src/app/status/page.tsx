@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -29,8 +31,11 @@ interface SystemStatus {
 }
 
 export default function StatusPage() {
+  const { data: session, status: sessionStatus } = useSession()
+  const router = useRouter()
   const [status, setStatus] = useState<SystemStatus | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [lastCheck, setLastCheck] = useState<Date | null>(null)
 
   const checkSystemStatus = async () => {
@@ -70,6 +75,10 @@ export default function StatusPage() {
       let accountsError = ''
       
       if (!accountsResponse.ok) {
+        if (accountsResponse.status === 401) {
+          router.push('/auth/signin')
+          return
+        }
         const accountsData = await accountsResponse.json()
         accountsStatus = accountsData.code === 'PRISMA_PLAN_LIMIT' ? 'error' : 'error'
         accountsError = accountsData.message || 'Unknown error'
@@ -142,12 +151,19 @@ export default function StatusPage() {
   }
 
   useEffect(() => {
+    if (sessionStatus === 'loading') return
+    
+    if (!session) {
+      router.push('/auth/signin')
+      return
+    }
+    
     checkSystemStatus()
     
     // Auto refresh every 30 seconds
     const interval = setInterval(checkSystemStatus, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [session, sessionStatus, router])
 
   const getStatusIcon = (status: string) => {
     switch (status) {

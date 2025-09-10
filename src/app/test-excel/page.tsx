@@ -7,6 +7,8 @@
  */
 
 import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -38,6 +40,8 @@ interface Account {
 }
 
 export default function TestExcelPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
   const [account, setAccount] = useState<Account | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [testResults, setTestResults] = useState<TestResult[]>([])
@@ -55,15 +59,26 @@ export default function TestExcelPage() {
   ]
 
   useEffect(() => {
+    if (status === 'loading') return
+    
+    if (!session) {
+      router.push('/auth/signin')
+      return
+    }
+    
     setTestResults(initializeTests())
     loadAccount()
-  }, [])
+  }, [session, status, router])
 
   const loadAccount = async () => {
     try {
       updateTestResult(0, 'running', 'Loading account data...')
       
       const response = await fetch('/api/accounts')
+      if (response.status === 401) {
+        router.push('/auth/signin')
+        return
+      }
       const accounts = await response.json()
       
       if (!Array.isArray(accounts) || accounts.length === 0) {
