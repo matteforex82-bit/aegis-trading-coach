@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/db'
+import { db } from '@/lib/db'
 import Stripe from 'stripe'
 import { SubscriptionLimits, SubscriptionUsage, SubscriptionStatus } from '@/hooks/useSubscriptionLimits'
 
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user and organization with related data
-    const user = await prisma.user.findUnique({
+    const user = await db.user.findUnique({
       where: { email: session.user.email },
       include: {
         organization: {
@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
 
         // Update organization status if it differs
         if (organization.subscriptionStatus !== subscription.status) {
-          await prisma.organization.update({
+          await db.organization.update({
             where: { id: organization.id },
             data: {
               subscriptionStatus: subscription.status,

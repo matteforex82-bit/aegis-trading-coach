@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/db'
+import { db } from '@/lib/db'
 import Stripe from 'stripe'
 
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user and organization
-    const user = await prisma.user.findUnique({
+    const user = await db.user.findUnique({
       where: { email: session.user.email },
       include: {
         organization: true
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Update organization in database
-    await prisma.organization.update({
+    await db.organization.update({
       where: { id: user.organization.id },
       data: {
         subscriptionStatus: 'canceled',
