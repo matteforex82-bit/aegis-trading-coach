@@ -8,6 +8,9 @@ import { RefreshCw, BarChart3, Users, ArrowRight } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { AccountList } from '@/components/account-list'
 import DashboardLayout from '@/components/dashboard-layout'
+import { SubscriptionUsageWidget } from '@/components/SubscriptionUsageWidget'
+import { UpgradePrompt } from '@/components/UpgradePrompt'
+import { useSubscriptionLimits } from '@/hooks/useSubscriptionLimits'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -25,6 +28,7 @@ interface Account {
 export default function Dashboard() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(true)
+  const { subscriptionStatus, loading: subscriptionLoading } = useSubscriptionLimits()
 
   useEffect(() => {
     fetchAccounts()
@@ -57,8 +61,20 @@ export default function Dashboard() {
           </div>
         </div>
       ) : (
-        <div className="max-w-4xl mx-auto">
-           <Card className="text-center py-8 sm:py-12 shadow-sm mx-4 sm:mx-0">
+        <div className="max-w-6xl mx-auto space-y-6">
+          {/* Subscription Usage Widget */}
+          <SubscriptionUsageWidget className="mx-4 sm:mx-0" />
+          
+          {/* Upgrade Prompt */}
+          {!subscriptionLoading && subscriptionStatus && (
+            <UpgradePrompt 
+              currentPlan={subscriptionStatus.plan}
+              usage={subscriptionStatus.usage}
+              limits={subscriptionStatus.limits}
+            />
+          )}
+          
+          <Card className="text-center py-8 sm:py-12 shadow-sm mx-4 sm:mx-0">
              <CardContent className="px-4 sm:px-6">
                <div className="mx-auto flex items-center justify-center mb-4 sm:mb-6">
                  <Image 
