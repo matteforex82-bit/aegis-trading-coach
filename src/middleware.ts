@@ -4,6 +4,7 @@ import type { NextRequest } from 'next/server'
 
 // Define protected routes
 const protectedRoutes = [
+  '/',
   '/dashboard',
   '/account',
   '/api/accounts',
@@ -19,7 +20,6 @@ const adminRoutes = [
 
 // Define public routes that don't require authentication
 const publicRoutes = [
-  '/',
   '/auth/signin',
   '/auth/signup',
   '/auth/complete-signup',
