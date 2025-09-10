@@ -21,6 +21,18 @@ export async function POST(req: NextRequest) {
     }
 
     switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session
+        await handleCheckoutCompleted(session)
+        break
+      }
+
+      case 'customer.created': {
+        const customer = event.data.object as Stripe.Customer
+        await handleCustomerCreated(customer)
+        break
+      }
+
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription
@@ -114,4 +126,50 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
 async function handlePaymentFailed(invoice: Stripe.Invoice) {
   console.log('Payment failed for invoice:', invoice.id)
   // Add logic to handle failed payments (e.g., send notification)
+}
+
+async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
+  console.log('Checkout completed for session:', session.id)
+  
+  if (session.mode === 'subscription' && session.subscription) {
+    // Get the subscription details
+    const subscription = await stripe.subscriptions.retrieve(session.subscription as string)
+    
+    // Update organization with subscription info
+    const customerId = session.customer as string
+    const organization = await db.organization.findFirst({
+      where: { stripeCustomerId: customerId }
+    })
+    
+    if (organization) {
+      await db.organization.update({
+        where: { id: organization.id },
+        data: {
+          stripeSubscriptionId: subscription.id,
+          subscriptionStatus: subscription.status,
+          subscriptionCurrentPeriodEnd: new Date(subscription.current_period_end * 1000),
+          subscriptionPlan: session.metadata?.planId || 'starter'
+        }
+      })
+    }
+  }
+}
+
+async function handleCustomerCreated(customer: Stripe.Customer) {
+  console.log('Customer created:', customer.id)
+  
+  // Update user/organization with Stripe customer ID if not already set
+  if (customer.email) {
+    const user = await db.user.findUnique({
+      where: { email: customer.email },
+      include: { organization: true }
+    })
+    
+    if (user?.organization && !user.organization.stripeCustomerId) {
+      await db.organization.update({
+        where: { id: user.organization.id },
+        data: { stripeCustomerId: customer.id }
+      })
+    }
+  }
 }

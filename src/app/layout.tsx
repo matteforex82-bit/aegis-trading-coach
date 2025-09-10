@@ -53,6 +53,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#1e293b" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <script async src="https://js.stripe.com/v3/pricing-table.js"></script>
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground touch-action-manipulation`}

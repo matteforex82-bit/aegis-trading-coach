@@ -26,6 +26,7 @@ import {
 import { useSubscriptionLimits } from '@/hooks/useSubscriptionLimits'
 import { SubscriptionUsageWidget } from '@/components/SubscriptionUsageWidget'
 import { PaymentMethodCard } from '@/components/PaymentMethodCard'
+import { AddPaymentMethodModal } from '@/components/AddPaymentMethodModal'
 import { toast } from 'sonner'
 
 interface PlanFeature {
@@ -127,6 +128,7 @@ export default function BillingPage() {
   const [loadingInvoices, setLoadingInvoices] = useState(false)
   const [paymentMethods, setPaymentMethods] = useState<any[]>([])
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false)
+  const [showAddPaymentModal, setShowAddPaymentModal] = useState(false)
 
   useEffect(() => {
     if (session?.user) {
@@ -298,6 +300,35 @@ export default function BillingPage() {
     }
   }
 
+  const handleManageBilling = async () => {
+    setLoading(true)
+    try {
+      const response = await fetch('/api/billing/customer-portal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+
+      if (response.ok) {
+        const { url } = await response.json()
+        window.open(url, '_blank')
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to open billing portal')
+      }
+    } catch (error) {
+      console.error('Error opening billing portal:', error)
+      toast.error('Failed to open billing portal')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handlePaymentMethodAdded = () => {
+    fetchPaymentMethods()
+  }
+
   const handleReactivateSubscription = async () => {
     setLoading(true)
     try {
@@ -435,8 +466,9 @@ export default function BillingPage() {
                   </Button>
                 )}
                 <Button 
-                  onClick={() => window.open(subscriptionStatus?.customerPortalUrl, '_blank')}
+                  onClick={handleManageBilling}
                   variant="outline"
+                  disabled={loading}
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
                   Manage Billing
@@ -450,65 +482,56 @@ export default function BillingPage() {
         </TabsContent>
 
         <TabsContent value="plans" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {PLANS.map((plan) => (
-              <Card 
-                key={plan.id} 
-                className={`relative ${plan.popular ? 'border-blue-500 shadow-lg' : ''} ${currentPlan === plan.id ? 'ring-2 ring-blue-500' : ''}`}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                    <Badge className="bg-blue-600 text-white px-3 py-1">
-                      Most Popular
-                    </Badge>
+          <div className="w-full">
+            <div className="mb-6 text-center">
+              <h2 className="text-2xl font-bold mb-2">Scegli il tuo piano</h2>
+              <p className="text-gray-600">Seleziona il piano più adatto alle tue esigenze di trading</p>
+            </div>
+            
+            {/* Stripe Pricing Table */}
+            {process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? (
+              <div className="w-full flex justify-center">
+                <stripe-pricing-table 
+                  pricing-table-id="prctbl_1S5qp18M0mPli7QKWH0Y5BWk"
+                  publishable-key={process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
+                >
+                </stripe-pricing-table>
+              </div>
+            ) : (
+              <div className="w-full p-8 text-center bg-yellow-50 border border-yellow-200 rounded-lg">
+                <AlertTriangle className="h-12 w-12 text-yellow-600 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-yellow-800 mb-2">Configurazione Stripe Richiesta</h3>
+                <p className="text-yellow-700 mb-4">
+                  Per visualizzare i piani di abbonamento, è necessario configurare le chiavi Stripe nel file .env
+                </p>
+                <div className="text-sm text-yellow-600 bg-yellow-100 p-3 rounded border">
+                  <p className="font-mono">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...</p>
+                </div>
+              </div>
+            )}
+            
+            {/* Fallback: Show current plan info */}
+            {subscriptionActive && (
+              <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Crown className="h-6 w-6 text-blue-600" />
+                    <div>
+                      <h3 className="font-semibold capitalize">Piano Attuale: {currentPlan}</h3>
+                      <p className="text-sm text-gray-600">Gestisci il tuo abbonamento dal Customer Portal</p>
+                    </div>
                   </div>
-                )}
-                
-                <CardHeader className="text-center">
-                  <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                  <CardDescription>{plan.description}</CardDescription>
-                  <div className="text-4xl font-bold mt-4">
-                    ${plan.price}
-                    <span className="text-lg font-normal text-gray-600">/{plan.interval}</span>
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="space-y-4">
-                  <ul className="space-y-3">
-                    {plan.features.map((feature, index) => (
-                      <li key={index} className="flex items-center gap-2">
-                        {feature.included ? (
-                          <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
-                        ) : (
-                          <X className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                        )}
-                        <span className={feature.included ? 'text-gray-900' : 'text-gray-500'}>
-                          {feature.name}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  
-                  <Separator />
-                  
                   <Button 
-                    className="w-full" 
-                    variant={currentPlan === plan.id ? 'outline' : 'default'}
-                    disabled={loading || currentPlan === plan.id}
-                    onClick={() => handlePlanChange(plan.id)}
+                    onClick={handleManageBilling}
+                    variant="outline"
+                    disabled={loading}
                   >
-                    {currentPlan === plan.id ? (
-                      'Current Plan'
-                    ) : (
-                      <>  
-                        <Zap className="h-4 w-4 mr-2" />
-                        {currentPlan === 'starter' || PLANS.findIndex(p => p.id === currentPlan) < PLANS.findIndex(p => p.id === plan.id) ? 'Upgrade' : 'Downgrade'}
-                      </>
-                    )}
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Gestisci Abbonamento
                   </Button>
-                </CardContent>
-              </Card>
-            ))}
+                </div>
+              </div>
+            )}
           </div>
         </TabsContent>
 
@@ -589,6 +612,12 @@ export default function BillingPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <AddPaymentMethodModal 
+        open={showAddPaymentModal}
+        onOpenChange={setShowAddPaymentModal}
+        onSuccess={handlePaymentMethodAdded}
+      />
     </div>
   )
 }
