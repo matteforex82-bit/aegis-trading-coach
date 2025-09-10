@@ -14,16 +14,9 @@ export async function GET(request: NextRequest) {
           deletedAt: null
         },
         include: {
-          _count: {
-            select: { trades: true }
-          },
-          propFirmTemplate: {
-            include: {
-              propFirm: true
-            }
-          }
-        },
-        orderBy: { createdAt: 'desc' }
+          user: true,
+          PropFirm: true
+        }
       })
       return NextResponse.json(accounts)
     } else {
@@ -33,16 +26,9 @@ export async function GET(request: NextRequest) {
           deletedAt: null
         },
         include: {
-          _count: {
-            select: { trades: true }
-          },
-          propFirmTemplate: {
-            include: {
-              propFirm: true
-            }
-          }
-        },
-        orderBy: { createdAt: 'desc' }
+          user: true,
+          PropFirm: true
+        }
       })
       return NextResponse.json(accounts)
     }

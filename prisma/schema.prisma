@@ -53,6 +53,9 @@ model Account {
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   PropFirm   PropFirm? @relation(fields: [propFirmId], references: [id])
   propFirmId String?
+  
+  // Soft delete support
+  deletedAt  DateTime?
 
   @@unique([provider, providerAccountId])
   @@map("nextauth_accounts")

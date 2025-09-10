@@ -66,11 +66,7 @@ export async function GET(request: NextRequest) {
         organization: {
           include: {
             users: true,
-            tradingAccounts: {
-              where: {
-                deletedAt: null
-              }
-            }
+            tradingAccounts: true
           }
         }
       }
