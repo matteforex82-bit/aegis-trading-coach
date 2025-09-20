@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
@@ -20,7 +20,6 @@ export const metadata: Metadata = {
   description: "Professional PropFirm trading dashboard with MT5 integration, risk management, and performance analytics.",
   keywords: ["PropFirm", "Trading", "MT5", "Risk Management", "Trading Dashboard", "Performance Analytics"],
   authors: [{ name: "PROP CONTROL Team" }],
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: '16x16', type: 'image/x-icon' },
@@ -41,6 +40,14 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#1e293b',
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -49,8 +56,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-        <meta name="theme-color" content="#1e293b" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <script async src="https://js.stripe.com/v3/pricing-table.js"></script>
