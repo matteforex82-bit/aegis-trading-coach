@@ -2,12 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { db } from '@/lib/db'
 import { stripe } from '@/lib/stripe'
+import { requireAdmin } from '@/lib/auth-middleware'
 
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession()
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check if user is admin
+    const adminCheck = await requireAdmin(req)
+    if (adminCheck) {
+      return adminCheck
     }
 
     // Get basic counts

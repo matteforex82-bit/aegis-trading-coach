@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { UserRole } from '@prisma/client'
+import { shouldBypassLimits } from '@/lib/auth-middleware'
 
 export interface SubscriptionLimits {
   maxTradingAccounts: number
@@ -46,6 +48,7 @@ const PLAN_LIMITS: Record<string, SubscriptionLimits> = {
 export interface UserWithOrganization {
   id: string
   email: string
+  role: UserRole
   organization: {
     id: string
     subscriptionPlan: string | null
@@ -97,6 +100,11 @@ export function checkTradingAccountLimit(
   user: UserWithOrganization,
   additionalAccounts: number = 1
 ): LimitCheckResult {
+  // Gli admin bypassano tutte le limitazioni
+  if (shouldBypassLimits(user.role)) {
+    return { allowed: true }
+  }
+
   if (!user.organization) {
     return {
       allowed: false,
@@ -141,6 +149,11 @@ export function checkUserLimit(
   user: UserWithOrganization,
   additionalUsers: number = 1
 ): LimitCheckResult {
+  // Gli admin bypassano tutte le limitazioni
+  if (shouldBypassLimits(user.role)) {
+    return { allowed: true }
+  }
+
   if (!user.organization) {
     return {
       allowed: false,
@@ -185,6 +198,11 @@ export function checkFeatureAccess(
   user: UserWithOrganization,
   feature: keyof SubscriptionLimits
 ): LimitCheckResult {
+  // Gli admin bypassano tutte le limitazioni
+  if (shouldBypassLimits(user.role)) {
+    return { allowed: true }
+  }
+
   if (!user.organization) {
     return {
       allowed: false,

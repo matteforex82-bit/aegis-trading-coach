@@ -35,6 +35,11 @@ enum AccountType {
   EVALUATION // Account in valutazione
 }
 
+enum UserRole {
+  ADMIN // Amministratore con accesso completo
+  USER  // Utente standard
+}
+
 // NextAuth.js required models
 model Account {
   id                String  @id @default(cuid())
@@ -141,7 +146,7 @@ model User {
 
   // Organization relationship
   organizationId String?
-  role           String  @default("user") // admin, user
+  role           UserRole @default(USER) // admin, user
 
   // Subscription info
   stripeCustomerId String? @unique

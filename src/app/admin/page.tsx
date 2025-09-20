@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Users, Building2, CreditCard, TrendingUp, DollarSign, Activity } from 'lucide-react'
+import { Users, Building2, CreditCard, TrendingUp, DollarSign, Activity, Shield, Settings, UserCheck, AlertTriangle } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts'
 
 interface AdminStats {
@@ -128,18 +128,42 @@ export default function AdminDashboard() {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard Admin</h1>
-          <p className="text-muted-foreground">Panoramica generale del sistema</p>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Shield className="h-8 w-8 text-red-600" />
+            Dashboard Admin
+          </h1>
+          <p className="text-muted-foreground">Controllo completo del sistema - Accesso amministratore</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => router.push('/admin/users')} variant="outline">
+          <Button onClick={() => router.push('/admin/users')} variant="outline" className="flex items-center gap-2">
+            <UserCheck className="h-4 w-4" />
             Gestisci Utenti
           </Button>
-          <Button onClick={() => router.push('/admin/subscriptions')} variant="outline">
+          <Button onClick={() => router.push('/admin/subscriptions')} variant="outline" className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4" />
             Gestisci Abbonamenti
+          </Button>
+          <Button onClick={() => router.push('/admin/system')} variant="outline" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Sistema
           </Button>
         </div>
       </div>
+
+      {/* Admin Status Alert */}
+      <Card className="border-red-200 bg-red-50">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5 text-red-600" />
+            <div>
+              <h3 className="font-semibold text-red-800">Modalità Amministratore Attiva</h3>
+              <p className="text-sm text-red-700">
+                Hai accesso completo a tutte le funzionalità del sistema. Le limitazioni di abbonamento sono disabilitate per il tuo account.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -31,7 +31,7 @@ export default function SignInPage() {
 
     try {
       const result = await signIn('credentials', {
-        username,
+        email: username, // Use username as email for admin login
         password,
         redirect: false,
         callbackUrl,
