@@ -59,13 +59,15 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   };
 
-  // Prevent hydration mismatch
-  if (!mounted) {
-    return null;
-  }
+  // Prevent hydration mismatch by providing a default theme during mounting
+  const contextValue = {
+    theme: mounted ? theme : 'fintech' as Theme,
+    setTheme,
+    toggleTheme
+  };
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
+    <ThemeContext.Provider value={contextValue}>
       {children}
     </ThemeContext.Provider>
   );
