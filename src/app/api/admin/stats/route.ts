@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { db } from '@/lib/db'
-import { stripe } from '@/lib/stripe'
+import { getServerStripe } from '@/lib/stripe'
 import { requireAdmin } from '@/lib/auth-middleware'
 
 export async function GET(req: NextRequest) {
@@ -17,6 +17,8 @@ export async function GET(req: NextRequest) {
       return adminCheck
     }
 
+    const stripe = getServerStripe()
+    
     // Get basic counts
     const [totalUsers, totalOrganizations, totalTradingAccounts] = await Promise.all([
       db.user.count(),

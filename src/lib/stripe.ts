@@ -1,13 +1,29 @@
 import Stripe from 'stripe'
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY is not set in environment variables')
+// Server-side Stripe instance - only initialize on server
+let _stripe: Stripe | null = null
+
+export const getServerStripe = () => {
+  if (typeof window !== 'undefined') {
+    throw new Error('getServerStripe should only be called on the server side')
+  }
+  
+  if (!_stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('STRIPE_SECRET_KEY is not set in environment variables')
+    }
+    
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2024-11-20.acacia',
+      typescript: true,
+    })
+  }
+  
+  return _stripe
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2024-11-20.acacia',
-  typescript: true,
-})
+// Legacy export for backward compatibility
+export const stripe = typeof window === 'undefined' ? getServerStripe() : null
 
 // Stripe client-side
 export const getStripe = () => {

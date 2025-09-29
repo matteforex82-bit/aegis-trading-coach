@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { db } from '@/lib/db'
-import { stripe } from '@/lib/stripe'
+import { getServerStripe } from '@/lib/stripe'
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get('search') || ''
     
     const skip = (page - 1) * limit
+    const stripe = getServerStripe()
     
     // Build where clause
     const where: any = {}

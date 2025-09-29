@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { stripe, SUBSCRIPTION_PLANS } from '@/lib/stripe'
+import { getServerStripe, SUBSCRIPTION_PLANS } from '@/lib/stripe'
 import { db } from '@/lib/db'
 
 export async function POST(req: NextRequest) {
@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
     }
 
     const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]
+    const stripe = getServerStripe()
 
     // Find or create user
     let user = await db.user.findUnique({
