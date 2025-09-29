@@ -5,32 +5,53 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // 禁用 Next.js 热重载，由 nodemon 处理重编译
-  reactStrictMode: false,
+  reactStrictMode: true,
   images: {
-    unoptimized: true,
+    unoptimized: false,
     domains: [],
     formats: ['image/webp', 'image/avif'],
-    loader: 'default',
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
-  // Assicura che i file statici siano serviti correttamente
-  assetPrefix: '',
+  // Configurazione ottimizzata per Vercel
   trailingSlash: false,
-  // Configurazione per il deployment
-  // output: 'standalone', // Commentato per risolvere problemi con file statici
-  webpack: (config, { dev }) => {
-    if (dev) {
-      // 禁用 webpack 的热模块替换
-      config.watchOptions = {
-        ignored: ['**/*'], // 忽略所有文件变化
+  poweredByHeader: false,
+  compress: true,
+  // Webpack configuration ottimizzata
+  webpack: (config, { dev, isServer }) => {
+    // Ottimizzazioni per la produzione
+    if (!dev && !isServer) {
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          ...config.optimization.splitChunks,
+          cacheGroups: {
+            ...config.optimization.splitChunks.cacheGroups,
+            default: false,
+            vendors: false,
+            // Chunk per le librerie vendor
+            vendor: {
+              name: 'vendor',
+              chunks: 'all',
+              test: /node_modules/,
+              priority: 20
+            },
+            // Chunk per il codice comune
+            common: {
+              name: 'common',
+              minChunks: 2,
+              chunks: 'all',
+              priority: 10,
+              reuseExistingChunk: true,
+              enforce: true
+            }
+          }
+        }
       };
     }
     return config;
   },
   eslint: {
-    // 构建时忽略ESLint错误
     ignoreDuringBuilds: true,
   },
 };
