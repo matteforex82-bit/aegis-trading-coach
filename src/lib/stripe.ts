@@ -7,23 +7,25 @@ export const getServerStripe = () => {
   if (typeof window !== 'undefined') {
     throw new Error('getServerStripe should only be called on the server side')
   }
-  
+
   if (!_stripe) {
     if (!process.env.STRIPE_SECRET_KEY) {
-      throw new Error('STRIPE_SECRET_KEY is not set in environment variables')
+      console.warn('⚠️ STRIPE_SECRET_KEY is not set - Stripe features will be disabled')
+      return null
     }
-    
+
     _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
       apiVersion: '2024-11-20.acacia',
       typescript: true,
     })
   }
-  
+
   return _stripe
 }
 
 // Legacy export for backward compatibility
-export const stripe = typeof window === 'undefined' ? getServerStripe() : null
+// Note: Returns null if Stripe is not configured (allows build to succeed)
+export const stripe = typeof window === 'undefined' ? (process.env.STRIPE_SECRET_KEY ? getServerStripe() : null) : null
 
 // Stripe client-side
 export const getStripe = async () => {
@@ -32,7 +34,8 @@ export const getStripe = async () => {
   const { loadStripe } = await import('@stripe/stripe-js')
 
   if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
-    throw new Error('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set')
+    console.warn('⚠️ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set - Stripe features will be disabled')
+    return null
   }
 
   return loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
