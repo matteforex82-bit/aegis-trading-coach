@@ -11,8 +11,8 @@ async function main() {
     },
   })
 
-  // Create a sample account
-  const account = await prisma.account.create({
+  // Create a sample trading account
+  const account = await prisma.tradingAccount.create({
     data: {
       userId: user.id,
       name: 'Account Demo MT5',

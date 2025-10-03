@@ -6,7 +6,7 @@ import { UserRole } from '@prisma/client'
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     const session = await getServerSession()
@@ -21,7 +21,7 @@ export async function PATCH(
     }
 
     const { role } = await req.json()
-    const { userId } = params
+    const { userId } = await params
 
     // Validate role
     if (!Object.values(UserRole).includes(role)) {

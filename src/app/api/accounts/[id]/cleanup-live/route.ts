@@ -3,14 +3,15 @@ import { db } from '@/lib/db'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  console.log('🧹 CLEANUP LIVE POSITIONS - Account:', params.id)
+  const resolvedParams = await params
+  console.log('🧹 CLEANUP LIVE POSITIONS - Account:', resolvedParams.id)
   
   try {
     // Find the account
     const account = await db.account.findUnique({
-      where: { id: params.id }
+      where: { id: resolvedParams.id }
     })
     
     if (!account) {
@@ -25,7 +26,7 @@ export async function POST(
     // DELETE ALL OPEN POSITIONS (closeTime = null) for this account
     const deletedPositions = await db.trade.deleteMany({
       where: {
-        accountId: params.id,
+        accountId: resolvedParams.id,
         closeTime: null  // Only delete open positions
       }
     })
@@ -34,7 +35,7 @@ export async function POST(
     
     // Reset account state for fresh EA sync
     await db.account.update({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       data: {
         // Reset any cached states if needed
         updatedAt: new Date()

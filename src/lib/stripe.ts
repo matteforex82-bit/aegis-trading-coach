@@ -26,15 +26,15 @@ export const getServerStripe = () => {
 export const stripe = typeof window === 'undefined' ? getServerStripe() : null
 
 // Stripe client-side
-export const getStripe = () => {
+export const getStripe = async () => {
   if (typeof window === 'undefined') return null
-  
-  const { loadStripe } = require('@stripe/stripe-js')
-  
+
+  const { loadStripe } = await import('@stripe/stripe-js')
+
   if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
     throw new Error('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set')
   }
-  
+
   return loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
 }
 

@@ -22,17 +22,6 @@ export const db =
         url: process.env.DATABASE_URL,
       },
     },
-    // Add connection pooling and timeout configurations for Vercel
-    __internal: {
-      engine: {
-        // Connection timeout (30 seconds)
-        connectTimeout: 30000,
-        // Query timeout (20 seconds) 
-        queryTimeout: 20000,
-        // Pool timeout (10 seconds)
-        poolTimeout: 10000,
-      },
-    },
   })
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db

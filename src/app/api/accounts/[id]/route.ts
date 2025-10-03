@@ -6,10 +6,10 @@ import { db } from '@/lib/db'
 //+------------------------------------------------------------------+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: accountId } = params
+    const { id: accountId } = await params
     
     console.log('🔍 Fetching account:', accountId)
     
@@ -74,10 +74,10 @@ export async function GET(
 //+------------------------------------------------------------------+
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: accountId } = params
+    const { id: accountId } = await params
     const body = await request.json()
     
     console.log('📝 Updating account:', accountId, body)

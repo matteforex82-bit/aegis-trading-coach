@@ -7,10 +7,10 @@ import { createRuleEngine } from '@/lib/rule-engine'
 //+------------------------------------------------------------------+
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: accountId } = params
+    const { id: accountId } = await params
     
     console.log('🔍 Evaluating rules for account:', accountId)
     
@@ -129,10 +129,10 @@ export async function POST(
 //+------------------------------------------------------------------+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: accountId } = params
+    const { id: accountId } = await params
     
     // Get account basics
     const account = await db.account.findUnique({

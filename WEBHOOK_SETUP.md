@@ -10,7 +10,7 @@ Questa guida spiega come configurare e utilizzare il webhook Finnhub per ricever
 
 - **Metodo:** POST
 - **Autenticazione:** Header `X-Finnhub-Secret`
-- **Secret:** `d2r7o31r01qlk22s2hcg`
+- **Secret:** `YOUR_FINNHUB_WEBHOOK_SECRET_HERE` (configurare in .env)
 
 ### 2. Configurazione su Finnhub
 
@@ -18,7 +18,7 @@ Questa guida spiega come configurare e utilizzare il webhook Finnhub per ricever
 2. Vai nella sezione "Webhooks" del dashboard
 3. Crea un nuovo webhook con:
    - **URL:** `https://your-domain.com/api/finnhub-webhook`
-   - **Secret:** `d2r7o31r01qlk22s2hcg`
+   - **Secret:** Genera un secret sicuro (es: `openssl rand -base64 32`)
    - **Eventi:** Seleziona gli eventi che vuoi ricevere
 
 ### 3. Variabili d'Ambiente
@@ -26,7 +26,7 @@ Questa guida spiega come configurare e utilizzare il webhook Finnhub per ricever
 Assicurati che nel file `.env` sia configurato:
 
 ```env
-FINNHUB_WEBHOOK_SECRET="d2r7o31r01qlk22s2hcg"
+FINNHUB_WEBHOOK_SECRET="your-generated-webhook-secret"
 FINNHUB_API_KEY="your-api-key-here"
 ```
 
@@ -41,7 +41,7 @@ FINNHUB_API_KEY="your-api-key-here"
 
 Tutte le richieste da Finnhub includono l'header:
 ```
-X-Finnhub-Secret: d2r7o31r01qlk22s2hcg
+X-Finnhub-Secret: <your-configured-secret>
 ```
 
 ### Gestione Errori

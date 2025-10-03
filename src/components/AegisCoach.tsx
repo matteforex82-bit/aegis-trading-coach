@@ -85,23 +85,6 @@ const MAX_HEIGHT = 768
 const IMAGE_QUALITY = 0.8
 
 export default function AegisCoach({ account, stats, rules, openTrades = [] }: AegisCoachProps) {
-  // Early return if essential data is missing
-  if (!account) {
-    return (
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bot className="h-5 w-5" />
-            AEGIS Coach
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-gray-500">Loading coaching data...</div>
-        </CardContent>
-      </Card>
-    )
-  }
-  
   // Core chat functionality (from original AEGIS)
   const [messages, setMessages] = useState<Message[]>([])
   const [inputMessage, setInputMessage] = useState('')
@@ -114,7 +97,7 @@ export default function AegisCoach({ account, stats, rules, openTrades = [] }: A
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  
+
   // New coach-specific state
   const [activeTab, setActiveTab] = useState('chat')
   const [insights, setInsights] = useState<TradeInsight[]>([])
@@ -125,21 +108,20 @@ export default function AegisCoach({ account, stats, rules, openTrades = [] }: A
   const [riskScore, setRiskScore] = useState<number>(0)
   const [disciplineScore, setDisciplineScore] = useState<number>(0)
 
-
   // Initialize session ID and load data
   useEffect(() => {
     if (account?.id) {
       const storageKey = `aegis_session_${account.id}`
       let existingSessionId = localStorage.getItem(storageKey)
-      
+
       if (!existingSessionId) {
         // Generate new UUID-like session ID
         existingSessionId = `user_${account.login || 'unknown'}_${Date.now()}`
         localStorage.setItem(storageKey, existingSessionId)
       }
-      
+
       setSessionId(existingSessionId)
-      
+
       // Load previous messages if any
       const storageMessages = localStorage.getItem(`aegis_messages_${account.id}`)
       if (storageMessages) {
@@ -162,14 +144,13 @@ export default function AegisCoach({ account, stats, rules, openTrades = [] }: A
           category: 'general'
         }])
       }
-      
-      // Load insights, learning resources and goals
-      loadInsights()
-      loadLearningResources()
-      loadTradingGoals()
-      generateDailyTip()
-      calculateScores()
 
+      // Load insights, learning resources and goals - only if functions are defined
+      if (typeof loadInsights !== 'undefined') loadInsights()
+      if (typeof loadLearningResources !== 'undefined') loadLearningResources()
+      if (typeof loadTradingGoals !== 'undefined') loadTradingGoals()
+      if (typeof generateDailyTip !== 'undefined') generateDailyTip()
+      if (typeof calculateScores !== 'undefined') calculateScores()
     }
   }, [account?.id, account?.login])
 
@@ -177,6 +158,23 @@ export default function AegisCoach({ account, stats, rules, openTrades = [] }: A
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Early return if essential data is missing (AFTER all hooks)
+  if (!account) {
+    return (
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5" />
+            AEGIS Coach
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-gray-500">Loading coaching data...</div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   // Save messages to localStorage
   const saveMessages = (newMessages: Message[]) => {

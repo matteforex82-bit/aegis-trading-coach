@@ -3,6 +3,10 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   typescript: {
+    // TODO: Fix TypeScript errors and set to false before production
+    // Known issues:
+    // - ConnectionStatus component missing props definition
+    // - Other component prop type mismatches
     ignoreBuildErrors: true,
   },
   reactStrictMode: true,
@@ -52,7 +56,8 @@ const nextConfig: NextConfig = {
     return config;
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    // All ESLint React Hooks errors have been fixed
+    ignoreDuringBuilds: false,
   },
 };
 
