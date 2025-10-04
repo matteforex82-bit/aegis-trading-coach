@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+// Temporarily disabled Tabs due to Radix UI React 18 compatibility issues
+// import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Users, Building2, CreditCard, TrendingUp, DollarSign, Activity, Shield, Settings, UserCheck, AlertTriangle } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts'
 
@@ -224,14 +225,10 @@ export default function AdminDashboard() {
         )}
       </div>
 
-      <Tabs defaultValue="growth" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="growth">Crescita Utenti</TabsTrigger>
-          <TabsTrigger value="subscriptions">Abbonamenti</TabsTrigger>
-          <TabsTrigger value="organizations">Top Organizzazioni</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="growth" className="space-y-4">
+      {/* Temporarily removed Tabs - showing all sections */}
+      <div className="space-y-6">
+        {/* Crescita Utenti Section */}
+        <div className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Crescita Utenti (Ultimi 12 Mesi)</CardTitle>
@@ -251,9 +248,10 @@ export default function AdminDashboard() {
               </ResponsiveContainer>
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
 
-        <TabsContent value="subscriptions" className="space-y-4">
+        {/* Abbonamenti Section */}
+        <div className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
@@ -307,9 +305,10 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
+        </div>
 
-        <TabsContent value="organizations" className="space-y-4">
+        {/* Top Organizzazioni Section */}
+        <div className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Top Organizzazioni</CardTitle>
@@ -351,8 +350,8 @@ export default function AdminDashboard() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
     </div>
   )
 }
