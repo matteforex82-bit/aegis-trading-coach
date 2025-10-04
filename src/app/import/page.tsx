@@ -333,7 +333,7 @@ Check console for detailed data structure`)
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem value="" disabled>
+                      <SelectItem value="no-accounts" disabled>
                         Nessun account trovato
                       </SelectItem>
                     )}

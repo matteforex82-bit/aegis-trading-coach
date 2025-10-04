@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     console.log('📋 Fetching deleted accounts...')
     
     // Get all soft deleted accounts
-    const deletedAccounts = await db.account.findMany({
+    const deletedAccounts = await db.tradingAccount.findMany({
       where: {
         deletedAt: {
           not: null
