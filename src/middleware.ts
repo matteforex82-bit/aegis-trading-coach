@@ -50,9 +50,8 @@ export default withAuth(
 
     // Check admin routes
     if (adminRoutes.some(route => pathname.startsWith(route))) {
-      // For now, allow any authenticated user to access admin routes
-      // In production, you should check for admin role
-      if (token.role !== 'admin') {
+      // Check for ADMIN role (uppercase to match Prisma UserRole enum)
+      if (token.role !== 'ADMIN') {
         return NextResponse.redirect(new URL('/dashboard', req.url))
       }
     }
