@@ -28,7 +28,8 @@ const publicRoutes = [
   '/terms',
   '/privacy',
   '/api/auth',
-  '/api/webhooks'
+  '/api/webhooks',
+  '/api/setup-admin' // Temporary setup endpoint
 ]
 
 export default withAuth(
