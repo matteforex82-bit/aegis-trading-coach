@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 80" fill="none">
+  <rect x="10" y="10" width="60" height="60" rx="12" fill="#1e293b"/>
+  <path d="M40 25L50 35H45V55H35V35H30L40 25Z" fill="#3b82f6"/>
+  <path d="M25 57H55V62H25V57Z" fill="#3b82f6"/>
+  <text x="80" y="50" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#1e293b">PROP CONTROL</text>
+</svg>

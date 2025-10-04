@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
+// Temporarily disabled Progress due to React 19 compatibility
+// import { Progress } from '@/components/ui/progress'
 import { 
   Crown, 
   Zap, 
@@ -136,7 +137,12 @@ export function UpgradePrompt({ currentPlan, usage, limits, className }: Upgrade
                     {usage.tradingAccounts}/{limits.tradingAccounts === -1 ? '∞' : limits.tradingAccounts}
                   </span>
                 </div>
-                <Progress value={tradingAccountsUsage} className="h-2" />
+                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-blue-600 h-2 rounded-full transition-all"
+                    style={{ width: `${Math.min(100, tradingAccountsUsage)}%` }}
+                  />
+                </div>
               </div>
             )}
             
@@ -151,7 +157,12 @@ export function UpgradePrompt({ currentPlan, usage, limits, className }: Upgrade
                     {usage.users}/{limits.users === -1 ? '∞' : limits.users}
                   </span>
                 </div>
-                <Progress value={usersUsage} className="h-2" />
+                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-blue-600 h-2 rounded-full transition-all"
+                    style={{ width: `${Math.min(100, usersUsage)}%` }}
+                  />
+                </div>
               </div>
             )}
             
@@ -166,7 +177,12 @@ export function UpgradePrompt({ currentPlan, usage, limits, className }: Upgrade
                     {usage.apiCallsThisMonth.toLocaleString()}/{limits.apiCallsPerMonth === -1 ? '∞' : limits.apiCallsPerMonth.toLocaleString()}
                   </span>
                 </div>
-                <Progress value={apiUsage} className="h-2" />
+                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-blue-600 h-2 rounded-full transition-all"
+                    style={{ width: `${Math.min(100, apiUsage)}%` }}
+                  />
+                </div>
               </div>
             )}
           </div>
