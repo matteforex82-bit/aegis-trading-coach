@@ -6,7 +6,7 @@ import { AccountList } from '@/components/account-list'
 import { Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useTheme } from '@/contexts/ThemeContext'
-import Image from 'next/image'
+// Removed Image import - using native img for compatibility
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -40,16 +40,12 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
             
             <div className="flex items-center space-x-3">
               <div className="flex-shrink-0">
-                <Image 
-                  src="/logo.svg?v=4" 
-                  alt="PROP CONTROL" 
-                  width={120} 
-                  height={48} 
-                  className={`object-contain logo-enhanced ${
+                <img
+                  src="/logo.svg"
+                  alt="PROP CONTROL"
+                  className={`h-12 w-auto object-contain logo-enhanced ${
                     theme === 'neon' ? 'animate-neon-glow' : ''
                   }`}
-                  priority
-                  decoding="async"
                 />
               </div>
               {subtitle && (

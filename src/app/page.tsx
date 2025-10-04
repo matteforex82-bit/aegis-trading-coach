@@ -14,7 +14,7 @@ import { SubscriptionUsageWidget } from '@/components/SubscriptionUsageWidget'
 import { UpgradePrompt } from '@/components/UpgradePrompt'
 import { useSubscriptionLimits } from '@/hooks/useSubscriptionLimits'
 import Link from 'next/link'
-import Image from 'next/image'
+// Removed Image import - using native img for compatibility
 
 interface Account {
   id: string
@@ -98,13 +98,10 @@ export default function Dashboard() {
           <Card className="text-center py-8 sm:py-12 shadow-sm mx-4 sm:mx-0">
              <CardContent className="px-4 sm:px-6">
                <div className="mx-auto flex items-center justify-center mb-4 sm:mb-6">
-                 <Image 
-                   src="/logo.svg?v=4" 
-                   alt="PROP CONTROL" 
-                   width={150} 
-                   height={60} 
-                   className="object-contain logo-enhanced"
-                   priority
+                 <img
+                   src="/logo.svg"
+                   alt="PROP CONTROL"
+                   className="h-15 w-auto object-contain logo-enhanced"
                  />
                </div>
                <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-3 sm:mb-4">
