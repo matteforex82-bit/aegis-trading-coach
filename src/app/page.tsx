@@ -10,7 +10,8 @@ import { RefreshCw, BarChart3, Users, ArrowRight } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { AccountList } from '@/components/account-list'
 import DashboardLayout from '@/components/dashboard-layout'
-import { SubscriptionUsageWidget } from '@/components/SubscriptionUsageWidget'
+// Temporarily disabled due to Progress component incompatibility
+// import { SubscriptionUsageWidget } from '@/components/SubscriptionUsageWidget'
 import { UpgradePrompt } from '@/components/UpgradePrompt'
 import { useSubscriptionLimits } from '@/hooks/useSubscriptionLimits'
 import Link from 'next/link'
@@ -83,9 +84,9 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="max-w-6xl mx-auto space-y-6">
-          {/* Subscription Usage Widget */}
-          <SubscriptionUsageWidget className="mx-4 sm:mx-0" />
-          
+          {/* Subscription Usage Widget - Temporarily disabled */}
+          {/* <SubscriptionUsageWidget className="mx-4 sm:mx-0" /> */}
+
           {/* Upgrade Prompt */}
           {!subscriptionLoading && subscriptionStatus && (
             <UpgradePrompt 

@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
+// Removed Progress for React 18 compatibility
+// import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { AlertTriangle, Users, TrendingUp, Crown, Zap } from 'lucide-react'
@@ -146,16 +147,18 @@ export function SubscriptionUsageWidget({ className }: SubscriptionUsageWidgetPr
             </div>
           </div>
           {limits.maxTradingAccounts !== -1 && (
-            <Progress 
-              value={tradingAccountsUsage} 
-              className={`h-2 ${
-                isAtLimit(tradingAccountsUsage) 
-                  ? '[&>div]:bg-red-500' 
-                  : isNearLimit(tradingAccountsUsage) 
-                  ? '[&>div]:bg-yellow-500' 
-                  : '[&>div]:bg-blue-500'
-              }`}
-            />
+            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+              <div
+                className={`h-2 rounded-full transition-all ${
+                  isAtLimit(tradingAccountsUsage)
+                    ? 'bg-red-500'
+                    : isNearLimit(tradingAccountsUsage)
+                    ? 'bg-yellow-500'
+                    : 'bg-blue-500'
+                }`}
+                style={{ width: `${Math.min(100, tradingAccountsUsage)}%` }}
+              />
+            </div>
           )}
         </div>
 
@@ -176,16 +179,18 @@ export function SubscriptionUsageWidget({ className }: SubscriptionUsageWidgetPr
             </div>
           </div>
           {limits.maxUsers !== -1 && (
-            <Progress 
-              value={usersUsage} 
-              className={`h-2 ${
-                isAtLimit(usersUsage) 
-                  ? '[&>div]:bg-red-500' 
-                  : isNearLimit(usersUsage) 
-                  ? '[&>div]:bg-yellow-500' 
-                  : '[&>div]:bg-green-500'
-              }`}
-            />
+            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+              <div
+                className={`h-2 rounded-full transition-all ${
+                  isAtLimit(usersUsage)
+                    ? 'bg-red-500'
+                    : isNearLimit(usersUsage)
+                    ? 'bg-yellow-500'
+                    : 'bg-green-500'
+                }`}
+                style={{ width: `${Math.min(100, usersUsage)}%` }}
+              />
+            </div>
           )}
         </div>
 
