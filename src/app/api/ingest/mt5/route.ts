@@ -381,15 +381,15 @@ async function createOrUpdateAccountSafe(account: any) {
     }
 
     console.log('🔍 Looking for existing account...')
-    const existingAccount = await db.account.findUnique({
+    const existingAccount = await db.tradingAccount.findUnique({
       where: { login: account.login.toString() }
     })
 
     if (existingAccount) {
       console.log('📝 Found existing account:', existingAccount.id)
-      
+
       // Enhanced update with PropFirm fields
-      return await db.account.update({
+      return await db.tradingAccount.update({
         where: { login: account.login.toString() },
         data: {
           name: account.name || existingAccount.name,
@@ -436,7 +436,7 @@ async function createOrUpdateAccountSafe(account: any) {
           currentPhase: mapPhaseSafe(account.phase) || 'DEMO',
         })
         
-        return await db.account.create({
+        return await db.tradingAccount.create({
           data: {
             login: account.login.toString(),
             name: account.name || `${account.broker || 'Trading'} Account`,
