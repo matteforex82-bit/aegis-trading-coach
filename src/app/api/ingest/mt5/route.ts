@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
   const requestId = Math.random().toString(36).substr(2, 8)
-  console.log(`🔧 MT5 endpoint hit [${requestId}] (FIXED TRADINGACCOUNT VERSION)`)
+  console.log(`🔧 MT5 endpoint hit [${requestId}] (DATABASE_POSTGRES_URL VERSION)`)
   
   try {
     // 🚨 HEALTH CHECK: Return fast 200 for EA ping
