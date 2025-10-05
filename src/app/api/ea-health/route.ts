@@ -16,13 +16,27 @@ export async function GET() {
     
     const responseTime = Date.now() - startTime
     
+    // Test TradingAccount table
+    let tradingAccountTest = 'unknown'
+    try {
+      const count = await db.tradingAccount.count()
+      tradingAccountTest = `OK (${count} accounts)`
+    } catch (e: any) {
+      tradingAccountTest = `ERROR: ${e.code}`
+    }
+
+    const dbUrl = process.env.DATABASE_URL || 'NOT_SET'
+    const safeUrl = dbUrl.replace(/:([^@]+)@/, ':***@').substring(0, 80)
+
     return NextResponse.json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
       database: {
         status: 'connected',
         responseTime: `${responseTime}ms`,
-        test: 'passed'
+        test: 'passed',
+        url: safeUrl,
+        tradingAccountTable: tradingAccountTest
       },
       server: {
         status: 'operational',
