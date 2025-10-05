@@ -28,7 +28,11 @@ const publicRoutes = [
   '/terms',
   '/privacy',
   '/api/auth',
-  '/api/webhooks'
+  '/api/webhooks',
+  '/api/ingest',      // MT4/MT5 EA endpoints
+  '/api/ea-health',   // EA health check
+  '/api/health',      // General health check
+  '/api/ping'         // Ping endpoint
 ]
 
 export default withAuth(
